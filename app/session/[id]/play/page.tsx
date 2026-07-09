@@ -127,9 +127,13 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
               )}
               {session && (
                 <div className="meta-bar">
-                  <span>{new Date(session.created_at).toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase()}</span>
                   <span>ROUND {roundNumber}</span>
                   <span>COURT {session.court_labels.join('/')}</span>
+                  <span>
+                    {session.round_duration_minutes
+                      ? `${session.round_duration_minutes} MIN`
+                      : new Date(session.created_at).toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase()}
+                  </span>
                   <span>{formatLabel(session.format).toUpperCase()}</span>
                 </div>
               )}

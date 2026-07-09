@@ -87,7 +87,7 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
           </div>
         </div>
         <div className="card stat-card">
-          <span className="stat-icon" style={{ color: 'var(--accent)' }}><TrendUpIcon size={28} /></span>
+          <span className="stat-icon" style={{ color: 'var(--dark)' }}><TrendUpIcon size={28} /></span>
           <div>
             <div className="stat-label">Average Winning Margin</div>
             <div className="stat-value">{totals.averageMargin.toFixed(1)} points</div>
@@ -139,7 +139,7 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
 
         {streak && streak.streak > 0 && (
           <div className="card stat-card">
-            <span className="stat-icon" style={{ color: 'var(--accent)' }}><BoltIcon size={28} /></span>
+            <span className="stat-icon" style={{ color: 'var(--dark)' }}><BoltIcon size={28} /></span>
             <div>
               <div className="stat-label">Longest Win Streak</div>
               <div className="stat-value">{streak.name} — {streak.streak} in a row</div>

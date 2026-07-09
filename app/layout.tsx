@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { Anton, Oswald } from "next/font/google";
+import { Bebas_Neue, Oswald } from "next/font/google";
 import "./globals.css";
 import DecorativeBackground from "@/components/DecorativeBackground";
 
-const anton = Anton({
+const bebas = Bebas_Neue({
   variable: "--font-display",
   subsets: ["latin"],
   weight: "400",
@@ -26,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${anton.variable} ${oswald.variable}`}>
+    <html lang="en" className={`${bebas.variable} ${oswald.variable}`}>
       <body>
         <DecorativeBackground />
         {children}

@@ -1,20 +1,19 @@
 :root {
-  --background: #f5e600;
+  --background: #e5fa00;
   --surface: #ffffff;
-  --dark: #14213d;
-  --dark-2: #0b1730;
-  --foreground: #101010;
+  --dark: #121a2f;
+  --dark-2: #0a0f1d;
+  --foreground: #121a2f;
   --muted: #3a3a3a;
-  --border: #101010;
-  --primary: #14213d;
-  --primary-dark: #0b1730;
-  --accent: #ff7a1a;
+  --border: #121a2f;
+  --primary: #121a2f;
+  --primary-dark: #0a0f1d;
   --danger: #d64545;
   --gold: #b8860b;
   --silver: #7a8a86;
   --bronze: #a15c2a;
-  --radius: 4px;
-  --shadow: 4px 4px 0 rgba(16, 16, 16, 0.9);
+  --radius: 2px;
+  --shadow: 5px 5px 0 rgba(18, 26, 47, 1);
 }
 
 /* Locked to one bold light theme — this app is used outdoors courtside,
@@ -69,18 +68,19 @@ input:focus-visible {
 
 h1 {
   font-family: var(--font-display), sans-serif;
-  font-size: 32px;
+  font-size: 40px;
   font-weight: 400;
   text-transform: uppercase;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
+  line-height: 1;
 }
 
 h2 {
   font-family: var(--font-display), sans-serif;
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 400;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   color: var(--foreground);
   margin: 24px 0 12px;
 }
@@ -108,28 +108,40 @@ h2 {
 
 .deco {
   position: absolute;
-  color: rgba(16, 16, 16, 0.25);
+  color: rgba(18, 26, 47, 0.3);
   font-family: var(--font-display), sans-serif;
 }
 
-.deco-diamond {
-  width: 14px;
-  height: 14px;
-  background: rgba(16, 16, 16, 0.2);
+.deco-diamond-outline {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(18, 26, 47, 0.3);
   transform: rotate(45deg);
 }
 
-.deco-diamond.deco-sm {
-  width: 8px;
-  height: 8px;
+.deco-diamond-outline.deco-sm {
+  width: 9px;
+  height: 9px;
+  border-width: 1.5px;
 }
 
 .deco-chevron,
-.deco-dots,
 .deco-plus {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: 2px;
+}
+
+.deco-squares {
+  font-size: 10px;
+  letter-spacing: 4px;
+}
+
+.deco-dashes {
+  width: 40px;
+  height: 0;
+  border-top: 2px dashed rgba(18, 26, 47, 0.3);
+  transform: rotate(-15deg);
 }
 
 /* ---- Buttons ---- */
@@ -146,15 +158,15 @@ h2 {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   font-family: var(--font-display), sans-serif;
-  font-size: 18px;
-  letter-spacing: 0.03em;
+  font-size: 20px;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   transition: transform 150ms, box-shadow 150ms;
 }
 
 .btn-primary:hover {
-  transform: translate(2px, 2px);
-  box-shadow: 2px 2px 0 rgba(16, 16, 16, 0.9);
+  transform: translate(3px, 3px);
+  box-shadow: 2px 2px 0 rgba(18, 26, 47, 1);
 }
 
 .btn-primary:disabled {
@@ -174,18 +186,18 @@ h2 {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   font-family: var(--font-display), sans-serif;
-  font-size: 15px;
-  letter-spacing: 0.02em;
+  font-size: 17px;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   transition: transform 150ms, box-shadow 150ms;
 }
 
 .btn-secondary:hover {
-  transform: translate(2px, 2px);
-  box-shadow: 2px 2px 0 rgba(16, 16, 16, 0.9);
+  transform: translate(3px, 3px);
+  box-shadow: 2px 2px 0 rgba(18, 26, 47, 1);
 }
 
-/* ---- Cards ---- */
+/* ---- Cards (non-match cards: setup forms, stat cards, etc.) ---- */
 
 .card {
   background: var(--surface);
@@ -195,41 +207,28 @@ h2 {
   padding: 16px;
 }
 
-/* ---- Round / match cards ---- */
+/* ---- Round / match cards ----
+   The parallelogram team shapes ARE the card — no outer wrapper box,
+   no header bar. round-card is purely a spacing container now. */
 
 .round-card {
-  background: var(--surface);
-  border: 2px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 0 0 12px;
-  margin-bottom: 20px;
-  transition: border-color 200ms;
-  overflow: hidden;
-}
-
-.round-card.is-current {
-  border-color: var(--dark);
-  border-width: 3px;
+  margin-bottom: 28px;
 }
 
 .round-card.is-done {
-  opacity: 0.85;
+  opacity: 0.75;
 }
 
 .round-card-header {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  padding: 10px 14px;
   margin-bottom: 10px;
-  background: var(--background);
-  border-bottom: 2px solid var(--border);
 }
 
 .round-label {
   font-family: var(--font-display), sans-serif;
-  font-size: 18px;
+  font-size: 22px;
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--foreground);
@@ -237,39 +236,42 @@ h2 {
 
 .round-status-badge {
   font-family: var(--font-display), sans-serif;
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.03em;
-  padding: 4px 12px;
+  padding: 4px 14px;
   border-radius: 999px;
   background: var(--dark);
   color: white;
+  border: 2px solid var(--border);
 }
 
 .round-status-badge.pending {
-  background: var(--accent);
-  color: var(--foreground);
+  background: white;
+  color: var(--dark);
 }
 
 .match-box {
-  padding: 6px 14px 14px;
+  margin-bottom: 10px;
 }
 
 .court-label {
   display: inline-block;
   background: var(--dark);
   color: white;
-  border-radius: 4px;
+  border-radius: 2px;
   padding: 4px 12px;
   font-family: var(--font-display), sans-serif;
-  font-size: 13px;
-  letter-spacing: 0.04em;
-  margin-bottom: 10px;
+  font-size: 14px;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+  border: 2px solid var(--border);
 }
 
 .match-teams-row {
   display: flex;
   align-items: stretch;
   gap: 0;
+  position: relative;
 }
 
 .team-box {
@@ -279,32 +281,32 @@ h2 {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 14px 10px;
+  padding: 16px 14px;
   background: var(--surface);
   border: 2px solid var(--border);
   min-width: 0;
-  clip-path: polygon(0 0, 94% 0, 100% 100%, 0% 100%);
-  margin-right: -14px;
+  clip-path: polygon(0 0, 78% 0, 100% 100%, 0% 100%);
+  margin-right: -20px;
+  box-shadow: var(--shadow);
 }
 
 .match-teams-row .team-box:last-child {
   background: var(--dark);
   color: white;
-  clip-path: polygon(6% 0, 100% 0, 100% 100%, 0% 100%);
+  clip-path: polygon(22% 0, 100% 0, 100% 100%, 0% 100%);
   margin-right: 0;
-  margin-left: -14px;
+  margin-left: -20px;
 }
 
 .team-box.winner {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent) inset;
+  box-shadow: var(--shadow), 0 0 0 3px var(--background) inset;
 }
 
 .team-names {
   font-family: var(--font-display), sans-serif;
-  font-size: 15px;
+  font-size: 17px;
   text-align: center;
-  line-height: 1.25;
+  line-height: 1.2;
   word-break: break-word;
   letter-spacing: 0.01em;
 }
@@ -314,39 +316,41 @@ h2 {
   min-height: 44px;
   text-align: center;
   font-family: var(--font-display), sans-serif;
-  font-size: 20px;
+  font-size: 22px;
   border: 2px solid var(--border);
-  border-radius: 4px;
+  border-radius: 2px;
   background: white;
   color: var(--foreground);
 }
 
 .vs-pill {
+  position: relative;
   flex: 0 0 auto;
   z-index: 2;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  background: var(--foreground);
+  width: 48px;
+  height: 48px;
+  background: var(--dark);
   color: white;
   font-family: var(--font-display), sans-serif;
-  font-size: 15px;
-  border-radius: 4px;
+  font-size: 18px;
+  border-radius: 2px;
   border: 2px solid var(--border);
+  box-shadow: var(--shadow);
 }
 
 .resting-badge {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 10px 14px 0;
-  padding: 8px 12px;
-  background: var(--accent);
+  margin-top: 10px;
+  padding: 7px 14px;
+  background: white;
   border: 2px solid var(--border);
   border-radius: 999px;
-  color: var(--foreground);
+  color: var(--dark);
   font-size: 13px;
   font-weight: 700;
 }
@@ -356,20 +360,18 @@ h2 {
   display: inline-flex;
 }
 
-/* ---- Footer meta bar (per round card) ---- */
+/* ---- Footer meta bar (per round card) ----
+   Bare text directly on the yellow background, no bounding box. */
 
 .meta-bar {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin: 12px 14px 0;
-  padding: 8px 12px;
-  background: var(--foreground);
-  color: white;
+  margin-top: 10px;
   font-family: var(--font-display), sans-serif;
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.04em;
-  border-radius: 4px;
+  color: var(--dark);
 }
 
 .meta-bar span:not(:last-child)::after {
@@ -386,7 +388,7 @@ h2 {
   left: 0;
   right: 0;
   display: flex;
-  background: var(--foreground);
+  background: var(--dark);
   border-top: 2px solid var(--border);
   z-index: 30;
 }
@@ -398,14 +400,14 @@ h2 {
   justify-content: center;
   min-height: 56px;
   font-family: var(--font-display), sans-serif;
-  font-size: 13px;
-  letter-spacing: 0.02em;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 15px;
+  letter-spacing: 0.03em;
+  color: rgba(255, 255, 255, 0.55);
   transition: color 200ms;
 }
 
 .session-nav a.active {
-  color: var(--accent);
+  color: var(--background);
 }
 
 /* ---- Leaderboard ---- */
@@ -423,7 +425,7 @@ h2 {
 .celebration-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(16, 16, 16, 0.94);
+  background: rgba(18, 26, 47, 0.95);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -437,13 +439,13 @@ h2 {
 
 .celebration-trophy {
   font-size: 64px;
-  color: var(--accent);
+  color: var(--background);
   animation: pop 600ms ease;
 }
 
 .celebration-name {
   font-family: var(--font-display), sans-serif;
-  font-size: 30px;
+  font-size: 34px;
   text-transform: uppercase;
   margin-top: 12px;
 }
@@ -500,8 +502,8 @@ h2 {
 
 .stat-label {
   font-family: var(--font-display), sans-serif;
-  font-size: 12px;
-  letter-spacing: 0.04em;
+  font-size: 13px;
+  letter-spacing: 0.05em;
   color: var(--muted);
 }
 
@@ -524,7 +526,7 @@ h2 {
   justify-content: center;
   border-radius: 50%;
   font-family: var(--font-display), sans-serif;
-  font-size: 13px;
+  font-size: 14px;
   background: var(--background);
   color: var(--foreground);
   border: 2px solid var(--border);
