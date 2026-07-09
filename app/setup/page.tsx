@@ -25,6 +25,7 @@ export default function SetupPage() {
   const [roundDurationMinutes, setRoundDurationMinutes] = useState('');
 
   const [roundsPerBlock, setRoundsPerBlock] = useState(6);
+  const [swapCount, setSwapCount] = useState(2);
   const [assignmentMode, setAssignmentMode] = useState<'auto' | 'manual'>('auto');
   const [manualBlocks, setManualBlocks] = useState<string[][]>([]); // per block: array of names picked for Court A
 
@@ -51,7 +52,7 @@ export default function SetupPage() {
     setNames(copy);
   }
 
-  const blockCount = format === 'court_blocks' && roundsPerBlock > 0 ? Math.floor(roundCount / roundsPerBlock) : 0;
+  const blockCount = format === 'court_blocks' ? swapCount : 0;
   const half = Math.floor(playerCount / 2);
 
   function toggleManualBlockPlayer(blockIndex: number, name: string) {
@@ -92,10 +93,6 @@ export default function SetupPage() {
     }
 
     if (format === 'court_blocks') {
-      if (roundCount % roundsPerBlock !== 0) {
-        setError('Total rounds must be a multiple of rounds per block.');
-        return;
-      }
       if (assignmentMode === 'manual') {
         for (let b = 0; b < blockCount; b++) {
           if ((manualBlocks[b]?.length ?? 0) !== half) {
@@ -156,7 +153,7 @@ export default function SetupPage() {
         sessionId = await createSession({
           ...baseOptions,
           format: 'court_blocks',
-          roundCount,
+          roundCount: roundsPerBlock * blockCount,
           squads: null,
           roundsPerBlock,
         });
@@ -249,7 +246,7 @@ export default function SetupPage() {
         </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <input type="radio" checked={format === 'court_blocks'} onChange={() => setFormat('court_blocks')} />
-          <span>Court Blocks — split into 2 groups per time block (e.g. swap courts hourly)</span>
+          <span>Court Swap — same 5 on your court, swap groups every hour</span>
         </label>
       </div>
 
@@ -271,14 +268,18 @@ export default function SetupPage() {
         />
       </div>
 
-      <h2>Rounds</h2>
-      <input
-        type="number"
-        value={roundCount}
-        onChange={e => setRoundCount(Number(e.target.value))}
-        min={1}
-        style={{ minHeight: 44, padding: '10px 12px', fontSize: 16, width: 100, border: '1px solid var(--border)', borderRadius: 8, background: 'white' }}
-      />
+      {format !== 'court_blocks' && (
+        <>
+          <h2>Rounds</h2>
+          <input
+            type="number"
+            value={roundCount}
+            onChange={e => setRoundCount(Number(e.target.value))}
+            min={1}
+            style={{ minHeight: 44, padding: '10px 12px', fontSize: 16, width: 100, border: '1px solid var(--border)', borderRadius: 8, background: 'white' }}
+          />
+        </>
+      )}
 
       <h2>Minutes per Round (optional)</h2>
       <input
@@ -293,37 +294,55 @@ export default function SetupPage() {
 
       {format === 'court_blocks' && (
         <>
-          <h2>Rounds per Block</h2>
-          <input
-            type="number"
-            value={roundsPerBlock}
-            onChange={e => setRoundsPerBlock(Number(e.target.value))}
-            min={1}
-            aria-label="Rounds per block"
-            style={{ minHeight: 44, padding: '10px 12px', fontSize: 16, width: 100, border: '1px solid var(--border)', borderRadius: 8, background: 'white' }}
-          />
+          <h2>How Many Times Do You Swap?</h2>
+          <div className="card" style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+            <div>
+              <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>
+                Number of swaps
+              </label>
+              <input
+                type="number"
+                value={swapCount}
+                onChange={e => setSwapCount(Number(e.target.value))}
+                min={1}
+                aria-label="Number of swaps"
+                style={{ minHeight: 44, padding: '10px 12px', fontSize: 16, width: 80, border: '1px solid var(--border)', borderRadius: 8 }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>
+                Rounds before each swap
+              </label>
+              <input
+                type="number"
+                value={roundsPerBlock}
+                onChange={e => setRoundsPerBlock(Number(e.target.value))}
+                min={1}
+                aria-label="Rounds per swap"
+                style={{ minHeight: 44, padding: '10px 12px', fontSize: 16, width: 80, border: '1px solid var(--border)', borderRadius: 8 }}
+              />
+            </div>
+          </div>
           <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 6 }}>
-            {blockCount > 0
-              ? `${blockCount} block(s) of ${roundsPerBlock} rounds each (${roundCount} total rounds).`
-              : 'Total rounds must be a multiple of rounds per block.'}
+            = {roundsPerBlock * swapCount} rounds total, swapping courts {swapCount} time{swapCount === 1 ? '' : 's'}.
           </p>
 
-          <h2>Group Assignment</h2>
+          <h2>Who Picks the Groups?</h2>
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <input type="radio" checked={assignmentMode === 'auto'} onChange={() => setAssignmentMode('auto')} />
-              <span>Automatic — app balances groups each block</span>
+              <span>App decides (recommended)</span>
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <input type="radio" checked={assignmentMode === 'manual'} onChange={() => setAssignmentMode('manual')} />
-              <span>Manual — I&apos;ll pick who&apos;s on which court each block</span>
+              <span>I&apos;ll pick manually</span>
             </label>
           </div>
 
           {assignmentMode === 'manual' &&
             Array.from({ length: blockCount }, (_, blockIndex) => (
               <div key={blockIndex} className="card" style={{ marginTop: 12 }}>
-                <strong>Block {blockIndex + 1} — Court A (pick {half})</strong>
+                <strong>Swap {blockIndex + 1} — Court {courtLabels[0]} (pick {half})</strong>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
                   {names.filter(n => n.trim()).map(name => {
                     const selected = manualBlocks[blockIndex]?.includes(name) ?? false;
@@ -348,7 +367,7 @@ export default function SetupPage() {
                   })}
                 </div>
                 <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>
-                  Court B gets the rest automatically ({half} players).
+                  Court {courtLabels[1]} gets the rest automatically ({half} players).
                 </p>
               </div>
             ))}

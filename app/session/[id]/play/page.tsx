@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import { getSession, getRounds, updateRoundScore, markSessionCompleted, type RoundRow, type SessionRow } from '@/lib/db';
 import SessionNav from '@/components/SessionNav';
+import { ChairIcon } from '@/components/icons';
 
 export default function PlayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -108,14 +109,20 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                       {savingCourtId === court.id && <span style={{ fontSize: 12, color: 'var(--muted)' }}>Saving…</span>}
                     </div>
                     {!sameSitOut && court.sitting_out.length > 0 && (
-                      <div className="sitting-note">Sitting: {court.sitting_out.join(', ')}</div>
+                      <div className="resting-badge">
+                        <span className="stat-icon"><ChairIcon size={16} /></span>
+                        Resting: {court.sitting_out.join(', ')}
+                      </div>
                     )}
                   </div>
                 );
               })}
 
               {sameSitOut && courts[0]?.sitting_out.length > 0 && (
-                <div className="sitting-note">Sitting: {courts[0].sitting_out.join(', ')}</div>
+                <div className="resting-badge">
+                  <span className="stat-icon"><ChairIcon size={16} /></span>
+                  Resting: {courts[0].sitting_out.join(', ')}
+                </div>
               )}
             </div>
           );

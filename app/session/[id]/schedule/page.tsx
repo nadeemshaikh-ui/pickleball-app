@@ -9,6 +9,7 @@ import SessionNav from '@/components/SessionNav';
 import NewSessionLink from '@/components/NewSessionLink';
 import SessionDate from '@/components/SessionDate';
 import GroupHeader from '@/components/GroupHeader';
+import { ChairIcon } from '@/components/icons';
 
 export default function SchedulePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -153,12 +154,18 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
                     </div>
                   </div>
                   {!sameSitOut && c.sitting_out.length > 0 && (
-                    <div className="sitting-note">Sitting: {c.sitting_out.join(', ')}</div>
+                    <div className="resting-badge">
+                      <span className="stat-icon"><ChairIcon size={16} /></span>
+                      Resting: {c.sitting_out.join(', ')}
+                    </div>
                   )}
                 </div>
               ))}
               {sameSitOut && courts[0].sitting_out.length > 0 && (
-                <div className="sitting-note">Sitting: {courts[0].sitting_out.join(', ')}</div>
+                <div className="resting-badge">
+                  <span className="stat-icon"><ChairIcon size={16} /></span>
+                  Resting: {courts[0].sitting_out.join(', ')}
+                </div>
               )}
             </div>
           );
