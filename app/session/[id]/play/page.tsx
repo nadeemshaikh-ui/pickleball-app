@@ -4,6 +4,7 @@ import { use, useEffect, useState } from 'react';
 import { getSession, getRounds, updateRoundScore, markSessionCompleted, type RoundRow, type SessionRow } from '@/lib/db';
 import SessionNav from '@/components/SessionNav';
 import { ChairIcon } from '@/components/icons';
+import { formatLabel } from '@/lib/formatLabel';
 
 export default function PlayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -122,6 +123,14 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                 <div className="resting-badge">
                   <span className="stat-icon"><ChairIcon size={16} /></span>
                   Resting: {courts[0].sitting_out.join(', ')}
+                </div>
+              )}
+              {session && (
+                <div className="meta-bar">
+                  <span>{new Date(session.created_at).toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase()}</span>
+                  <span>ROUND {roundNumber}</span>
+                  <span>COURT {session.court_labels.join('/')}</span>
+                  <span>{formatLabel(session.format).toUpperCase()}</span>
                 </div>
               )}
             </div>

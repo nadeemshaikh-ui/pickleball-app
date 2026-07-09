@@ -1,0 +1,12 @@
+import type { Format } from './db';
+
+export function formatLabel(format: Format): string {
+  switch (format) {
+    case 'scramble':
+      return 'Scramble';
+    case 'squad_rivalry':
+      return 'Squad Rivalry';
+    case 'court_blocks':
+      return 'Court Swap';
+  }
+}

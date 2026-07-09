@@ -1,18 +1,20 @@
 :root {
-  --background: #f4f6f5;
+  --background: #f5e600;
   --surface: #ffffff;
-  --foreground: #10241c;
-  --muted: #52685f;
-  --border: #d7e0dc;
-  --primary: #157a4c;
-  --primary-dark: #0e5c39;
+  --dark: #14213d;
+  --dark-2: #0b1730;
+  --foreground: #101010;
+  --muted: #3a3a3a;
+  --border: #101010;
+  --primary: #14213d;
+  --primary-dark: #0b1730;
   --accent: #ff7a1a;
   --danger: #d64545;
   --gold: #b8860b;
   --silver: #7a8a86;
   --bronze: #a15c2a;
-  --radius: 14px;
-  --shadow: 0 2px 8px rgba(16, 36, 28, 0.08);
+  --radius: 4px;
+  --shadow: 4px 4px 0 rgba(16, 16, 16, 0.9);
 }
 
 /* Locked to one bold light theme — this app is used outdoors courtside,
@@ -34,11 +36,12 @@ body {
   flex-direction: column;
   color: var(--foreground);
   background: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  font-family: var(--font-body), Arial, sans-serif;
   font-size: 16px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  position: relative;
 }
 
 * {
@@ -60,22 +63,25 @@ button {
 button:focus-visible,
 a:focus-visible,
 input:focus-visible {
-  outline: 3px solid var(--accent);
+  outline: 3px solid var(--dark);
   outline-offset: 2px;
 }
 
 h1 {
-  font-size: 26px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-family: var(--font-display), sans-serif;
+  font-size: 32px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
 }
 
 h2 {
-  font-size: 15px;
-  font-weight: 700;
+  font-family: var(--font-display), sans-serif;
+  font-size: 17px;
+  font-weight: 400;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--muted);
+  letter-spacing: 0.04em;
+  color: var(--foreground);
   margin: 24px 0 12px;
 }
 
@@ -86,6 +92,44 @@ h2 {
   max-width: 520px;
   margin: 0 auto;
   width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- Decorative background ---- */
+
+.deco-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.deco {
+  position: absolute;
+  color: rgba(16, 16, 16, 0.25);
+  font-family: var(--font-display), sans-serif;
+}
+
+.deco-diamond {
+  width: 14px;
+  height: 14px;
+  background: rgba(16, 16, 16, 0.2);
+  transform: rotate(45deg);
+}
+
+.deco-diamond.deco-sm {
+  width: 8px;
+  height: 8px;
+}
+
+.deco-chevron,
+.deco-dots,
+.deco-plus {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 2px;
 }
 
 /* ---- Buttons ---- */
@@ -98,15 +142,19 @@ h2 {
   padding: 12px 28px;
   background: var(--primary);
   color: white;
-  border: none;
+  border: 2px solid var(--border);
   border-radius: var(--radius);
-  font-size: 17px;
-  font-weight: 700;
-  transition: background-color 200ms;
+  box-shadow: var(--shadow);
+  font-family: var(--font-display), sans-serif;
+  font-size: 18px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  transition: transform 150ms, box-shadow 150ms;
 }
 
 .btn-primary:hover {
-  background: var(--primary-dark);
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 rgba(16, 16, 16, 0.9);
 }
 
 .btn-primary:disabled {
@@ -122,22 +170,26 @@ h2 {
   padding: 10px 20px;
   background: var(--surface);
   color: var(--foreground);
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  font-family: var(--font-display), sans-serif;
   font-size: 15px;
-  font-weight: 600;
-  transition: border-color 200ms, background-color 200ms;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  transition: transform 150ms, box-shadow 150ms;
 }
 
 .btn-secondary:hover {
-  border-color: var(--primary);
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 rgba(16, 16, 16, 0.9);
 }
 
 /* ---- Cards ---- */
 
 .card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 16px;
@@ -147,17 +199,18 @@ h2 {
 
 .round-card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 14px;
-  margin-bottom: 14px;
+  padding: 0 0 12px;
+  margin-bottom: 20px;
   transition: border-color 200ms;
+  overflow: hidden;
 }
 
 .round-card.is-current {
-  border-color: var(--primary);
-  border-width: 2px;
+  border-color: var(--dark);
+  border-width: 3px;
 }
 
 .round-card.is-done {
@@ -168,57 +221,55 @@ h2 {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 10px 14px;
   margin-bottom: 10px;
+  background: var(--background);
+  border-bottom: 2px solid var(--border);
 }
 
 .round-label {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--muted);
+  font-family: var(--font-display), sans-serif;
+  font-size: 18px;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  color: var(--foreground);
 }
 
 .round-status-badge {
+  font-family: var(--font-display), sans-serif;
   font-size: 12px;
-  font-weight: 700;
-  padding: 3px 10px;
+  letter-spacing: 0.03em;
+  padding: 4px 12px;
   border-radius: 999px;
-  background: #e3efe8;
-  color: var(--primary-dark);
+  background: var(--dark);
+  color: white;
 }
 
 .round-status-badge.pending {
-  background: #fdece0;
-  color: var(--accent);
+  background: var(--accent);
+  color: var(--foreground);
 }
 
 .match-box {
-  padding: 10px 0;
-  border-top: 1px solid var(--border);
-}
-
-.match-box:first-of-type {
-  border-top: none;
+  padding: 6px 14px 14px;
 }
 
 .court-label {
   display: inline-block;
-  background: var(--primary);
+  background: var(--dark);
   color: white;
-  border-radius: 999px;
+  border-radius: 4px;
   padding: 4px 12px;
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
+  font-family: var(--font-display), sans-serif;
+  font-size: 13px;
   letter-spacing: 0.04em;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .match-teams-row {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: stretch;
+  gap: 0;
 }
 
 .team-box {
@@ -226,64 +277,105 @@ h2 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 10px 6px;
-  background: var(--background);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 10px;
+  background: var(--surface);
+  border: 2px solid var(--border);
   min-width: 0;
+  clip-path: polygon(0 0, 94% 0, 100% 100%, 0% 100%);
+  margin-right: -14px;
+}
+
+.match-teams-row .team-box:last-child {
+  background: var(--dark);
+  color: white;
+  clip-path: polygon(6% 0, 100% 0, 100% 100%, 0% 100%);
+  margin-right: 0;
+  margin-left: -14px;
 }
 
 .team-box.winner {
-  border-color: var(--primary);
-  background: #e9f5ef;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent) inset;
 }
 
 .team-names {
-  font-size: 14px;
-  font-weight: 700;
+  font-family: var(--font-display), sans-serif;
+  font-size: 15px;
   text-align: center;
-  line-height: 1.3;
+  line-height: 1.25;
   word-break: break-word;
+  letter-spacing: 0.01em;
 }
 
 .score-input {
-  width: 64px;
+  width: 60px;
   min-height: 44px;
   text-align: center;
+  font-family: var(--font-display), sans-serif;
   font-size: 20px;
-  font-weight: 800;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  border: 2px solid var(--border);
+  border-radius: 4px;
   background: white;
   color: var(--foreground);
 }
 
 .vs-pill {
   flex: 0 0 auto;
-  font-size: 12px;
-  font-weight: 800;
-  color: var(--muted);
-  padding: 0 2px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: var(--foreground);
+  color: white;
+  font-family: var(--font-display), sans-serif;
+  font-size: 15px;
+  border-radius: 4px;
+  border: 2px solid var(--border);
 }
 
 .resting-badge {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 10px;
+  margin: 10px 14px 0;
   padding: 8px 12px;
-  background: #fdf1dc;
-  border: 1px solid #f0dcb8;
+  background: var(--accent);
+  border: 2px solid var(--border);
   border-radius: 999px;
-  color: #8a5a1f;
+  color: var(--foreground);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .resting-badge .stat-icon {
   flex: 0 0 auto;
   display: inline-flex;
+}
+
+/* ---- Footer meta bar (per round card) ---- */
+
+.meta-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 14px 0;
+  padding: 8px 12px;
+  background: var(--foreground);
+  color: white;
+  font-family: var(--font-display), sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  border-radius: 4px;
+}
+
+.meta-bar span:not(:last-child)::after {
+  content: '|';
+  margin-left: 6px;
+  opacity: 0.5;
 }
 
 /* ---- Bottom tab nav ---- */
@@ -294,9 +386,8 @@ h2 {
   left: 0;
   right: 0;
   display: flex;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  box-shadow: 0 -2px 8px rgba(16, 36, 28, 0.06);
+  background: var(--foreground);
+  border-top: 2px solid var(--border);
   z-index: 30;
 }
 
@@ -306,14 +397,15 @@ h2 {
   align-items: center;
   justify-content: center;
   min-height: 56px;
+  font-family: var(--font-display), sans-serif;
   font-size: 13px;
-  font-weight: 700;
-  color: var(--muted);
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.6);
   transition: color 200ms;
 }
 
 .session-nav a.active {
-  color: var(--primary);
+  color: var(--accent);
 }
 
 /* ---- Leaderboard ---- */
@@ -323,7 +415,7 @@ h2 {
   align-items: center;
   gap: 10px;
   padding: 12px 8px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 2px solid var(--border);
 }
 
 /* ---- Celebration overlay ---- */
@@ -331,7 +423,7 @@ h2 {
 .celebration-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(16, 36, 28, 0.92);
+  background: rgba(16, 16, 16, 0.94);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -345,12 +437,14 @@ h2 {
 
 .celebration-trophy {
   font-size: 64px;
+  color: var(--accent);
   animation: pop 600ms ease;
 }
 
 .celebration-name {
-  font-size: 28px;
-  font-weight: 800;
+  font-family: var(--font-display), sans-serif;
+  font-size: 30px;
+  text-transform: uppercase;
   margin-top: 12px;
 }
 
@@ -405,11 +499,10 @@ h2 {
 }
 
 .stat-label {
+  font-family: var(--font-display), sans-serif;
   font-size: 12px;
-  font-weight: 700;
+  letter-spacing: 0.04em;
   color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .stat-value {
@@ -430,10 +523,11 @@ h2 {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
+  font-family: var(--font-display), sans-serif;
   font-size: 13px;
-  font-weight: 800;
   background: var(--background);
-  color: var(--muted);
+  color: var(--foreground);
+  border: 2px solid var(--border);
 }
 
 .rank-badge.rank-1 {
@@ -469,12 +563,13 @@ h2 {
   flex: 1 1 auto;
   height: 10px;
   background: var(--background);
+  border: 1px solid var(--border);
   border-radius: 999px;
   overflow: hidden;
 }
 
 .win-bar-fill {
   height: 100%;
-  background: var(--primary);
+  background: var(--dark);
   transition: width 300ms ease;
 }
