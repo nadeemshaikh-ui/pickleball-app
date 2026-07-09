@@ -358,7 +358,7 @@ export function generateScrambleSchedule(
     const tieBreakers = new Map(players.map(p => [p, rand()]));
     const sortedBySitOut = [...players].sort((a, b) => {
       const diff = sitOutCounts.get(a)! - sitOutCounts.get(b)!;
-      return diff !== 0 ? -diff : tieBreakers.get(a)! - tieBreakers.get(b)!;
+      return diff !== 0 ? diff : tieBreakers.get(a)! - tieBreakers.get(b)!;
     });
     const sittingOut = sortedBySitOut.slice(0, 2) as [string, string];
     for (const p of sittingOut) sitOutCounts.set(p, sitOutCounts.get(p)! + 1);
@@ -468,7 +468,7 @@ export function generateSquadRivalrySchedule(
     const tieBreakers = new Map(squad.map(p => [p, rand()]));
     const sorted = [...squad].sort((a, b) => {
       const diff = sitCounts.get(a)! - sitCounts.get(b)!;
-      return diff !== 0 ? -diff : tieBreakers.get(a)! - tieBreakers.get(b)!;
+      return diff !== 0 ? diff : tieBreakers.get(a)! - tieBreakers.get(b)!;
     });
     const chosen = sorted[0];
     sitCounts.set(chosen, sitCounts.get(chosen)! + 1);
