@@ -10,6 +10,7 @@ export default function SetupPage() {
   const [names, setNames] = useState<string[]>(Array(10).fill(''));
   const [format, setFormat] = useState<'scramble' | 'squad_rivalry'>('scramble');
   const [roundCount, setRoundCount] = useState(12);
+  const [courtLabels, setCourtLabels] = useState<[string, string]>(['1', '2']);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,17 +31,22 @@ export default function SetupPage() {
       setError('Player names must be unique.');
       return;
     }
+    const trimmedCourtLabels: [string, string] = [courtLabels[0].trim(), courtLabels[1].trim()];
+    if (trimmedCourtLabels[0] === '' || trimmedCourtLabels[1] === '') {
+      setError('Both court numbers/names are required.');
+      return;
+    }
     setSubmitting(true);
     try {
       const seed = `${Date.now()}`;
       if (format === 'scramble') {
         const rounds = generateScrambleSchedule(trimmed, roundCount, seed);
-        const sessionId = await createSession(trimmed, 'scramble', roundCount, null);
+        const sessionId = await createSession(trimmed, 'scramble', roundCount, null, trimmedCourtLabels);
         await insertRounds(sessionId, rounds);
         router.push(`/session/${sessionId}/schedule`);
       } else {
         const { squads, rounds } = generateSquadRivalrySchedule(trimmed, roundCount, seed);
-        const sessionId = await createSession(trimmed, 'squad_rivalry', roundCount, squads);
+        const sessionId = await createSession(trimmed, 'squad_rivalry', roundCount, squads, trimmedCourtLabels);
         await insertRounds(sessionId, rounds);
         router.push(`/session/${sessionId}/schedule`);
       }
@@ -77,6 +83,24 @@ export default function SetupPage() {
           <input type="radio" checked={format === 'squad_rivalry'} onChange={() => setFormat('squad_rivalry')} />
           <span>Squad Rivalry — 2 fixed squads all night</span>
         </label>
+      </div>
+
+      <h2>Court Numbers</h2>
+      <div className="card" style={{ display: 'flex', gap: 12 }}>
+        <input
+          value={courtLabels[0]}
+          onChange={e => setCourtLabels([e.target.value, courtLabels[1]])}
+          placeholder="Court 1 (e.g. 5)"
+          aria-label="Court 1 number or name"
+          style={{ flex: 1, minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+        />
+        <input
+          value={courtLabels[1]}
+          onChange={e => setCourtLabels([courtLabels[0], e.target.value])}
+          placeholder="Court 2 (e.g. 12)"
+          aria-label="Court 2 number or name"
+          style={{ flex: 1, minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+        />
       </div>
 
       <h2>Rounds</h2>

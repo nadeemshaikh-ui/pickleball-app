@@ -2,18 +2,22 @@
 
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getRounds, type RoundRow } from '@/lib/db';
+import { getSession, getRounds, type RoundRow, type SessionRow } from '@/lib/db';
 import { formatScheduleAsText } from '@/lib/scheduleText';
 import SessionNav from '@/components/SessionNav';
 
 export default function SchedulePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const [session, setSession] = useState<SessionRow | null>(null);
   const [rounds, setRounds] = useState<RoundRow[]>([]);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    getSession(id).then(setSession);
     getRounds(id).then(setRounds);
   }, [id]);
+
+  const courtLabels = session?.court_labels ?? ['1', '2'];
 
   const byRound = new Map<number, RoundRow[]>();
   for (const r of rounds) {
@@ -24,7 +28,7 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
   const sortedRoundNumbers = [...byRound.keys()].sort((a, b) => a - b);
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(formatScheduleAsText(rounds));
+    await navigator.clipboard.writeText(formatScheduleAsText(rounds, courtLabels));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -49,7 +53,7 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
               </div>
               {courts.map(c => (
                 <div key={c.court} className="match-box">
-                  <span className="court-label">Court {c.court}</span>
+                  <span className="court-label">Court {courtLabels[c.court - 1]}</span>
                   <div className="match-teams-row">
                     <div className="team-box">
                       <div className="team-names">{c.team_a.join(' & ')}</div>

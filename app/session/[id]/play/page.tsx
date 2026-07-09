@@ -75,7 +75,7 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                 const bWins = court.score_a !== null && court.score_b !== null && court.score_b > court.score_a;
                 return (
                   <div key={court.id} className="match-box">
-                    <span className="court-label">Court {court.court}</span>
+                    <span className="court-label">Court {session?.court_labels?.[court.court - 1] ?? court.court}</span>
                     <div className="match-teams-row">
                       <div className={`team-box ${aWins ? 'winner' : ''}`}>
                         <div className="team-names">{court.team_a.join(' & ')}</div>
