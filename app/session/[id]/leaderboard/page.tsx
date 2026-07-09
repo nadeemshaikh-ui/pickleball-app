@@ -10,6 +10,7 @@ import Avatar from '@/components/Avatar';
 import NewSessionLink from '@/components/NewSessionLink';
 import SessionDate from '@/components/SessionDate';
 import GroupHeader from '@/components/GroupHeader';
+import { WhatsAppIcon } from '@/components/icons';
 
 const POLL_INTERVAL_MS = 4000;
 
@@ -51,21 +52,22 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
   return (
     <>
       <main className="page">
-        <NewSessionLink />
+        <div className="page-header-row">
+          <NewSessionLink />
+          <button
+            className="icon-btn"
+            aria-label="Share leaderboard on WhatsApp"
+            onClick={() => shareToWhatsApp(formatLeaderboardAsText(leaderboard, gamesCompleted, gamesTotal))}
+          >
+            <WhatsAppIcon size={24} />
+          </button>
+        </div>
         {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
         <h1>Leaderboard</h1>
         {session && <SessionDate createdAt={session.created_at} />}
         <p style={{ color: 'var(--muted)', marginTop: 4 }}>
           {gamesCompleted} of {gamesTotal} games played — updates live
         </p>
-
-        <button
-          className="btn-primary"
-          onClick={() => shareToWhatsApp(formatLeaderboardAsText(leaderboard, gamesCompleted, gamesTotal))}
-          style={{ width: '100%', marginTop: 12, marginBottom: 4 }}
-        >
-          Share on WhatsApp
-        </button>
 
         {squadTotals && (
           <div className="card" style={{ marginTop: 16, display: 'flex', justifyContent: 'space-around' }}>

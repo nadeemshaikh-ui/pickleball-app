@@ -12,6 +12,7 @@ import Celebration from '@/components/Celebration';
 import NewSessionLink from '@/components/NewSessionLink';
 import SessionDate from '@/components/SessionDate';
 import GroupHeader from '@/components/GroupHeader';
+import { WhatsAppIcon } from '@/components/icons';
 
 export default function ResultsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -20,7 +21,6 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
   const [leaderboard, setLeaderboard] = useState<PlayerStats[]>([]);
   const [squadTotals, setSquadTotals] = useState<{ gold: number; black: number } | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -43,33 +43,25 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
 
   const top3 = leaderboard.slice(0, 3);
 
-  async function handleCopyRecap() {
-    await navigator.clipboard.writeText(formatRecapAsText(leaderboard, rounds));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
   return (
     <>
       {showCelebration && top3[0] && (
         <Celebration winnerName={top3[0].name} onDismiss={() => setShowCelebration(false)} />
       )}
       <main className="page">
-        <NewSessionLink />
+        <div className="page-header-row">
+          <NewSessionLink />
+          <button
+            className="icon-btn"
+            aria-label="Share recap on WhatsApp"
+            onClick={() => shareToWhatsApp(formatRecapAsText(leaderboard, rounds))}
+          >
+            <WhatsAppIcon size={24} />
+          </button>
+        </div>
         {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
         <h1>Results</h1>
         {session && <SessionDate createdAt={session.created_at} />}
-
-        <button
-          className="btn-primary"
-          onClick={() => shareToWhatsApp(formatRecapAsText(leaderboard, rounds))}
-          style={{ width: '100%', marginTop: 16 }}
-        >
-          Share on WhatsApp
-        </button>
-        <button className="btn-secondary" onClick={handleCopyRecap} style={{ width: '100%', marginTop: 8 }}>
-          {copied ? 'Copied!' : 'Copy Recap as Text'}
-        </button>
 
         {squadTotals && (
           <div className="card" style={{ marginTop: 16, display: 'flex', justifyContent: 'space-around' }}>

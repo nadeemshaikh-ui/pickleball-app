@@ -29,6 +29,7 @@ import {
   StarIcon,
   ChairIcon,
   ShieldCheckIcon,
+  WhatsAppIcon,
 } from '@/components/icons';
 
 function scoreLine(r: RoundRow): string {
@@ -62,21 +63,22 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
   return (
     <>
       <main className="page">
-        <NewSessionLink />
+        <div className="page-header-row">
+          <NewSessionLink />
+          <button
+            className="icon-btn"
+            aria-label="Share analytics on WhatsApp"
+            onClick={() => shareToWhatsApp(formatAnalyticsAsText(rounds))}
+          >
+            <WhatsAppIcon size={24} />
+          </button>
+        </div>
         {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
         <h1>Today&apos;s Analytics</h1>
         {session && <SessionDate createdAt={session.created_at} />}
         <p style={{ color: 'var(--muted)', marginTop: 4 }}>
           {totals.totalGames} of {session?.round_count ? session.round_count * 2 : '…'} games played
         </p>
-
-        <button
-          className="btn-primary"
-          onClick={() => shareToWhatsApp(formatAnalyticsAsText(rounds))}
-          style={{ width: '100%', marginTop: 12, marginBottom: 4 }}
-        >
-          Share on WhatsApp
-        </button>
 
         <h2>Session Overview</h2>
         <div className="card stat-card">

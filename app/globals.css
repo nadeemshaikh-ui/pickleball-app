@@ -267,6 +267,61 @@ h2 {
   border: 2px solid var(--border);
 }
 
+/* Live Scoring highlights the court number much bigger — that's the one
+   thing a player glances at courtside to know where they're playing. */
+.court-label-big {
+  display: inline-block;
+  background: var(--dark);
+  color: var(--background);
+  border-radius: 2px;
+  padding: 4px 18px;
+  font-family: var(--font-display), sans-serif;
+  font-size: 30px;
+  line-height: 1.1;
+  letter-spacing: 0.03em;
+  margin-bottom: 10px;
+  border: 2px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+/* ---- Icon button (WhatsApp share) ---- */
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  background: #25d366;
+  color: white;
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  transition: transform 150ms, box-shadow 150ms;
+}
+
+.icon-btn:hover {
+  transform: translate(3px, 3px);
+  box-shadow: 2px 2px 0 rgba(18, 26, 47, 1);
+}
+
+.page-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.text-link-btn {
+  display: inline-block;
+  margin-top: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  color: var(--dark);
+}
+
 .match-teams-row {
   display: flex;
   align-items: stretch;

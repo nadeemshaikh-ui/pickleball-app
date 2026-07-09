@@ -1,26 +1,29 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { getSession, getRounds, renamePlayerEverywhere, type RoundRow, type SessionRow } from '@/lib/db';
 import { formatScheduleAsText } from '@/lib/scheduleText';
 import { shareToWhatsApp } from '@/lib/whatsapp';
+import { shareElementAsImage } from '@/lib/shareImage';
 import SessionNav from '@/components/SessionNav';
 import NewSessionLink from '@/components/NewSessionLink';
 import SessionDate from '@/components/SessionDate';
 import GroupHeader from '@/components/GroupHeader';
-import { ChairIcon } from '@/components/icons';
+import { ChairIcon, WhatsAppIcon } from '@/components/icons';
 import { formatLabel } from '@/lib/formatLabel';
 
 export default function SchedulePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [session, setSession] = useState<SessionRow | null>(null);
   const [rounds, setRounds] = useState<RoundRow[]>([]);
-  const [copied, setCopied] = useState(false);
   const [showEditPlayers, setShowEditPlayers] = useState(false);
   const [nameDrafts, setNameDrafts] = useState<string[]>([]);
   const [savingNames, setSavingNames] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
+  const [sharingImage, setSharingImage] = useState(false);
+  const [imageShareError, setImageShareError] = useState<string | null>(null);
+  const captureRef = useRef<HTMLDivElement>(null);
 
   async function reload() {
     const [s, r] = await Promise.all([getSession(id), getRounds(id)]);
@@ -71,16 +74,32 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
   }
   const sortedRoundNumbers = [...byRound.keys()].sort((a, b) => a - b);
 
-  async function handleCopy() {
-    await navigator.clipboard.writeText(formatScheduleAsText(rounds, courtLabels, session?.round_duration_minutes ?? null));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  async function handleShareImage() {
+    if (!captureRef.current) return;
+    setImageShareError(null);
+    setSharingImage(true);
+    try {
+      await shareElementAsImage(captureRef.current, `schedule-${id}.png`);
+    } catch (e) {
+      setImageShareError(e instanceof Error ? e.message : 'Failed to share image.');
+    } finally {
+      setSharingImage(false);
+    }
   }
 
   return (
     <>
       <main className="page">
-        <NewSessionLink />
+        <div className="page-header-row">
+          <NewSessionLink />
+          <button
+            className="icon-btn"
+            aria-label="Share schedule text on WhatsApp"
+            onClick={() => shareToWhatsApp(formatScheduleAsText(rounds, courtLabels, session?.round_duration_minutes ?? null))}
+          >
+            <WhatsAppIcon size={24} />
+          </button>
+        </div>
         {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
         <h1>Schedule</h1>
         {session && <SessionDate createdAt={session.created_at} />}
@@ -90,30 +109,22 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
             {Math.round((session.round_count * session.round_duration_minutes) / 60 * 10) / 10} hr total
           </p>
         )}
-        <button
-          className="btn-primary"
-          onClick={() => shareToWhatsApp(formatScheduleAsText(rounds, courtLabels, session?.round_duration_minutes ?? null))}
-          style={{ marginTop: 16, marginBottom: 8, width: '100%' }}
-        >
-          Share on WhatsApp
-        </button>
-        <button className="btn-secondary" onClick={handleCopy} style={{ marginBottom: 12, width: '100%' }}>
-          {copied ? 'Copied!' : 'Copy as Text'}
-        </button>
-        <Link href={`/session/${id}/play`} className="btn-secondary" style={{ width: '100%', marginBottom: 12 }}>
+
+        <Link href={`/session/${id}/play`} className="btn-primary" style={{ width: '100%', marginTop: 16 }}>
           Start Scoring →
         </Link>
 
-        <button
-          className="btn-secondary"
-          onClick={() => setShowEditPlayers(v => !v)}
-          style={{ width: '100%', marginBottom: 20 }}
-        >
-          {showEditPlayers ? 'Hide Edit Players' : 'Fix a Typo in Player Names'}
+        <button className="btn-secondary" onClick={handleShareImage} disabled={sharingImage} style={{ width: '100%', marginTop: 10 }}>
+          {sharingImage ? 'Preparing Image…' : 'Share Full Schedule as Image'}
+        </button>
+        {imageShareError && <p style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 14, marginTop: 6 }}>{imageShareError}</p>}
+
+        <button className="text-link-btn" onClick={() => setShowEditPlayers(v => !v)}>
+          {showEditPlayers ? 'Hide edit players' : 'Fix a typo in player names'}
         </button>
 
         {showEditPlayers && (
-          <div className="card" style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="card" style={{ marginTop: 10, marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
             {nameDrafts.map((name, i) => (
               <input
                 key={i}
@@ -132,57 +143,59 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
           </div>
         )}
 
-        {sortedRoundNumbers.map(roundNumber => {
-          const courts = byRound.get(roundNumber)!.sort((a, b) => a.court - b.court);
-          const sameSitOut =
-            courts.length === 2 &&
-            JSON.stringify([...courts[0].sitting_out].sort()) === JSON.stringify([...courts[1].sitting_out].sort());
-          return (
-            <div key={roundNumber} className="round-card">
-              <div className="round-card-header">
-                <span className="round-label">Round {roundNumber}</span>
-              </div>
-              {courts.map(c => (
-                <div key={c.court} className="match-box">
-                  <span className="court-label">Court {courtLabels[c.court - 1]}</span>
-                  <div className="match-teams-row">
-                    <div className="team-box">
-                      <div className="team-names">{c.team_a.join(' & ')}</div>
+        <div ref={captureRef} style={{ marginTop: 20 }}>
+          {sortedRoundNumbers.map(roundNumber => {
+            const courts = byRound.get(roundNumber)!.sort((a, b) => a.court - b.court);
+            const sameSitOut =
+              courts.length === 2 &&
+              JSON.stringify([...courts[0].sitting_out].sort()) === JSON.stringify([...courts[1].sitting_out].sort());
+            return (
+              <div key={roundNumber} className="round-card">
+                <div className="round-card-header">
+                  <span className="round-label">Round {roundNumber}</span>
+                </div>
+                {courts.map(c => (
+                  <div key={c.court} className="match-box">
+                    <span className="court-label">Court {courtLabels[c.court - 1]}</span>
+                    <div className="match-teams-row">
+                      <div className="team-box">
+                        <div className="team-names">{c.team_a.join(' & ')}</div>
+                      </div>
+                      <span className="vs-pill">VS</span>
+                      <div className="team-box">
+                        <div className="team-names">{c.team_b.join(' & ')}</div>
+                      </div>
                     </div>
-                    <span className="vs-pill">VS</span>
-                    <div className="team-box">
-                      <div className="team-names">{c.team_b.join(' & ')}</div>
-                    </div>
+                    {!sameSitOut && c.sitting_out.length > 0 && (
+                      <div className="resting-badge">
+                        <span className="stat-icon"><ChairIcon size={16} /></span>
+                        Resting: {c.sitting_out.join(', ')}
+                      </div>
+                    )}
                   </div>
-                  {!sameSitOut && c.sitting_out.length > 0 && (
-                    <div className="resting-badge">
-                      <span className="stat-icon"><ChairIcon size={16} /></span>
-                      Resting: {c.sitting_out.join(', ')}
-                    </div>
-                  )}
-                </div>
-              ))}
-              {sameSitOut && courts[0].sitting_out.length > 0 && (
-                <div className="resting-badge">
-                  <span className="stat-icon"><ChairIcon size={16} /></span>
-                  Resting: {courts[0].sitting_out.join(', ')}
-                </div>
-              )}
-              {session && (
-                <div className="meta-bar">
-                  <span>ROUND {roundNumber}</span>
-                  <span>COURT {courtLabels.join('/')}</span>
-                  <span>
-                    {session.round_duration_minutes
-                      ? `${session.round_duration_minutes} MIN`
-                      : new Date(session.created_at).toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase()}
-                  </span>
-                  <span>{formatLabel(session.format).toUpperCase()}</span>
-                </div>
-              )}
-            </div>
-          );
-        })}
+                ))}
+                {sameSitOut && courts[0].sitting_out.length > 0 && (
+                  <div className="resting-badge">
+                    <span className="stat-icon"><ChairIcon size={16} /></span>
+                    Resting: {courts[0].sitting_out.join(', ')}
+                  </div>
+                )}
+                {session && (
+                  <div className="meta-bar">
+                    <span>ROUND {roundNumber}</span>
+                    <span>COURT {courtLabels.join('/')}</span>
+                    <span>
+                      {session.round_duration_minutes
+                        ? `${session.round_duration_minutes} MIN`
+                        : new Date(session.created_at).toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase()}
+                    </span>
+                    <span>{formatLabel(session.format).toUpperCase()}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </main>
       <SessionNav sessionId={id} />
     </>

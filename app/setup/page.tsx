@@ -251,20 +251,20 @@ export default function SetupPage() {
       </div>
 
       <h2>Court Numbers</h2>
-      <div className="card" style={{ display: 'flex', gap: 12 }}>
+      <div className="card" style={{ display: 'flex', gap: 12, minWidth: 0 }}>
         <input
           value={courtLabels[0]}
           onChange={e => setCourtLabels([e.target.value, courtLabels[1]])}
-          placeholder="Court 1 (e.g. 5)"
+          placeholder="Court 1"
           aria-label="Court 1 number or name"
-          style={{ flex: 1, minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+          style={{ flex: '1 1 0', minWidth: 0, width: '100%', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
         />
         <input
           value={courtLabels[1]}
           onChange={e => setCourtLabels([courtLabels[0], e.target.value])}
-          placeholder="Court 2 (e.g. 12)"
+          placeholder="Court 2"
           aria-label="Court 2 number or name"
-          style={{ flex: 1, minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+          style={{ flex: '1 1 0', minWidth: 0, width: '100%', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
         />
       </div>
 

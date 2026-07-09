@@ -1,4 +1,6 @@
-const PALETTE = ['#157a4c', '#ff7a1a', '#2563eb', '#b8860b', '#a15c2a', '#7a3ea1', '#d64545', '#0e8a8a'];
+// Kept within the app's strict navy/white/yellow identity — no leftover
+// green/orange from the old palette.
+const PALETTE = ['#121a2f', '#3a4a6b', '#5c2a4a', '#2f4f4f', '#5a3d1f', '#3d2f5a', '#1f4d4d', '#4a2f2f'];
 
 export function initials(name: string): string {
   const parts = name.trim().split(/\s+/);
