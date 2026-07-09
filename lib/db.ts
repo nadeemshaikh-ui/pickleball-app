@@ -111,3 +111,46 @@ export async function markSessionCompleted(sessionId: string): Promise<void> {
   const { error } = await supabase.from('sessions').update({ status: 'completed' }).eq('id', sessionId);
   if (error) throw error;
 }
+
+// Fixes a typo'd player name everywhere it appears: the session roster,
+// squads (if Squad Rivalry), and every round's teams/sit-outs. Scores are
+// untouched since they're keyed by round id, not by name.
+export async function renamePlayerEverywhere(
+  sessionId: string,
+  oldName: string,
+  newName: string
+): Promise<void> {
+  if (oldName === newName) return;
+
+  const session = await getSession(sessionId);
+  const newPlayers = session.players.map(p => (p === oldName ? newName : p));
+  const newSquads = session.squads
+    ? {
+        gold: session.squads.gold.map(p => (p === oldName ? newName : p)),
+        black: session.squads.black.map(p => (p === oldName ? newName : p)),
+      }
+    : null;
+
+  const { error: sessionError } = await supabase
+    .from('sessions')
+    .update({ players: newPlayers, squads: newSquads })
+    .eq('id', sessionId);
+  if (sessionError) throw sessionError;
+
+  const rounds = await getRounds(sessionId);
+  for (const round of rounds) {
+    const touchesRound =
+      round.team_a.includes(oldName) || round.team_b.includes(oldName) || round.sitting_out.includes(oldName);
+    if (!touchesRound) continue;
+
+    const team_a = round.team_a.map(p => (p === oldName ? newName : p)) as [string, string];
+    const team_b = round.team_b.map(p => (p === oldName ? newName : p)) as [string, string];
+    const sitting_out = round.sitting_out.map(p => (p === oldName ? newName : p));
+
+    const { error: roundError } = await supabase
+      .from('rounds')
+      .update({ team_a, team_b, sitting_out })
+      .eq('id', round.id);
+    if (roundError) throw roundError;
+  }
+}

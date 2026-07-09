@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getSession, getRounds, type RoundRow, type SessionRow } from '@/lib/db';
+import { getSession, getRounds, renamePlayerEverywhere, type RoundRow, type SessionRow } from '@/lib/db';
 import { formatScheduleAsText } from '@/lib/scheduleText';
 import SessionNav from '@/components/SessionNav';
 
@@ -11,13 +11,51 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
   const [session, setSession] = useState<SessionRow | null>(null);
   const [rounds, setRounds] = useState<RoundRow[]>([]);
   const [copied, setCopied] = useState(false);
+  const [showEditPlayers, setShowEditPlayers] = useState(false);
+  const [nameDrafts, setNameDrafts] = useState<string[]>([]);
+  const [savingNames, setSavingNames] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+
+  async function reload() {
+    const [s, r] = await Promise.all([getSession(id), getRounds(id)]);
+    setSession(s);
+    setRounds(r);
+    setNameDrafts(s.players);
+  }
 
   useEffect(() => {
-    getSession(id).then(setSession);
-    getRounds(id).then(setRounds);
+    reload();
   }, [id]);
 
   const courtLabels = session?.court_labels ?? ['1', '2'];
+
+  async function handleSaveNames() {
+    if (!session) return;
+    setNameError(null);
+    const trimmed = nameDrafts.map(n => n.trim());
+    if (trimmed.some(n => n.length === 0)) {
+      setNameError('Names cannot be blank.');
+      return;
+    }
+    if (new Set(trimmed).size !== trimmed.length) {
+      setNameError('Names must stay unique.');
+      return;
+    }
+    setSavingNames(true);
+    try {
+      for (let i = 0; i < session.players.length; i++) {
+        if (session.players[i] !== trimmed[i]) {
+          await renamePlayerEverywhere(id, session.players[i], trimmed[i]);
+        }
+      }
+      await reload();
+      setShowEditPlayers(false);
+    } catch (e) {
+      setNameError(e instanceof Error ? e.message : 'Failed to save names.');
+    } finally {
+      setSavingNames(false);
+    }
+  }
 
   const byRound = new Map<number, RoundRow[]>();
   for (const r of rounds) {
@@ -40,9 +78,37 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
         <button className="btn-primary" onClick={handleCopy} style={{ marginTop: 16, marginBottom: 8, width: '100%' }}>
           {copied ? 'Copied!' : 'Copy as WhatsApp text'}
         </button>
-        <Link href={`/session/${id}/play`} className="btn-secondary" style={{ width: '100%', marginBottom: 20 }}>
+        <Link href={`/session/${id}/play`} className="btn-secondary" style={{ width: '100%', marginBottom: 12 }}>
           Start Scoring →
         </Link>
+
+        <button
+          className="btn-secondary"
+          onClick={() => setShowEditPlayers(v => !v)}
+          style={{ width: '100%', marginBottom: 20 }}
+        >
+          {showEditPlayers ? 'Hide Edit Players' : 'Fix a Typo in Player Names'}
+        </button>
+
+        {showEditPlayers && (
+          <div className="card" style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {nameDrafts.map((name, i) => (
+              <input
+                key={i}
+                value={name}
+                onChange={e =>
+                  setNameDrafts(prev => prev.map((n, idx) => (idx === i ? e.target.value : n)))
+                }
+                aria-label={`Player ${i + 1} name`}
+                style={{ minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+              />
+            ))}
+            {nameError && <p style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 14 }}>{nameError}</p>}
+            <button className="btn-primary" onClick={handleSaveNames} disabled={savingNames}>
+              {savingNames ? 'Saving…' : 'Save Names'}
+            </button>
+          </div>
+        )}
 
         {sortedRoundNumbers.map(roundNumber => {
           const courts = byRound.get(roundNumber)!.sort((a, b) => a.court - b.court);
