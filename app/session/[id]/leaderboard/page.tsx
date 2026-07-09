@@ -4,6 +4,7 @@ import { use, useEffect, useState } from 'react';
 import { getSession, getRounds, type SessionRow } from '@/lib/db';
 import { computeLeaderboard, computeSquadTotals, type PlayerStats } from '@/lib/analytics';
 import SessionNav from '@/components/SessionNav';
+import Avatar from '@/components/Avatar';
 
 const POLL_INTERVAL_MS = 4000;
 
@@ -73,6 +74,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
             return (
               <div key={p.name} className="leaderboard-row">
                 <span className={`rank-badge rank-${i + 1 <= 3 ? i + 1 : ''}`}>{i + 1}</span>
+                <Avatar name={p.name} size={24} />
                 <span className="leaderboard-name">{p.name}</span>
                 <div className="win-bar-track" style={{ maxWidth: 80 }}>
                   <div className="win-bar-fill" style={{ width: `${(p.wins / maxWins) * 100}%` }} />

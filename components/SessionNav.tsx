@@ -10,6 +10,7 @@ export default function SessionNav({ sessionId }: { sessionId: string }) {
     { href: `/session/${sessionId}/schedule`, label: 'Schedule' },
     { href: `/session/${sessionId}/play`, label: 'Score' },
     { href: `/session/${sessionId}/leaderboard`, label: 'Leaderboard' },
+    { href: `/session/${sessionId}/analytics`, label: 'Analytics' },
     { href: `/session/${sessionId}/results`, label: 'Results' },
   ];
 
