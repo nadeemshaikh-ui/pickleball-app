@@ -39,8 +39,11 @@ Both formats are fully static/pre-computable — no dependency on game outcomes
 ### 1. Scramble
 Every round, all 10 players are reshuffled into 2 courts x 2 teams (4 playing
 per court, 2 sitting out per round across the group). A balanced-fairness
-algorithm run once at schedule-generation time minimizes repeat partnerships,
-repeat opponent match-ups, and uneven sit-out counts across all rounds.
+algorithm run once at schedule-generation time minimizes repeat partnerships
+and uneven sit-out counts across all rounds. (v1 scope: partner-repeat and
+sit-out balance only, not opponent-repeat — kept light per explicit "basic
+app" instruction; opponent-variety tracking can be added later if repeat
+match-ups become noticeable in practice.)
 
 ### 2. Squad Rivalry
 At schedule generation, the 10 players are split into 2 fixed squads of 5

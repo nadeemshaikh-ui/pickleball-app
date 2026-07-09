@@ -353,9 +353,12 @@ export function generateScrambleSchedule(
   const rounds: ScrambleRound[] = [];
 
   for (let roundNumber = 1; roundNumber <= roundCount; roundNumber++) {
+    // Precompute tiebreakers once per round rather than calling rand() inside
+    // the sort comparator, whose call-count isn't guaranteed by the JS spec.
+    const tieBreakers = new Map(players.map(p => [p, rand()]));
     const sortedBySitOut = [...players].sort((a, b) => {
       const diff = sitOutCounts.get(a)! - sitOutCounts.get(b)!;
-      return diff !== 0 ? -diff : rand() - 0.5;
+      return diff !== 0 ? -diff : tieBreakers.get(a)! - tieBreakers.get(b)!;
     });
     const sittingOut = sortedBySitOut.slice(0, 2) as [string, string];
     for (const p of sittingOut) sitOutCounts.set(p, sitOutCounts.get(p)! + 1);
@@ -462,9 +465,10 @@ export function generateSquadRivalrySchedule(
   const pairKey = (a: string, b: string) => [a, b].sort().join('|');
 
   function pickSquadSitOut(squad: string[], sitCounts: Map<string, number>): string {
+    const tieBreakers = new Map(squad.map(p => [p, rand()]));
     const sorted = [...squad].sort((a, b) => {
       const diff = sitCounts.get(a)! - sitCounts.get(b)!;
-      return diff !== 0 ? -diff : rand() - 0.5;
+      return diff !== 0 ? -diff : tieBreakers.get(a)! - tieBreakers.get(b)!;
     });
     const chosen = sorted[0];
     sitCounts.set(chosen, sitCounts.get(chosen)! + 1);
@@ -1061,12 +1065,20 @@ export default function PlayPage({ params }: { params: { id: string } }) {
       if (!input || input[0] === '' || input[1] === '') continue;
       await updateRoundScore(court.id, Number(input[0]), Number(input[1]));
     }
-    await reload();
-    if (roundNumber === session?.round_count) {
+    // Re-derive the next active round from actual data rather than blindly
+    // incrementing — otherwise editing a past round (via "jump to a round")
+    // after the session was already fully scored would incorrectly force
+    // navigation forward instead of respecting the real completion state.
+    const updatedRounds = await getRounds(params.id);
+    setRounds(updatedRounds);
+    const stillIncomplete = [...new Set(updatedRounds.map(x => x.round_number))]
+      .sort((a, b) => a - b)
+      .find(rn => updatedRounds.filter(x => x.round_number === rn).some(x => x.score_a === null));
+    if (stillIncomplete === undefined) {
       await markSessionCompleted(params.id);
       router.push(`/session/${params.id}/results`);
     } else {
-      setActiveRoundNumber(roundNumber + 1);
+      setActiveRoundNumber(stillIncomplete);
     }
   }
 
