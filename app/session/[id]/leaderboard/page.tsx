@@ -7,6 +7,8 @@ import { formatLeaderboardAsText } from '@/lib/leaderboardText';
 import { shareToWhatsApp } from '@/lib/whatsapp';
 import SessionNav from '@/components/SessionNav';
 import Avatar from '@/components/Avatar';
+import NewSessionLink from '@/components/NewSessionLink';
+import SessionDate from '@/components/SessionDate';
 
 const POLL_INTERVAL_MS = 4000;
 
@@ -48,7 +50,9 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
   return (
     <>
       <main className="page">
+        <NewSessionLink />
         <h1>Leaderboard</h1>
+        {session && <SessionDate createdAt={session.created_at} />}
         <p style={{ color: 'var(--muted)', marginTop: 4 }}>
           {gamesCompleted} of {gamesTotal} games played — updates live
         </p>

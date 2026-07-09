@@ -5,9 +5,12 @@ import { getSession, getRounds, type SessionRow, type RoundRow } from '@/lib/db'
 import { computeLeaderboard, computeSquadTotals, type PlayerStats } from '@/lib/analytics';
 import { formatRecapAsText } from '@/lib/recapText';
 import { shareToWhatsApp } from '@/lib/whatsapp';
+import Link from 'next/link';
 import SessionNav from '@/components/SessionNav';
 import Avatar from '@/components/Avatar';
 import Celebration from '@/components/Celebration';
+import NewSessionLink from '@/components/NewSessionLink';
+import SessionDate from '@/components/SessionDate';
 
 export default function ResultsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -51,7 +54,9 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
         <Celebration winnerName={top3[0].name} onDismiss={() => setShowCelebration(false)} />
       )}
       <main className="page">
+        <NewSessionLink />
         <h1>Results</h1>
+        {session && <SessionDate createdAt={session.created_at} />}
 
         <button
           className="btn-primary"
@@ -135,6 +140,10 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
             </div>
           ))}
         </div>
+
+        <Link href="/setup" className="btn-primary" style={{ width: '100%', marginTop: 24, textAlign: 'center' }}>
+          Start New Session
+        </Link>
       </main>
       <SessionNav sessionId={id} />
     </>

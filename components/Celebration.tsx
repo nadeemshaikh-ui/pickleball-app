@@ -1,5 +1,7 @@
 'use client';
 
+import { TrophyIcon } from './icons';
+
 const COLORS = ['#157a4c', '#ff7a1a', '#b8860b', '#2563eb', '#d64545'];
 
 export default function Celebration({ winnerName, onDismiss }: { winnerName: string; onDismiss: () => void }) {
@@ -25,7 +27,9 @@ export default function Celebration({ winnerName, onDismiss }: { winnerName: str
         />
       ))}
       <div>
-        <div className="celebration-trophy" aria-hidden="true">🏆</div>
+        <div className="celebration-trophy" aria-hidden="true">
+          <TrophyIcon size={64} />
+        </div>
         <div className="celebration-name">{winnerName} wins the session!</div>
         <div className="celebration-hint">Tap anywhere to see full results</div>
       </div>

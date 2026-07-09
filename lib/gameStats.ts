@@ -90,9 +90,30 @@ export function computeLongestWinStreak(rounds: RoundRow[]): StreakStats | null 
   return best;
 }
 
-export function computeSessionTotals(rounds: RoundRow[]): { totalGames: number; totalPoints: number } {
+export function computeSessionTotals(rounds: RoundRow[]): { totalGames: number; totalPoints: number; averageMargin: number } {
   const scored = scoredRounds(rounds);
   const totalGames = scored.length;
   const totalPoints = scored.reduce((sum, r) => sum + r.score_a! + r.score_b!, 0);
-  return { totalGames, totalPoints };
+  const averageMargin =
+    totalGames === 0 ? 0 : scored.reduce((sum, r) => sum + Math.abs(r.score_a! - r.score_b!), 0) / totalGames;
+  return { totalGames, totalPoints, averageMargin };
+}
+
+export interface TopScorer {
+  name: string;
+  points: number;
+}
+
+export function computeTopScorer(rounds: RoundRow[]): TopScorer | null {
+  const scored = scoredRounds(rounds);
+  const points = new Map<string, number>();
+  for (const r of scored) {
+    for (const p of r.team_a) points.set(p, (points.get(p) ?? 0) + r.score_a!);
+    for (const p of r.team_b) points.set(p, (points.get(p) ?? 0) + r.score_b!);
+  }
+  let best: TopScorer | null = null;
+  for (const [name, total] of points) {
+    if (!best || total > best.points) best = { name, points: total };
+  }
+  return best;
 }

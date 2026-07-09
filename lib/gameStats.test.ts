@@ -5,6 +5,7 @@ import {
   computeBestPartnership,
   computeLongestWinStreak,
   computeSessionTotals,
+  computeTopScorer,
 } from './gameStats';
 import type { RoundRow } from './db';
 
@@ -54,5 +55,18 @@ describe('computeSessionTotals', () => {
     const totals = computeSessionTotals(rounds);
     expect(totals.totalGames).toBe(3);
     expect(totals.totalPoints).toBe(15 + 14 + 15 + 2 + 15 + 10);
+  });
+
+  it('computes average score margin across scored games', () => {
+    const totals = computeSessionTotals(rounds);
+    expect(totals.averageMargin).toBeCloseTo((1 + 13 + 5) / 3);
+  });
+});
+
+describe('computeTopScorer', () => {
+  it('finds the player with the most total points scored', () => {
+    const top = computeTopScorer(rounds);
+    expect(top?.name).toBe('A');
+    expect(top?.points).toBe(30);
   });
 });

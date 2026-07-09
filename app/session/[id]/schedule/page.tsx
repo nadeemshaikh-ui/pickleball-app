@@ -6,6 +6,8 @@ import { getSession, getRounds, renamePlayerEverywhere, type RoundRow, type Sess
 import { formatScheduleAsText } from '@/lib/scheduleText';
 import { shareToWhatsApp } from '@/lib/whatsapp';
 import SessionNav from '@/components/SessionNav';
+import NewSessionLink from '@/components/NewSessionLink';
+import SessionDate from '@/components/SessionDate';
 
 export default function SchedulePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -75,7 +77,9 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
   return (
     <>
       <main className="page">
+        <NewSessionLink />
         <h1>Schedule</h1>
+        {session && <SessionDate createdAt={session.created_at} />}
         {session?.round_duration_minutes && (
           <p style={{ color: 'var(--muted)', marginTop: 4 }}>
             {session.round_count} rounds × ~{session.round_duration_minutes} min — about{' '}
