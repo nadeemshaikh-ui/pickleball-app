@@ -80,7 +80,10 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
     setImageShareError(null);
     setSharingImage(true);
     try {
-      await shareElementAsImage(tableCaptureRef.current, `schedule-${id}.png`);
+      const result = await shareElementAsImage(tableCaptureRef.current, `schedule-${id}.png`);
+      if (result === 'downloaded') {
+        setImageShareError('Image downloaded — attach it to WhatsApp manually (direct share isn\'t supported on this browser).');
+      }
     } catch (e) {
       setImageShareError(e instanceof Error ? e.message : 'Failed to share image.');
     } finally {

@@ -11,8 +11,17 @@ export async function shareElementAsImage(element: HTMLElement, filename: string
   const file = new File([blob], filename, { type: 'image/png' });
 
   if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
-    await navigator.share({ files: [file], title: filename });
-    return 'shared';
+    try {
+      await navigator.share({ files: [file], title: filename });
+      return 'shared';
+    } catch (err) {
+      // Some browsers (notably Chrome/Android) reject share() if the
+      // html2canvas render above ate up the user-gesture window that
+      // navigator.share() requires — throws "not allowed by the user agent
+      // or platform" even though canShare() said yes. Fall back to a
+      // download rather than surfacing that as a broken feature.
+      if (err instanceof Error && err.name === 'AbortError') throw err; // user cancelled the share sheet
+    }
   }
 
   const url = URL.createObjectURL(blob);
