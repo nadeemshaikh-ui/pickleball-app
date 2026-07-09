@@ -344,7 +344,7 @@ export default function SetupPage() {
               <div key={blockIndex} className="card" style={{ marginTop: 12 }}>
                 <strong>Swap {blockIndex + 1} — Court {courtLabels[0]} (pick {half})</strong>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-                  {names.filter(n => n.trim()).map(name => {
+                  {names.map(n => n.trim()).filter(n => n.length > 0).map(name => {
                     const selected = manualBlocks[blockIndex]?.includes(name) ?? false;
                     return (
                       <button
@@ -352,7 +352,8 @@ export default function SetupPage() {
                         type="button"
                         onClick={() => toggleManualBlockPlayer(blockIndex, name)}
                         style={{
-                          padding: '6px 12px',
+                          minHeight: 44,
+                          padding: '6px 14px',
                           borderRadius: 999,
                           border: '1px solid var(--border)',
                           background: selected ? 'var(--primary)' : 'white',

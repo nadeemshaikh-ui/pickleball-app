@@ -95,8 +95,17 @@ export async function insertRounds(sessionId: string, rounds: ScrambleRound[]): 
   if (error) throw error;
 }
 
+const MAX_LOGO_BYTES = 5 * 1024 * 1024; // 5MB
+
 export async function uploadGroupLogo(file: File): Promise<string> {
-  const ext = file.name.split('.').pop() ?? 'png';
+  if (!file.type.startsWith('image/')) {
+    throw new Error('Logo must be an image file.');
+  }
+  if (file.size > MAX_LOGO_BYTES) {
+    throw new Error('Logo must be under 5MB.');
+  }
+  const dotIndex = file.name.lastIndexOf('.');
+  const ext = dotIndex > 0 ? file.name.slice(dotIndex + 1) : 'png';
   const path = `${Math.random().toString(36).slice(2)}.${ext}`;
   const { error } = await supabase.storage.from('group-logos').upload(path, file);
   if (error) throw error;
@@ -141,6 +150,13 @@ export async function markSessionCompleted(sessionId: string): Promise<void> {
 // Fixes a typo'd player name everywhere it appears: the session roster,
 // squads (if Squad Rivalry), and every round's teams/sit-outs. Scores are
 // untouched since they're keyed by round id, not by name.
+//
+// Fires all writes concurrently rather than one-by-one — this shrinks the
+// partial-failure window a lot (a mid-loop network blip used to leave some
+// rounds renamed and some not). It's still not a real DB transaction: if one
+// of many concurrent writes fails, the others may have already committed.
+// True atomicity would need a Postgres RPC function, which is more
+// infrastructure than this size of app calls for.
 export async function renamePlayerEverywhere(
   sessionId: string,
   oldName: string,
@@ -157,26 +173,23 @@ export async function renamePlayerEverywhere(
       }
     : null;
 
-  const { error: sessionError } = await supabase
-    .from('sessions')
-    .update({ players: newPlayers, squads: newSquads })
-    .eq('id', sessionId);
-  if (sessionError) throw sessionError;
-
   const rounds = await getRounds(sessionId);
-  for (const round of rounds) {
-    const touchesRound =
-      round.team_a.includes(oldName) || round.team_b.includes(oldName) || round.sitting_out.includes(oldName);
-    if (!touchesRound) continue;
+  const roundUpdates = rounds
+    .filter(
+      round =>
+        round.team_a.includes(oldName) || round.team_b.includes(oldName) || round.sitting_out.includes(oldName)
+    )
+    .map(round => {
+      const team_a = round.team_a.map(p => (p === oldName ? newName : p)) as [string, string];
+      const team_b = round.team_b.map(p => (p === oldName ? newName : p)) as [string, string];
+      const sitting_out = round.sitting_out.map(p => (p === oldName ? newName : p));
+      return supabase.from('rounds').update({ team_a, team_b, sitting_out }).eq('id', round.id);
+    });
 
-    const team_a = round.team_a.map(p => (p === oldName ? newName : p)) as [string, string];
-    const team_b = round.team_b.map(p => (p === oldName ? newName : p)) as [string, string];
-    const sitting_out = round.sitting_out.map(p => (p === oldName ? newName : p));
-
-    const { error: roundError } = await supabase
-      .from('rounds')
-      .update({ team_a, team_b, sitting_out })
-      .eq('id', round.id);
-    if (roundError) throw roundError;
-  }
+  const results = await Promise.all([
+    supabase.from('sessions').update({ players: newPlayers, squads: newSquads }).eq('id', sessionId),
+    ...roundUpdates,
+  ]);
+  const failed = results.find(r => r.error);
+  if (failed?.error) throw failed.error;
 }
