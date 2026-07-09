@@ -4,6 +4,7 @@ import { use, useEffect, useState } from 'react';
 import { getSession, getRounds, type SessionRow, type RoundRow } from '@/lib/db';
 import { computeLeaderboard, computeSquadTotals, type PlayerStats } from '@/lib/analytics';
 import { formatRecapAsText } from '@/lib/recapText';
+import { shareToWhatsApp } from '@/lib/whatsapp';
 import SessionNav from '@/components/SessionNav';
 import Avatar from '@/components/Avatar';
 import Celebration from '@/components/Celebration';
@@ -52,8 +53,15 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
       <main className="page">
         <h1>Results</h1>
 
-        <button className="btn-primary" onClick={handleCopyRecap} style={{ width: '100%', marginTop: 16 }}>
-          {copied ? 'Copied!' : 'Share Recap'}
+        <button
+          className="btn-primary"
+          onClick={() => shareToWhatsApp(formatRecapAsText(leaderboard, rounds))}
+          style={{ width: '100%', marginTop: 16 }}
+        >
+          Share on WhatsApp
+        </button>
+        <button className="btn-secondary" onClick={handleCopyRecap} style={{ width: '100%', marginTop: 8 }}>
+          {copied ? 'Copied!' : 'Copy Recap as Text'}
         </button>
 
         {squadTotals && (

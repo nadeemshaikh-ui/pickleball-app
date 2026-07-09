@@ -9,6 +9,8 @@ import {
   computeLongestWinStreak,
   computeSessionTotals,
 } from '@/lib/gameStats';
+import { formatAnalyticsAsText } from '@/lib/analyticsText';
+import { shareToWhatsApp } from '@/lib/whatsapp';
 import SessionNav from '@/components/SessionNav';
 
 function scoreLine(r: RoundRow): string {
@@ -42,6 +44,14 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
         <p style={{ color: 'var(--muted)', marginTop: 4 }}>
           {totals.totalGames} of {session?.round_count ? session.round_count * 2 : '…'} games played
         </p>
+
+        <button
+          className="btn-primary"
+          onClick={() => shareToWhatsApp(formatAnalyticsAsText(rounds))}
+          style={{ width: '100%', marginTop: 12, marginBottom: 4 }}
+        >
+          Share on WhatsApp
+        </button>
 
         <h2>Session Overview</h2>
         <div className="card stat-card">

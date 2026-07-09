@@ -3,6 +3,8 @@
 import { use, useEffect, useState } from 'react';
 import { getSession, getRounds, type SessionRow } from '@/lib/db';
 import { computeLeaderboard, computeSquadTotals, type PlayerStats } from '@/lib/analytics';
+import { formatLeaderboardAsText } from '@/lib/leaderboardText';
+import { shareToWhatsApp } from '@/lib/whatsapp';
 import SessionNav from '@/components/SessionNav';
 import Avatar from '@/components/Avatar';
 
@@ -50,6 +52,14 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
         <p style={{ color: 'var(--muted)', marginTop: 4 }}>
           {gamesCompleted} of {gamesTotal} games played — updates live
         </p>
+
+        <button
+          className="btn-primary"
+          onClick={() => shareToWhatsApp(formatLeaderboardAsText(leaderboard, gamesCompleted, gamesTotal))}
+          style={{ width: '100%', marginTop: 12, marginBottom: 4 }}
+        >
+          Share on WhatsApp
+        </button>
 
         {squadTotals && (
           <div className="card" style={{ marginTop: 16, display: 'flex', justifyContent: 'space-around' }}>

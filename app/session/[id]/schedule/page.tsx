@@ -4,6 +4,7 @@ import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getSession, getRounds, renamePlayerEverywhere, type RoundRow, type SessionRow } from '@/lib/db';
 import { formatScheduleAsText } from '@/lib/scheduleText';
+import { shareToWhatsApp } from '@/lib/whatsapp';
 import SessionNav from '@/components/SessionNav';
 
 export default function SchedulePage({ params }: { params: Promise<{ id: string }> }) {
@@ -81,8 +82,15 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
             {Math.round((session.round_count * session.round_duration_minutes) / 60 * 10) / 10} hr total
           </p>
         )}
-        <button className="btn-primary" onClick={handleCopy} style={{ marginTop: 16, marginBottom: 8, width: '100%' }}>
-          {copied ? 'Copied!' : 'Copy as WhatsApp text'}
+        <button
+          className="btn-primary"
+          onClick={() => shareToWhatsApp(formatScheduleAsText(rounds, courtLabels, session?.round_duration_minutes ?? null))}
+          style={{ marginTop: 16, marginBottom: 8, width: '100%' }}
+        >
+          Share on WhatsApp
+        </button>
+        <button className="btn-secondary" onClick={handleCopy} style={{ marginBottom: 12, width: '100%' }}>
+          {copied ? 'Copied!' : 'Copy as Text'}
         </button>
         <Link href={`/session/${id}/play`} className="btn-secondary" style={{ width: '100%', marginBottom: 12 }}>
           Start Scoring →
