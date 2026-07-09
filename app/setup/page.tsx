@@ -16,18 +16,20 @@ export default function SetupPage() {
   const router = useRouter();
 
   const [playerCount, setPlayerCount] = useState(10);
+  const [courtCount, setCourtCount] = useState(2);
   const [namesEntered, setNamesEntered] = useState(false);
   const [names, setNames] = useState<string[]>(Array(10).fill(''));
 
   const [format, setFormat] = useState<Format>('scramble');
   const [roundCount, setRoundCount] = useState(12);
-  const [courtLabels, setCourtLabels] = useState<[string, string]>(['1', '2']);
+  const [courtLabels, setCourtLabels] = useState<string[]>(['1', '2']);
   const [roundDurationMinutes, setRoundDurationMinutes] = useState('');
 
   const [roundsPerBlock, setRoundsPerBlock] = useState(6);
   const [swapCount, setSwapCount] = useState(2);
   const [assignmentMode, setAssignmentMode] = useState<'auto' | 'manual'>('auto');
-  const [manualBlocks, setManualBlocks] = useState<string[][]>([]); // per block: array of names picked for Court A
+  // Per block: court index (0-based) assigned to each player, or null if unassigned.
+  const [manualBlocks, setManualBlocks] = useState<(number | null)[][]>([]);
 
   const [groupName, setGroupName] = useState('');
   const [logo1File, setLogo1File] = useState<File | null>(null);
@@ -36,13 +38,20 @@ export default function SetupPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const minPlayers = courtCount * 4;
+
   function handlePlayerCountConfirm() {
-    if (playerCount < 8 || playerCount % 2 !== 0) {
-      setError('Player count must be even and at least 8.');
+    if (courtCount < 1) {
+      setError('You need at least 1 court.');
+      return;
+    }
+    if (playerCount < minPlayers) {
+      setError(`With ${courtCount} court(s) you need at least ${minPlayers} players (4 per court).`);
       return;
     }
     setError(null);
     setNames(Array(playerCount).fill(''));
+    setCourtLabels(Array.from({ length: courtCount }, (_, i) => `${i + 1}`));
     setNamesEntered(true);
   }
 
@@ -52,20 +61,19 @@ export default function SetupPage() {
     setNames(copy);
   }
 
-  const blockCount = format === 'court_blocks' ? swapCount : 0;
-  const half = Math.floor(playerCount / 2);
+  function updateCourtLabel(index: number, value: string) {
+    setCourtLabels(prev => prev.map((v, i) => (i === index ? value : v)));
+  }
 
-  function toggleManualBlockPlayer(blockIndex: number, name: string) {
+  const blockCount = format === 'court_blocks' ? swapCount : 0;
+
+  function cycleManualBlockPlayer(blockIndex: number, playerIndex: number) {
     setManualBlocks(prev => {
       const copy = prev.map(b => [...b]);
-      while (copy.length <= blockIndex) copy.push([]);
+      while (copy.length <= blockIndex) copy.push(Array(playerCount).fill(null));
       const block = copy[blockIndex];
-      const idx = block.indexOf(name);
-      if (idx >= 0) {
-        block.splice(idx, 1);
-      } else if (block.length < half) {
-        block.push(name);
-      }
+      const current = block[playerIndex];
+      block[playerIndex] = current === null ? 0 : current + 1 >= courtCount ? null : current + 1;
       return copy;
     });
   }
@@ -81,9 +89,9 @@ export default function SetupPage() {
       setError('Player names must be unique.');
       return;
     }
-    const trimmedCourtLabels: [string, string] = [courtLabels[0].trim(), courtLabels[1].trim()];
-    if (trimmedCourtLabels[0] === '' || trimmedCourtLabels[1] === '') {
-      setError('Both court numbers/names are required.');
+    const trimmedCourtLabels = courtLabels.map(l => l.trim());
+    if (trimmedCourtLabels.some(l => l === '')) {
+      setError('Every court needs a number or name.');
       return;
     }
     const parsedDuration = roundDurationMinutes.trim() === '' ? null : Number(roundDurationMinutes);
@@ -92,14 +100,24 @@ export default function SetupPage() {
       return;
     }
 
-    if (format === 'court_blocks') {
-      if (assignmentMode === 'manual') {
-        for (let b = 0; b < blockCount; b++) {
-          if ((manualBlocks[b]?.length ?? 0) !== half) {
-            setError(`Block ${b + 1}: pick exactly ${half} players for Court A.`);
-            return;
-          }
+    let manualAssignments: CourtBlockAssignment[] | undefined;
+    if (format === 'court_blocks' && assignmentMode === 'manual') {
+      manualAssignments = [];
+      for (let b = 0; b < blockCount; b++) {
+        const assignment = manualBlocks[b] ?? Array(playerCount).fill(null);
+        if (assignment.some(c => c === null)) {
+          setError(`Swap ${b + 1}: assign every player to a court.`);
+          return;
         }
+        const groups: string[][] = Array.from({ length: courtCount }, () => []);
+        assignment.forEach((courtIndex, playerIndex) => {
+          groups[courtIndex as number].push(trimmed[playerIndex]);
+        });
+        if (groups.some(g => g.length < 4)) {
+          setError(`Swap ${b + 1}: every court needs at least 4 players.`);
+          return;
+        }
+        manualAssignments.push({ groups });
       }
     }
 
@@ -122,7 +140,7 @@ export default function SetupPage() {
 
       let sessionId: string;
       if (format === 'scramble') {
-        const rounds = generateScrambleSchedule(trimmed, roundCount, seed);
+        const rounds = generateScrambleSchedule(trimmed, courtCount, roundCount, seed);
         sessionId = await createSession({
           ...baseOptions,
           format: 'scramble',
@@ -132,7 +150,7 @@ export default function SetupPage() {
         });
         await insertRounds(sessionId, rounds);
       } else if (format === 'squad_rivalry') {
-        const { squads, rounds } = generateSquadRivalrySchedule(trimmed, roundCount, seed);
+        const { squads, rounds } = generateSquadRivalrySchedule(trimmed, courtCount, roundCount, seed);
         sessionId = await createSession({
           ...baseOptions,
           format: 'squad_rivalry',
@@ -142,14 +160,7 @@ export default function SetupPage() {
         });
         await insertRounds(sessionId, rounds);
       } else {
-        const manualAssignments: CourtBlockAssignment[] | undefined =
-          assignmentMode === 'manual'
-            ? manualBlocks.slice(0, blockCount).map(courtA => ({
-                courtA,
-                courtB: trimmed.filter(p => !courtA.includes(p)),
-              }))
-            : undefined;
-        const { rounds } = generateCourtBlocksSchedule(trimmed, roundsPerBlock, blockCount, seed, manualAssignments);
+        const { rounds } = generateCourtBlocksSchedule(trimmed, courtCount, roundsPerBlock, blockCount, seed, manualAssignments);
         sessionId = await createSession({
           ...baseOptions,
           format: 'court_blocks',
@@ -170,18 +181,30 @@ export default function SetupPage() {
     return (
       <main className="page">
         <h1>Session Setup</h1>
+        <h2>How Many Courts?</h2>
+        <div className="card">
+          <input
+            type="number"
+            value={courtCount}
+            onChange={e => setCourtCount(Math.max(1, Number(e.target.value)))}
+            min={1}
+            aria-label="Number of courts"
+            style={{ minHeight: 44, padding: '10px 12px', fontSize: 16, width: 100, border: '1px solid var(--border)', borderRadius: 8 }}
+          />
+        </div>
         <h2>How Many Players?</h2>
         <div className="card">
           <input
             type="number"
             value={playerCount}
             onChange={e => setPlayerCount(Number(e.target.value))}
-            min={8}
-            step={2}
+            min={minPlayers}
             aria-label="Number of players"
             style={{ minHeight: 44, padding: '10px 12px', fontSize: 16, width: 100, border: '1px solid var(--border)', borderRadius: 8 }}
           />
-          <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 8 }}>Even number, at least 8 (2 courts × 4 players).</p>
+          <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 8 }}>
+            At least {minPlayers} for {courtCount} court{courtCount === 1 ? '' : 's'} (4 per court). No upper limit.
+          </p>
         </div>
         {error && <p style={{ color: 'var(--danger)', marginTop: 12, fontWeight: 600 }}>{error}</p>}
         <button className="btn-primary" onClick={handlePlayerCountConfirm} style={{ width: '100%', marginTop: 20 }}>
@@ -212,7 +235,7 @@ export default function SetupPage() {
         onClick={() => setNamesEntered(false)}
         style={{ marginTop: 8, marginBottom: 4 }}
       >
-        ← Change Player Count
+        ← Change Players / Courts
       </button>
 
       <h2>Group Branding (optional)</h2>
@@ -246,26 +269,22 @@ export default function SetupPage() {
         </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <input type="radio" checked={format === 'court_blocks'} onChange={() => setFormat('court_blocks')} />
-          <span>Court Swap — same 5 on your court, swap groups every hour</span>
+          <span>Court Swap — same group on your court, swap groups every hour</span>
         </label>
       </div>
 
       <h2>Court Numbers</h2>
-      <div className="card" style={{ display: 'flex', gap: 12, minWidth: 0 }}>
-        <input
-          value={courtLabels[0]}
-          onChange={e => setCourtLabels([e.target.value, courtLabels[1]])}
-          placeholder="Court 1"
-          aria-label="Court 1 number or name"
-          style={{ flex: '1 1 0', minWidth: 0, width: '100%', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
-        />
-        <input
-          value={courtLabels[1]}
-          onChange={e => setCourtLabels([courtLabels[0], e.target.value])}
-          placeholder="Court 2"
-          aria-label="Court 2 number or name"
-          style={{ flex: '1 1 0', minWidth: 0, width: '100%', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
-        />
+      <div className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, minWidth: 0 }}>
+        {courtLabels.map((label, i) => (
+          <input
+            key={i}
+            value={label}
+            onChange={e => updateCourtLabel(i, e.target.value)}
+            placeholder={`Court ${i + 1}`}
+            aria-label={`Court ${i + 1} number or name`}
+            style={{ flex: '1 1 100px', minWidth: 0, minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+          />
+        ))}
       </div>
 
       {format !== 'court_blocks' && (
@@ -342,33 +361,35 @@ export default function SetupPage() {
           {assignmentMode === 'manual' &&
             Array.from({ length: blockCount }, (_, blockIndex) => (
               <div key={blockIndex} className="card" style={{ marginTop: 12 }}>
-                <strong>Swap {blockIndex + 1} — Court {courtLabels[0]} (pick {half})</strong>
+                <strong>Swap {blockIndex + 1} — tap a player to cycle through courts</strong>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-                  {names.map(n => n.trim()).filter(n => n.length > 0).map(name => {
-                    const selected = manualBlocks[blockIndex]?.includes(name) ?? false;
+                  {names.map(n => n.trim()).map((name, playerIndex) => {
+                    if (!name) return null;
+                    const courtIndex = manualBlocks[blockIndex]?.[playerIndex] ?? null;
                     return (
                       <button
-                        key={name}
+                        key={playerIndex}
                         type="button"
-                        onClick={() => toggleManualBlockPlayer(blockIndex, name)}
+                        onClick={() => cycleManualBlockPlayer(blockIndex, playerIndex)}
                         style={{
                           minHeight: 44,
                           padding: '6px 14px',
                           borderRadius: 999,
                           border: '1px solid var(--border)',
-                          background: selected ? 'var(--primary)' : 'white',
-                          color: selected ? 'white' : 'var(--foreground)',
+                          background: courtIndex === null ? 'white' : 'var(--primary)',
+                          color: courtIndex === null ? 'var(--foreground)' : 'white',
                           fontSize: 13,
                           fontWeight: 700,
                         }}
                       >
                         {name}
+                        {courtIndex !== null ? ` — Court ${courtLabels[courtIndex]}` : ''}
                       </button>
                     );
                   })}
                 </div>
                 <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>
-                  Court {courtLabels[1]} gets the rest automatically ({half} players).
+                  Every player needs a court, at least 4 players per court.
                 </p>
               </div>
             ))}

@@ -21,12 +21,12 @@ export interface CourtMatch {
   teamB: [string, string];
 }
 
+// One entry in `courts`/`sittingOutPerCourt` per active court — any number
+// of courts is supported, not just 2.
 export interface ScrambleRound {
   roundNumber: number;
-  court1: CourtMatch;
-  court2: CourtMatch;
-  sittingOutCourt1: string[];
-  sittingOutCourt2: string[];
+  courts: CourtMatch[];
+  sittingOutPerCourt: string[][];
 }
 
 function shuffleArray<T>(arr: T[], rand: () => number): T[] {
@@ -56,16 +56,16 @@ function pickSitOuts(pool: string[], sitCounts: Map<string, number>, count: numb
   return chosen;
 }
 
-// Greedily pairs exactly 8 players into 4 teams of 2 (2 courts), minimizing
-// repeat partnerships based on the running partnerCounts map.
-function pairIntoTeams(
-  eightPlayers: string[],
+// Greedily pairs an even-sized pool into players.length/2 teams of 2,
+// minimizing repeat partnerships based on the running partnerCounts map.
+function pairIntoPairs(
+  players: string[],
   partnerCounts: Map<string, number>,
   rand: () => number
-): [CourtMatch, CourtMatch] {
-  const pool = shuffleArray(eightPlayers, rand);
-  const teams: [string, string][] = [];
+): [string, string][] {
+  const pool = shuffleArray(players, rand);
   const used = new Set<string>();
+  const teams: [string, string][] = [];
 
   for (const p of pool) {
     if (used.has(p)) continue;
@@ -88,68 +88,54 @@ function pairIntoTeams(
     }
   }
 
-  return [
-    { teamA: teams[0], teamB: teams[1] },
-    { teamA: teams[2], teamB: teams[3] },
-  ];
+  return teams;
 }
 
-// Pairs exactly 4 players (already picked for one court) into 2 teams of 2,
-// minimizing repeat partnerships.
-function pairFourIntoTwoTeams(
-  fourPlayers: string[],
+// Pairs courtCount*4 players into courtCount matches (2 teams of 2 each).
+function pairIntoNTeams(
+  players: string[],
+  courtCount: number,
   partnerCounts: Map<string, number>,
   rand: () => number
-): [[string, string], [string, string]] {
-  const pool = shuffleArray(fourPlayers, rand);
-  const used = new Set<string>();
-  const teams: [string, string][] = [];
-  for (const p of pool) {
-    if (used.has(p)) continue;
-    let bestPartner: string | null = null;
-    let bestCount = Infinity;
-    for (const q of pool) {
-      if (q === p || used.has(q)) continue;
-      const count = partnerCounts.get(pairKey(p, q)) ?? 0;
-      if (count < bestCount) {
-        bestCount = count;
-        bestPartner = q;
-      }
-    }
-    if (bestPartner) {
-      teams.push([p, bestPartner]);
-      used.add(p);
-      used.add(bestPartner);
-      const key = pairKey(p, bestPartner);
-      partnerCounts.set(key, (partnerCounts.get(key) ?? 0) + 1);
-    }
+): CourtMatch[] {
+  const teams = pairIntoPairs(players, partnerCounts, rand);
+  const courts: CourtMatch[] = [];
+  for (let c = 0; c < courtCount; c++) {
+    courts.push({ teamA: teams[c * 2], teamB: teams[c * 2 + 1] });
   }
-  return [teams[0], teams[1]];
+  return courts;
 }
 
-function validatePlayerCount(players: string[], formatName: string): void {
-  if (players.length < 8 || players.length % 2 !== 0) {
-    throw new Error(`${formatName} requires an even number of players, at least 8, got ${players.length}`);
+function requireMinPlayers(players: string[], courtCount: number, formatName: string): void {
+  const minRequired = courtCount * 4;
+  if (courtCount < 1) {
+    throw new Error(`${formatName} requires at least 1 court, got ${courtCount}`);
+  }
+  if (players.length < minRequired) {
+    throw new Error(
+      `${formatName} needs at least ${minRequired} players to fill ${courtCount} court(s) (4 per court), got ${players.length}`
+    );
   }
 }
 
 export function generateScrambleSchedule(
   players: string[],
+  courtCount: number,
   roundCount: number,
   seed: string
 ): ScrambleRound[] {
-  validatePlayerCount(players, 'generateScrambleSchedule');
+  requireMinPlayers(players, courtCount, 'Scramble');
   const rand = seededRandom(seed);
   const sitOutCounts = new Map<string, number>(players.map(p => [p, 0]));
   const partnerCounts = new Map<string, number>();
-  const sitOutCount = players.length - 8;
+  const sitOutCount = players.length - courtCount * 4;
   const rounds: ScrambleRound[] = [];
 
   for (let roundNumber = 1; roundNumber <= roundCount; roundNumber++) {
     const sittingOut = pickSitOuts(players, sitOutCounts, sitOutCount, rand);
     const playing = players.filter(p => !sittingOut.includes(p));
-    const [court1, court2] = pairIntoTeams(playing, partnerCounts, rand);
-    rounds.push({ roundNumber, court1, court2, sittingOutCourt1: sittingOut, sittingOutCourt2: sittingOut });
+    const courts = pairIntoNTeams(playing, courtCount, partnerCounts, rand);
+    rounds.push({ roundNumber, courts, sittingOutPerCourt: courts.map(() => sittingOut) });
   }
 
   return rounds;
@@ -167,10 +153,16 @@ export interface SquadRivalrySchedule {
 
 export function generateSquadRivalrySchedule(
   players: string[],
+  courtCount: number,
   roundCount: number,
   seed: string
 ): SquadRivalrySchedule {
-  validatePlayerCount(players, 'generateSquadRivalrySchedule');
+  if (players.length % 2 !== 0) {
+    throw new Error(`Squad Rivalry needs an even number of players to split into 2 squads, got ${players.length}`);
+  }
+  if (courtCount < 1) {
+    throw new Error(`Squad Rivalry requires at least 1 court, got ${courtCount}`);
+  }
   const rand = seededRandom(seed);
   const shuffled = shuffleArray(players, rand);
   const half = players.length / 2;
@@ -179,10 +171,10 @@ export function generateSquadRivalrySchedule(
   const goldSitCounts = new Map(squads.gold.map(p => [p, 0]));
   const blackSitCounts = new Map(squads.black.map(p => [p, 0]));
   const partnerCounts = new Map<string, number>();
-  const goldSitOutCount = squads.gold.length - 4;
-  const blackSitOutCount = squads.black.length - 4;
+  const goldSitOutCount = squads.gold.length - courtCount * 2;
+  const blackSitOutCount = squads.black.length - courtCount * 2;
   if (goldSitOutCount < 0 || blackSitOutCount < 0) {
-    throw new Error('Squad Rivalry requires at least 4 players per squad (8 total).');
+    throw new Error(`Squad Rivalry needs at least ${courtCount * 2} players per squad for ${courtCount} court(s).`);
   }
 
   const rounds: ScrambleRound[] = [];
@@ -192,25 +184,24 @@ export function generateSquadRivalrySchedule(
     const goldPlaying = squads.gold.filter(p => !goldSitOut.includes(p));
     const blackPlaying = squads.black.filter(p => !blackSitOut.includes(p));
 
-    const [goldTeam1, goldTeam2] = pairFourIntoTwoTeams(goldPlaying, partnerCounts, rand);
-    const [blackTeam1, blackTeam2] = pairFourIntoTwoTeams(blackPlaying, partnerCounts, rand);
+    const goldPairs = pairIntoPairs(goldPlaying, partnerCounts, rand);
+    const blackPairs = pairIntoPairs(blackPlaying, partnerCounts, rand);
     const combinedSitOut = [...goldSitOut, ...blackSitOut];
 
-    rounds.push({
-      roundNumber,
-      court1: { teamA: goldTeam1, teamB: blackTeam1 },
-      court2: { teamA: goldTeam2, teamB: blackTeam2 },
-      sittingOutCourt1: combinedSitOut,
-      sittingOutCourt2: combinedSitOut,
-    });
+    const courts: CourtMatch[] = [];
+    for (let c = 0; c < courtCount; c++) {
+      courts.push({ teamA: goldPairs[c], teamB: blackPairs[c] });
+    }
+
+    rounds.push({ roundNumber, courts, sittingOutPerCourt: courts.map(() => combinedSitOut) });
   }
 
   return { squads, rounds };
 }
 
+// One block assignment: one player group per court.
 export interface CourtBlockAssignment {
-  courtA: string[];
-  courtB: string[];
+  groups: string[][];
 }
 
 export interface CourtBlocksSchedule {
@@ -218,38 +209,46 @@ export interface CourtBlocksSchedule {
   rounds: ScrambleRound[];
 }
 
-// Splits players into 2 balanced groups, minimizing how often the same two
-// players have already shared a group in a previous block.
-function splitIntoTwoGroupsBalanced(
+// Splits players into `groupCount` balanced groups (sizes differ by at most
+// 1), minimizing how often the same two players have already shared a group
+// in a previous block.
+function splitIntoGroupsBalanced(
   players: string[],
+  groupCount: number,
   groupTogetherCounts: Map<string, number>,
   rand: () => number
-): CourtBlockAssignment {
-  const half = Math.floor(players.length / 2);
+): string[][] {
   const pool = shuffleArray(players, rand);
-  const groupA: string[] = [pool[0]];
-  const remaining = pool.slice(1);
+  const baseSize = Math.floor(players.length / groupCount);
+  const remainder = players.length % groupCount;
+  const groups: string[][] = Array.from({ length: groupCount }, () => []);
+  const remaining = [...pool];
 
-  while (groupA.length < half) {
-    let bestPlayer: string | null = null;
-    let bestScore = Infinity;
-    for (const candidate of remaining) {
-      let score = 0;
-      for (const member of groupA) {
-        score += groupTogetherCounts.get(pairKey(candidate, member)) ?? 0;
+  for (let g = 0; g < groupCount; g++) {
+    const targetSize = baseSize + (g < remainder ? 1 : 0);
+    while (groups[g].length < targetSize) {
+      if (groups[g].length === 0) {
+        groups[g].push(remaining.shift()!);
+        continue;
       }
-      if (score < bestScore) {
-        bestScore = score;
-        bestPlayer = candidate;
+      let bestPlayer: string | null = null;
+      let bestScore = Infinity;
+      for (const candidate of remaining) {
+        let score = 0;
+        for (const member of groups[g]) {
+          score += groupTogetherCounts.get(pairKey(candidate, member)) ?? 0;
+        }
+        if (score < bestScore) {
+          bestScore = score;
+          bestPlayer = candidate;
+        }
       }
+      groups[g].push(bestPlayer!);
+      remaining.splice(remaining.indexOf(bestPlayer!), 1);
     }
-    groupA.push(bestPlayer!);
-    remaining.splice(remaining.indexOf(bestPlayer!), 1);
   }
 
-  const groupB = pool.filter(p => !groupA.includes(p));
-
-  for (const group of [groupA, groupB]) {
+  for (const group of groups) {
     for (let i = 0; i < group.length; i++) {
       for (let j = i + 1; j < group.length; j++) {
         const key = pairKey(group[i], group[j]);
@@ -258,41 +257,47 @@ function splitIntoTwoGroupsBalanced(
     }
   }
 
-  return { courtA: groupA, courtB: groupB };
+  return groups;
 }
 
 function generateGroupRounds(
   group: string[],
   roundsPerBlock: number,
-  startingRoundNumber: number,
   rand: () => number
-): { rounds: { teams: [CourtMatch['teamA'], CourtMatch['teamB']]; sittingOut: string[] }[] } {
+): { teams: [CourtMatch['teamA'], CourtMatch['teamB']]; sittingOut: string[] }[] {
   const sitCounts = new Map(group.map(p => [p, 0]));
   const partnerCounts = new Map<string, number>();
   const sitOutCount = group.length - 4;
   if (sitOutCount < 0) {
-    throw new Error('Each Court Blocks group needs at least 4 players.');
+    throw new Error(`Each Court Swap group needs at least 4 players, got ${group.length}.`);
   }
 
   const rounds = [];
   for (let i = 0; i < roundsPerBlock; i++) {
     const sittingOut = pickSitOuts(group, sitCounts, sitOutCount, rand);
     const playing = group.filter(p => !sittingOut.includes(p));
-    const [teamA, teamB] = pairFourIntoTwoTeams(playing, partnerCounts, rand);
-    rounds.push({ teams: [teamA, teamB] as [CourtMatch['teamA'], CourtMatch['teamB']], sittingOut });
+    const [court] = pairIntoNTeams(playing, 1, partnerCounts, rand);
+    rounds.push({ teams: [court.teamA, court.teamB] as [CourtMatch['teamA'], CourtMatch['teamB']], sittingOut });
   }
-  void startingRoundNumber;
-  return { rounds };
+  return rounds;
 }
 
 export function generateCourtBlocksSchedule(
   players: string[],
+  courtCount: number,
   roundsPerBlock: number,
   blockCount: number,
   seed: string,
   manualAssignments?: CourtBlockAssignment[]
 ): CourtBlocksSchedule {
-  validatePlayerCount(players, 'generateCourtBlocksSchedule');
+  if (courtCount < 1) {
+    throw new Error(`Court Swap requires at least 1 court, got ${courtCount}`);
+  }
+  if (players.length < courtCount * 4) {
+    throw new Error(
+      `Court Swap needs at least ${courtCount * 4} players to fill ${courtCount} court(s) (4 per court), got ${players.length}`
+    );
+  }
   if (manualAssignments && manualAssignments.length !== blockCount) {
     throw new Error(`Expected ${blockCount} manual block assignments, got ${manualAssignments.length}`);
   }
@@ -304,24 +309,22 @@ export function generateCourtBlocksSchedule(
   let globalRoundNumber = 1;
 
   for (let block = 0; block < blockCount; block++) {
-    const assignment = manualAssignments
-      ? manualAssignments[block]
-      : splitIntoTwoGroupsBalanced(players, groupTogetherCounts, rand);
-    assignments.push(assignment);
+    const groups = manualAssignments
+      ? manualAssignments[block].groups
+      : splitIntoGroupsBalanced(players, courtCount, groupTogetherCounts, rand);
+    assignments.push({ groups });
 
-    const { rounds: courtARounds } = generateGroupRounds(assignment.courtA, roundsPerBlock, globalRoundNumber, rand);
-    const { rounds: courtBRounds } = generateGroupRounds(assignment.courtB, roundsPerBlock, globalRoundNumber, rand);
+    const perGroupRounds = groups.map(group => generateGroupRounds(group, roundsPerBlock, rand));
 
     for (let i = 0; i < roundsPerBlock; i++) {
-      const a = courtARounds[i];
-      const b = courtBRounds[i];
-      rounds.push({
-        roundNumber: globalRoundNumber++,
-        court1: { teamA: a.teams[0], teamB: a.teams[1] },
-        court2: { teamA: b.teams[0], teamB: b.teams[1] },
-        sittingOutCourt1: a.sittingOut,
-        sittingOutCourt2: b.sittingOut,
-      });
+      const courts: CourtMatch[] = [];
+      const sittingOutPerCourt: string[][] = [];
+      for (const groupRounds of perGroupRounds) {
+        const r = groupRounds[i];
+        courts.push({ teamA: r.teams[0], teamB: r.teams[1] });
+        sittingOutPerCourt.push(r.sittingOut);
+      }
+      rounds.push({ roundNumber: globalRoundNumber++, courts, sittingOutPerCourt });
     }
   }
 

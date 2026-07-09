@@ -11,7 +11,7 @@ export interface SessionRow {
   squads: Squads | null;
   round_count: number;
   status: 'setup' | 'in_progress' | 'completed';
-  court_labels: [string, string];
+  court_labels: string[];
   round_duration_minutes: number | null;
   rounds_per_block: number | null;
   group_name: string | null;
@@ -23,7 +23,7 @@ export interface RoundRow {
   id: string;
   session_id: string;
   round_number: number;
-  court: 1 | 2;
+  court: number;
   team_a: [string, string];
   team_b: [string, string];
   sitting_out: string[];
@@ -40,7 +40,7 @@ export interface CreateSessionOptions {
   format: Format;
   roundCount: number;
   squads: Squads | null;
-  courtLabels: [string, string];
+  courtLabels: string[];
   roundDurationMinutes: number | null;
   roundsPerBlock: number | null;
   groupName: string | null;
@@ -69,28 +69,18 @@ export async function createSession(options: CreateSessionOptions): Promise<stri
 }
 
 export async function insertRounds(sessionId: string, rounds: ScrambleRound[]): Promise<void> {
-  const rows = rounds.flatMap(r => [
-    {
+  const rows = rounds.flatMap(r =>
+    r.courts.map((court, i) => ({
       session_id: sessionId,
       round_number: r.roundNumber,
-      court: 1,
-      team_a: r.court1.teamA,
-      team_b: r.court1.teamB,
-      sitting_out: r.sittingOutCourt1,
+      court: i + 1,
+      team_a: court.teamA,
+      team_b: court.teamB,
+      sitting_out: r.sittingOutPerCourt[i],
       score_a: null,
       score_b: null,
-    },
-    {
-      session_id: sessionId,
-      round_number: r.roundNumber,
-      court: 2,
-      team_a: r.court2.teamA,
-      team_b: r.court2.teamB,
-      sitting_out: r.sittingOutCourt2,
-      score_a: null,
-      score_b: null,
-    },
-  ]);
+    }))
+  );
   const { error } = await supabase.from('rounds').insert(rows);
   if (error) throw error;
 }
