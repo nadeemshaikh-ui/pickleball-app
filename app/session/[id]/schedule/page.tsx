@@ -12,6 +12,7 @@ import SessionDate from '@/components/SessionDate';
 import GroupHeader from '@/components/GroupHeader';
 import { ChairIcon, WhatsAppIcon } from '@/components/icons';
 import { formatLabel } from '@/lib/formatLabel';
+import ScheduleImageTemplate from '@/components/ScheduleImageTemplate';
 
 export default function SchedulePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -23,7 +24,7 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
   const [nameError, setNameError] = useState<string | null>(null);
   const [sharingImage, setSharingImage] = useState(false);
   const [imageShareError, setImageShareError] = useState<string | null>(null);
-  const captureRef = useRef<HTMLDivElement>(null);
+  const tableCaptureRef = useRef<HTMLDivElement>(null);
 
   async function reload() {
     const [s, r] = await Promise.all([getSession(id), getRounds(id)]);
@@ -75,11 +76,11 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
   const sortedRoundNumbers = [...byRound.keys()].sort((a, b) => a - b);
 
   async function handleShareImage() {
-    if (!captureRef.current) return;
+    if (!tableCaptureRef.current) return;
     setImageShareError(null);
     setSharingImage(true);
     try {
-      await shareElementAsImage(captureRef.current, `schedule-${id}.png`);
+      await shareElementAsImage(tableCaptureRef.current, `schedule-${id}.png`);
     } catch (e) {
       setImageShareError(e instanceof Error ? e.message : 'Failed to share image.');
     } finally {
@@ -115,7 +116,7 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
         </Link>
 
         <button className="btn-secondary" onClick={handleShareImage} disabled={sharingImage} style={{ width: '100%', marginTop: 10 }}>
-          {sharingImage ? 'Preparing Image…' : 'Share Full Schedule as Image'}
+          {sharingImage ? 'Preparing Image…' : 'Share Schedule Table as Image'}
         </button>
         {imageShareError && <p style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 14, marginTop: 6 }}>{imageShareError}</p>}
 
@@ -143,7 +144,15 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
           </div>
         )}
 
-        <div ref={captureRef} style={{ marginTop: 20 }}>
+        {session && (
+          <div style={{ position: 'fixed', left: -99999, top: 0 }} aria-hidden="true">
+            <div ref={tableCaptureRef}>
+              <ScheduleImageTemplate session={session} rounds={rounds} />
+            </div>
+          </div>
+        )}
+
+        <div style={{ marginTop: 20 }}>
           {sortedRoundNumbers.map(roundNumber => {
             const courts = byRound.get(roundNumber)!.sort((a, b) => a.court - b.court);
             const sameSitOut =
