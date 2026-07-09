@@ -9,6 +9,7 @@ import SessionNav from '@/components/SessionNav';
 import Avatar from '@/components/Avatar';
 import NewSessionLink from '@/components/NewSessionLink';
 import SessionDate from '@/components/SessionDate';
+import GroupHeader from '@/components/GroupHeader';
 
 const POLL_INTERVAL_MS = 4000;
 
@@ -51,6 +52,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
     <>
       <main className="page">
         <NewSessionLink />
+        {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
         <h1>Leaderboard</h1>
         {session && <SessionDate createdAt={session.created_at} />}
         <p style={{ color: 'var(--muted)', marginTop: 4 }}>

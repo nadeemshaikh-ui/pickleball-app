@@ -5,6 +5,9 @@ import {
   computeBestPartnership,
   computeLongestWinStreak,
   computeSessionTotals,
+  computeSitOutChampion,
+  computePerfectRecord,
+  computeNailBiters,
 } from './gameStats';
 
 function scoreLine(r: RoundRow): string {
@@ -32,6 +35,17 @@ export function formatAnalyticsAsText(rounds: RoundRow[]): string {
   const streak = computeLongestWinStreak(rounds);
   if (streak && streak.streak > 0) {
     lines.push(`Longest win streak: ${streak.name} — ${streak.streak} in a row`);
+  }
+
+  const nailBiters = computeNailBiters(rounds);
+  if (nailBiters > 0) lines.push(`Nail-biters (≤2 pts): ${nailBiters}`);
+
+  const sitOutChampion = computeSitOutChampion(rounds);
+  if (sitOutChampion) lines.push(`Most rest taken: ${sitOutChampion.name} (${sitOutChampion.count} rounds)`);
+
+  const perfectRecord = computePerfectRecord(rounds);
+  if (perfectRecord.length > 0) {
+    lines.push(`Perfect record: ${perfectRecord.map(p => `${p.name} (${p.wins}-0)`).join(', ')}`);
   }
 
   return lines.join('\n');

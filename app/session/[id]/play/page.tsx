@@ -59,6 +59,9 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
           const courts = rounds.filter(r => r.round_number === roundNumber).sort((a, b) => a.court - b.court);
           const isDone = courts.every(c => c.score_a !== null && c.score_b !== null);
           const isCurrent = roundNumber === currentRoundNumber;
+          const sameSitOut =
+            courts.length === 2 &&
+            JSON.stringify([...courts[0].sitting_out].sort()) === JSON.stringify([...courts[1].sitting_out].sort());
 
           return (
             <div key={roundNumber} className={`round-card ${isCurrent ? 'is-current' : ''} ${isDone ? 'is-done' : ''}`}>
@@ -104,11 +107,16 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                       </div>
                       {savingCourtId === court.id && <span style={{ fontSize: 12, color: 'var(--muted)' }}>Saving…</span>}
                     </div>
+                    {!sameSitOut && court.sitting_out.length > 0 && (
+                      <div className="sitting-note">Sitting: {court.sitting_out.join(', ')}</div>
+                    )}
                   </div>
                 );
               })}
 
-              <div className="sitting-note">Sitting: {courts[0]?.sitting_out.join(', ')}</div>
+              {sameSitOut && courts[0]?.sitting_out.length > 0 && (
+                <div className="sitting-note">Sitting: {courts[0].sitting_out.join(', ')}</div>
+              )}
             </div>
           );
         })}

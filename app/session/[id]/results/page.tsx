@@ -11,6 +11,7 @@ import Avatar from '@/components/Avatar';
 import Celebration from '@/components/Celebration';
 import NewSessionLink from '@/components/NewSessionLink';
 import SessionDate from '@/components/SessionDate';
+import GroupHeader from '@/components/GroupHeader';
 
 export default function ResultsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -55,6 +56,7 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
       )}
       <main className="page">
         <NewSessionLink />
+        {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
         <h1>Results</h1>
         {session && <SessionDate createdAt={session.created_at} />}
 

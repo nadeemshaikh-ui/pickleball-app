@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { seededRandom, generateScrambleSchedule, generateSquadRivalrySchedule } from './shuffle';
+import {
+  seededRandom,
+  generateScrambleSchedule,
+  generateSquadRivalrySchedule,
+  generateCourtBlocksSchedule,
+} from './shuffle';
 
 describe('seededRandom', () => {
   it('produces the same sequence for the same seed', () => {
@@ -30,8 +35,9 @@ describe('generateScrambleSchedule', () => {
     for (const round of rounds) {
       const playing = [...round.court1.teamA, ...round.court1.teamB, ...round.court2.teamA, ...round.court2.teamB];
       expect(new Set(playing).size).toBe(8);
-      expect(round.sittingOut).toHaveLength(2);
-      const overlap = playing.filter(p => round.sittingOut.includes(p));
+      expect(round.sittingOutCourt1).toHaveLength(2);
+      expect(round.sittingOutCourt1).toEqual(round.sittingOutCourt2);
+      const overlap = playing.filter(p => round.sittingOutCourt1.includes(p));
       expect(overlap).toHaveLength(0);
     }
   });
@@ -40,7 +46,7 @@ describe('generateScrambleSchedule', () => {
     const rounds = generateScrambleSchedule(players, 12, 'seed-a');
     const sitCounts: Record<string, number> = Object.fromEntries(players.map(p => [p, 0]));
     for (const round of rounds) {
-      for (const p of round.sittingOut) sitCounts[p]++;
+      for (const p of round.sittingOutCourt1) sitCounts[p]++;
     }
     const counts = Object.values(sitCounts);
     expect(Math.max(...counts) - Math.min(...counts)).toBeLessThanOrEqual(1);
@@ -52,8 +58,22 @@ describe('generateScrambleSchedule', () => {
     expect(a).toEqual(b);
   });
 
-  it('throws if given fewer than 10 players', () => {
+  it('throws if given fewer than 8 players', () => {
     expect(() => generateScrambleSchedule(['P1', 'P2'], 4, 'seed-a')).toThrow();
+  });
+
+  it('throws if given an odd number of players', () => {
+    expect(() => generateScrambleSchedule([...players, 'P11'], 4, 'seed-a')).toThrow();
+  });
+
+  it('works with a different even player count (12), scaling sit-outs to 4', () => {
+    const twelve = [...players, 'P11', 'P12'];
+    const rounds = generateScrambleSchedule(twelve, 6, 'seed-a');
+    for (const round of rounds) {
+      const playing = [...round.court1.teamA, ...round.court1.teamB, ...round.court2.teamA, ...round.court2.teamB];
+      expect(new Set(playing).size).toBe(8);
+      expect(round.sittingOutCourt1).toHaveLength(4);
+    }
   });
 });
 
@@ -83,6 +103,51 @@ describe('generateSquadRivalrySchedule', () => {
   it('is deterministic for the same seed', () => {
     const a = generateSquadRivalrySchedule(players, 12, 'seed-b');
     const b = generateSquadRivalrySchedule(players, 12, 'seed-b');
+    expect(a).toEqual(b);
+  });
+});
+
+describe('generateCourtBlocksSchedule', () => {
+  const players = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10'];
+
+  it('generates roundsPerBlock * blockCount total rounds', () => {
+    const { rounds } = generateCourtBlocksSchedule(players, 6, 2, 'seed-c');
+    expect(rounds).toHaveLength(12);
+  });
+
+  it('keeps each court group fixed for the whole block', () => {
+    const { assignments, rounds } = generateCourtBlocksSchedule(players, 6, 2, 'seed-c');
+    const block1Rounds = rounds.slice(0, 6);
+    const groupA = new Set(assignments[0].courtA);
+    for (const round of block1Rounds) {
+      const court1Players = [...round.court1.teamA, ...round.court1.teamB, ...round.sittingOutCourt1];
+      expect(new Set(court1Players)).toEqual(groupA);
+    }
+  });
+
+  it('sitting-out differs independently per court (unlike Scramble/Squad)', () => {
+    const { rounds } = generateCourtBlocksSchedule(players, 6, 2, 'seed-c');
+    const differingRound = rounds.find(r => JSON.stringify(r.sittingOutCourt1) !== JSON.stringify(r.sittingOutCourt2));
+    expect(differingRound).toBeDefined();
+  });
+
+  it('accepts manual block assignments instead of auto-splitting', () => {
+    const manual = [
+      { courtA: ['P1', 'P2', 'P3', 'P4', 'P5'], courtB: ['P6', 'P7', 'P8', 'P9', 'P10'] },
+      { courtA: ['P6', 'P7', 'P8', 'P9', 'P10'], courtB: ['P1', 'P2', 'P3', 'P4', 'P5'] },
+    ];
+    const { assignments } = generateCourtBlocksSchedule(players, 6, 2, 'seed-c', manual);
+    expect(assignments).toEqual(manual);
+  });
+
+  it('throws if manual assignments count does not match blockCount', () => {
+    const manual = [{ courtA: ['P1', 'P2', 'P3', 'P4', 'P5'], courtB: ['P6', 'P7', 'P8', 'P9', 'P10'] }];
+    expect(() => generateCourtBlocksSchedule(players, 6, 2, 'seed-c', manual)).toThrow();
+  });
+
+  it('is deterministic for the same seed (auto mode)', () => {
+    const a = generateCourtBlocksSchedule(players, 6, 2, 'seed-c');
+    const b = generateCourtBlocksSchedule(players, 6, 2, 'seed-c');
     expect(a).toEqual(b);
   });
 });

@@ -8,6 +8,7 @@ import { shareToWhatsApp } from '@/lib/whatsapp';
 import SessionNav from '@/components/SessionNav';
 import NewSessionLink from '@/components/NewSessionLink';
 import SessionDate from '@/components/SessionDate';
+import GroupHeader from '@/components/GroupHeader';
 
 export default function SchedulePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -78,6 +79,7 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
     <>
       <main className="page">
         <NewSessionLink />
+        {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
         <h1>Schedule</h1>
         {session && <SessionDate createdAt={session.created_at} />}
         {session?.round_duration_minutes && (
@@ -130,6 +132,9 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
 
         {sortedRoundNumbers.map(roundNumber => {
           const courts = byRound.get(roundNumber)!.sort((a, b) => a.court - b.court);
+          const sameSitOut =
+            courts.length === 2 &&
+            JSON.stringify([...courts[0].sitting_out].sort()) === JSON.stringify([...courts[1].sitting_out].sort());
           return (
             <div key={roundNumber} className="round-card">
               <div className="round-card-header">
@@ -147,9 +152,14 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
                       <div className="team-names">{c.team_b.join(' & ')}</div>
                     </div>
                   </div>
+                  {!sameSitOut && c.sitting_out.length > 0 && (
+                    <div className="sitting-note">Sitting: {c.sitting_out.join(', ')}</div>
+                  )}
                 </div>
               ))}
-              <div className="sitting-note">Sitting: {courts[0].sitting_out.join(', ')}</div>
+              {sameSitOut && courts[0].sitting_out.length > 0 && (
+                <div className="sitting-note">Sitting: {courts[0].sitting_out.join(', ')}</div>
+              )}
             </div>
           );
         })}

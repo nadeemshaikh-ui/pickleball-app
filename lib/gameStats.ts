@@ -117,3 +117,63 @@ export function computeTopScorer(rounds: RoundRow[]): TopScorer | null {
   }
   return best;
 }
+
+export interface SitOutStats {
+  name: string;
+  count: number;
+}
+
+// Counts sit-outs per round, not per row — a player sitting out shows up on
+// both court rows for that round in Scramble/Squad Rivalry (shared sit-out
+// list), so counting rows directly would double it.
+export function computeSitOutChampion(rounds: RoundRow[]): SitOutStats | null {
+  const byRound = new Map<number, Set<string>>();
+  for (const r of rounds) {
+    const set = byRound.get(r.round_number) ?? new Set<string>();
+    for (const p of r.sitting_out) set.add(p);
+    byRound.set(r.round_number, set);
+  }
+  const counts = new Map<string, number>();
+  for (const set of byRound.values()) {
+    for (const p of set) counts.set(p, (counts.get(p) ?? 0) + 1);
+  }
+  let best: SitOutStats | null = null;
+  for (const [name, count] of counts) {
+    if (!best || count > best.count) best = { name, count };
+  }
+  return best;
+}
+
+export interface PerfectRecordPlayer {
+  name: string;
+  wins: number;
+}
+
+// Players who have won every game they've played (at least one game).
+export function computePerfectRecord(rounds: RoundRow[]): PerfectRecordPlayer[] {
+  const scored = scoredRounds(rounds);
+  const stats = new Map<string, { wins: number; losses: number }>();
+
+  for (const r of scored) {
+    const aWon = r.score_a! > r.score_b!;
+    for (const p of r.team_a) {
+      const s = stats.get(p) ?? { wins: 0, losses: 0 };
+      aWon ? s.wins++ : s.losses++;
+      stats.set(p, s);
+    }
+    for (const p of r.team_b) {
+      const s = stats.get(p) ?? { wins: 0, losses: 0 };
+      !aWon ? s.wins++ : s.losses++;
+      stats.set(p, s);
+    }
+  }
+
+  return [...stats.entries()]
+    .filter(([, s]) => s.losses === 0 && s.wins > 0)
+    .map(([name, s]) => ({ name, wins: s.wins }));
+}
+
+// Counts scored games decided by a small margin (default: 2 points or fewer).
+export function computeNailBiters(rounds: RoundRow[], marginThreshold = 2): number {
+  return scoredRounds(rounds).filter(r => Math.abs(r.score_a! - r.score_b!) <= marginThreshold).length;
+}

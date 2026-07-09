@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import type { ScrambleRound, Squads } from './shuffle';
 
-export type Format = 'scramble' | 'squad_rivalry';
+export type Format = 'scramble' | 'squad_rivalry' | 'court_blocks';
 
 export interface SessionRow {
   id: string;
@@ -13,6 +13,10 @@ export interface SessionRow {
   status: 'setup' | 'in_progress' | 'completed';
   court_labels: [string, string];
   round_duration_minutes: number | null;
+  rounds_per_block: number | null;
+  group_name: string | null;
+  logo_url_1: string | null;
+  logo_url_2: string | null;
 }
 
 export interface RoundRow {
@@ -31,23 +35,33 @@ function randomSessionId(): string {
   return Math.random().toString(36).slice(2, 8);
 }
 
-export async function createSession(
-  players: string[],
-  format: Format,
-  roundCount: number,
-  squads: Squads | null,
-  courtLabels: [string, string],
-  roundDurationMinutes: number | null
-): Promise<string> {
+export interface CreateSessionOptions {
+  players: string[];
+  format: Format;
+  roundCount: number;
+  squads: Squads | null;
+  courtLabels: [string, string];
+  roundDurationMinutes: number | null;
+  roundsPerBlock: number | null;
+  groupName: string | null;
+  logoUrl1: string | null;
+  logoUrl2: string | null;
+}
+
+export async function createSession(options: CreateSessionOptions): Promise<string> {
   const id = randomSessionId();
   const { error } = await supabase.from('sessions').insert({
     id,
-    format,
-    players,
-    squads,
-    round_count: roundCount,
-    court_labels: courtLabels,
-    round_duration_minutes: roundDurationMinutes,
+    format: options.format,
+    players: options.players,
+    squads: options.squads,
+    round_count: options.roundCount,
+    court_labels: options.courtLabels,
+    round_duration_minutes: options.roundDurationMinutes,
+    rounds_per_block: options.roundsPerBlock,
+    group_name: options.groupName,
+    logo_url_1: options.logoUrl1,
+    logo_url_2: options.logoUrl2,
     status: 'in_progress',
   });
   if (error) throw error;
@@ -62,7 +76,7 @@ export async function insertRounds(sessionId: string, rounds: ScrambleRound[]): 
       court: 1,
       team_a: r.court1.teamA,
       team_b: r.court1.teamB,
-      sitting_out: r.sittingOut,
+      sitting_out: r.sittingOutCourt1,
       score_a: null,
       score_b: null,
     },
@@ -72,13 +86,22 @@ export async function insertRounds(sessionId: string, rounds: ScrambleRound[]): 
       court: 2,
       team_a: r.court2.teamA,
       team_b: r.court2.teamB,
-      sitting_out: r.sittingOut,
+      sitting_out: r.sittingOutCourt2,
       score_a: null,
       score_b: null,
     },
   ]);
   const { error } = await supabase.from('rounds').insert(rows);
   if (error) throw error;
+}
+
+export async function uploadGroupLogo(file: File): Promise<string> {
+  const ext = file.name.split('.').pop() ?? 'png';
+  const path = `${Math.random().toString(36).slice(2)}.${ext}`;
+  const { error } = await supabase.storage.from('group-logos').upload(path, file);
+  if (error) throw error;
+  const { data } = supabase.storage.from('group-logos').getPublicUrl(path);
+  return data.publicUrl;
 }
 
 export async function getSession(sessionId: string): Promise<SessionRow> {

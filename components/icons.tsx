@@ -85,6 +85,26 @@ export function BurstIcon({ size = 24 }: IconProps) {
   );
 }
 
+export function ChairIcon({ size = 24 }: IconProps) {
+  return (
+    <svg {...base(size)}>
+      <path d="M6 4v9a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4" />
+      <path d="M6 13v7" />
+      <path d="M18 13v7" />
+      <path d="M8 20h8" />
+    </svg>
+  );
+}
+
+export function ShieldCheckIcon({ size = 24 }: IconProps) {
+  return (
+    <svg {...base(size)}>
+      <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3Z" />
+      <path d="M9 12l2 2 4-4" />
+    </svg>
+  );
+}
+
 export function CalendarIcon({ size = 16 }: IconProps) {
   return (
     <svg {...base(size)}>

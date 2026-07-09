@@ -9,13 +9,27 @@ import {
   computeLongestWinStreak,
   computeSessionTotals,
   computeTopScorer,
+  computeSitOutChampion,
+  computePerfectRecord,
+  computeNailBiters,
 } from '@/lib/gameStats';
 import { formatAnalyticsAsText } from '@/lib/analyticsText';
 import { shareToWhatsApp } from '@/lib/whatsapp';
 import SessionNav from '@/components/SessionNav';
 import NewSessionLink from '@/components/NewSessionLink';
 import SessionDate from '@/components/SessionDate';
-import { TargetIcon, FlameIcon, BoltIcon, BurstIcon, HandshakeIcon, TrendUpIcon, StarIcon } from '@/components/icons';
+import GroupHeader from '@/components/GroupHeader';
+import {
+  TargetIcon,
+  FlameIcon,
+  BoltIcon,
+  BurstIcon,
+  HandshakeIcon,
+  TrendUpIcon,
+  StarIcon,
+  ChairIcon,
+  ShieldCheckIcon,
+} from '@/components/icons';
 
 function scoreLine(r: RoundRow): string {
   return `${r.team_a.join(' & ')} ${r.score_a} - ${r.score_b} ${r.team_b.join(' & ')}`;
@@ -41,11 +55,15 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
   const streak = computeLongestWinStreak(rounds);
   const totals = computeSessionTotals(rounds);
   const topScorer = computeTopScorer(rounds);
+  const sitOutChampion = computeSitOutChampion(rounds);
+  const perfectRecord = computePerfectRecord(rounds);
+  const nailBiters = computeNailBiters(rounds);
 
   return (
     <>
       <main className="page">
         <NewSessionLink />
+        {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
         <h1>Today&apos;s Analytics</h1>
         {session && <SessionDate createdAt={session.created_at} />}
         <p style={{ color: 'var(--muted)', marginTop: 4 }}>
@@ -125,6 +143,38 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
             <div>
               <div className="stat-label">Longest Win Streak</div>
               <div className="stat-value">{streak.name} — {streak.streak} in a row</div>
+            </div>
+          </div>
+        )}
+
+        {nailBiters > 0 && (
+          <div className="card stat-card">
+            <span className="stat-icon" style={{ color: 'var(--danger)' }}><FlameIcon size={28} /></span>
+            <div>
+              <div className="stat-label">Nail-Biters</div>
+              <div className="stat-value">{nailBiters} game{nailBiters === 1 ? '' : 's'} decided by 2 points or fewer</div>
+            </div>
+          </div>
+        )}
+
+        {sitOutChampion && (
+          <div className="card stat-card">
+            <span className="stat-icon" style={{ color: 'var(--muted)' }}><ChairIcon size={28} /></span>
+            <div>
+              <div className="stat-label">Most Rest Taken</div>
+              <div className="stat-value">{sitOutChampion.name} — sat out {sitOutChampion.count} round{sitOutChampion.count === 1 ? '' : 's'}</div>
+            </div>
+          </div>
+        )}
+
+        {perfectRecord.length > 0 && (
+          <div className="card stat-card">
+            <span className="stat-icon" style={{ color: 'var(--primary)' }}><ShieldCheckIcon size={28} /></span>
+            <div>
+              <div className="stat-label">Perfect Record</div>
+              <div className="stat-value">
+                {perfectRecord.map(p => `${p.name} (${p.wins}-0)`).join(', ')}
+              </div>
             </div>
           </div>
         )}
