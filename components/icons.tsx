@@ -11,6 +11,14 @@ const base = (size: number) => ({
   strokeLinejoin: 'round' as const,
 });
 
+export function ActivityIcon({ size = 24 }: IconProps) {
+  return (
+    <svg {...base(size)}>
+      <path d="M3 12h4l2-7 4 14 2-7h6" />
+    </svg>
+  );
+}
+
 export function TargetIcon({ size = 24 }: IconProps) {
   return (
     <svg {...base(size)}>

@@ -12,6 +12,7 @@ import {
   computeSitOutChampion,
   computePerfectRecord,
   computeNailBiters,
+  computeMostGamesPlayed,
 } from '@/lib/gameStats';
 import { formatAnalyticsAsText } from '@/lib/analyticsText';
 import { shareToWhatsApp } from '@/lib/whatsapp';
@@ -30,6 +31,7 @@ import {
   ChairIcon,
   ShieldCheckIcon,
   WhatsAppIcon,
+  ActivityIcon,
 } from '@/components/icons';
 
 function scoreLine(r: RoundRow): string {
@@ -59,6 +61,7 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
   const sitOutChampion = computeSitOutChampion(rounds);
   const perfectRecord = computePerfectRecord(rounds);
   const nailBiters = computeNailBiters(rounds);
+  const mostGamesPlayed = computeMostGamesPlayed(rounds);
 
   return (
     <>
@@ -165,6 +168,16 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
             <div>
               <div className="stat-label">Most Rest Taken</div>
               <div className="stat-value">{sitOutChampion.name} — sat out {sitOutChampion.count} round{sitOutChampion.count === 1 ? '' : 's'}</div>
+            </div>
+          </div>
+        )}
+
+        {mostGamesPlayed && (
+          <div className="card stat-card">
+            <span className="stat-icon" style={{ color: 'var(--dark)' }}><ActivityIcon size={28} /></span>
+            <div>
+              <div className="stat-label">Most Games Played</div>
+              <div className="stat-value">{mostGamesPlayed.name} — {mostGamesPlayed.gamesPlayed} games</div>
             </div>
           </div>
         )}

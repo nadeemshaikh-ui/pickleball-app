@@ -83,6 +83,19 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
         )}
 
         <h2>Standings</h2>
+        {leaderboard.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', padding: '0 8px', marginBottom: 6 }}>
+            <span style={{ width: 30 }} />
+            <span style={{ width: 24 }} />
+            <span style={{ flex: 1, fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>
+              Player
+            </span>
+            <span style={{ flex: '1 1 auto', maxWidth: 80 }} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', textAlign: 'right' }}>
+              Win–Loss · Points For–Against
+            </span>
+          </div>
+        )}
         <div className="card">
           {leaderboard.length === 0 && (
             <p style={{ color: 'var(--muted)', fontSize: 14 }}>No games scored yet.</p>

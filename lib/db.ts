@@ -17,6 +17,7 @@ export interface SessionRow {
   group_name: string | null;
   logo_url_1: string | null;
   logo_url_2: string | null;
+  start_time: string | null;
 }
 
 export interface RoundRow {
@@ -46,6 +47,7 @@ export interface CreateSessionOptions {
   groupName: string | null;
   logoUrl1: string | null;
   logoUrl2: string | null;
+  startTime: string | null;
 }
 
 export async function createSession(options: CreateSessionOptions): Promise<string> {
@@ -62,6 +64,7 @@ export async function createSession(options: CreateSessionOptions): Promise<stri
     group_name: options.groupName,
     logo_url_1: options.logoUrl1,
     logo_url_2: options.logoUrl2,
+    start_time: options.startTime,
     status: 'in_progress',
   });
   if (error) throw error;
@@ -100,6 +103,22 @@ export async function uploadGroupLogo(file: File): Promise<string> {
   const { error } = await supabase.storage.from('group-logos').upload(path, file);
   if (error) throw error;
   const { data } = supabase.storage.from('group-logos').getPublicUrl(path);
+  return data.publicUrl;
+}
+
+export async function uploadPlayerPhoto(file: File): Promise<string> {
+  if (!file.type.startsWith('image/')) {
+    throw new Error('Photo must be an image file.');
+  }
+  if (file.size > MAX_LOGO_BYTES) {
+    throw new Error('Photo must be under 5MB.');
+  }
+  const dotIndex = file.name.lastIndexOf('.');
+  const ext = dotIndex > 0 ? file.name.slice(dotIndex + 1) : 'png';
+  const path = `${Math.random().toString(36).slice(2)}.${ext}`;
+  const { error } = await supabase.storage.from('player-photos').upload(path, file);
+  if (error) throw error;
+  const { data } = supabase.storage.from('player-photos').getPublicUrl(path);
   return data.publicUrl;
 }
 

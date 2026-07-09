@@ -177,3 +177,23 @@ export function computePerfectRecord(rounds: RoundRow[]): PerfectRecordPlayer[] 
 export function computeNailBiters(rounds: RoundRow[], marginThreshold = 2): number {
   return scoredRounds(rounds).filter(r => Math.abs(r.score_a! - r.score_b!) <= marginThreshold).length;
 }
+
+export interface GamesPlayedStats {
+  name: string;
+  gamesPlayed: number;
+}
+
+// With multiple courts and uneven sit-out counts, games-played can genuinely
+// differ between players — this surfaces who's gotten the most court time.
+export function computeMostGamesPlayed(rounds: RoundRow[]): GamesPlayedStats | null {
+  const scored = scoredRounds(rounds);
+  const counts = new Map<string, number>();
+  for (const r of scored) {
+    for (const p of [...r.team_a, ...r.team_b]) counts.set(p, (counts.get(p) ?? 0) + 1);
+  }
+  let best: GamesPlayedStats | null = null;
+  for (const [name, gamesPlayed] of counts) {
+    if (!best || gamesPlayed > best.gamesPlayed) best = { name, gamesPlayed };
+  }
+  return best;
+}

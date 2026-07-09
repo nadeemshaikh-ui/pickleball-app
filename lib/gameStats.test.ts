@@ -9,6 +9,7 @@ import {
   computeSitOutChampion,
   computePerfectRecord,
   computeNailBiters,
+  computeMostGamesPlayed,
 } from './gameStats';
 import type { RoundRow } from './db';
 
@@ -100,5 +101,13 @@ describe('computePerfectRecord', () => {
 describe('computeNailBiters', () => {
   it('counts scored games decided by 2 points or fewer', () => {
     expect(computeNailBiters(rounds)).toBe(1);
+  });
+});
+
+describe('computeMostGamesPlayed', () => {
+  it('finds the player who has played the most games', () => {
+    const best = computeMostGamesPlayed(rounds);
+    expect(best?.name).toBe('A');
+    expect(best?.gamesPlayed).toBe(2);
   });
 });

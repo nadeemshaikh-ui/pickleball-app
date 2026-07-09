@@ -1,5 +1,6 @@
 import type { RoundRow, SessionRow } from '@/lib/db';
 import { formatLabel } from '@/lib/formatLabel';
+import { computeRoundTimeRange } from '@/lib/roundTiming';
 
 export default function ScheduleImageTemplate({
   session,
@@ -52,7 +53,7 @@ export default function ScheduleImageTemplate({
         <thead>
           <tr>
             <th style={{ ...cellStyle, background: '#121a2f', color: '#e5fa00', fontFamily: 'var(--font-display), sans-serif', fontSize: 22 }}>
-              ROUND
+              {session.start_time && session.round_duration_minutes ? 'TIME' : 'ROUND'}
             </th>
             {courtLabels.map((label, i) => (
               <th
@@ -71,10 +72,11 @@ export default function ScheduleImageTemplate({
           {sortedRoundNumbers.map((roundNumber, rowIndex) => {
             const courts = byRound.get(roundNumber)!.sort((a, b) => a.court - b.court);
             const sittingNames = [...new Set(courts.flatMap(c => c.sitting_out))];
+            const timeRange = computeRoundTimeRange(session.start_time, session.round_duration_minutes, roundNumber);
             return (
               <tr key={roundNumber} style={{ background: rowIndex % 2 === 0 ? '#ffffff' : '#f5f5dc' }}>
-                <td style={{ ...cellStyle, fontFamily: 'var(--font-display), sans-serif', fontSize: 26, textAlign: 'center' }}>
-                  {roundNumber}
+                <td style={{ ...cellStyle, fontFamily: 'var(--font-display), sans-serif', fontSize: timeRange ? 18 : 26, textAlign: 'center' }}>
+                  {timeRange ?? `R${roundNumber}`}
                 </td>
                 {courtLabels.map((_, courtIndex) => {
                   const court = courts.find(c => c.court === courtIndex + 1);

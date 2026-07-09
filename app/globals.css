@@ -399,14 +399,14 @@ h2 {
 .resting-badge {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-  padding: 7px 14px;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 18px;
   background: white;
   border: 2px solid var(--border);
   border-radius: 999px;
   color: var(--dark);
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -421,10 +421,10 @@ h2 {
 .meta-bar {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
+  gap: 8px;
+  margin-top: 12px;
   font-family: var(--font-display), sans-serif;
-  font-size: 13px;
+  font-size: 16px;
   letter-spacing: 0.04em;
   color: var(--dark);
 }

@@ -8,6 +8,7 @@ import {
   computeSitOutChampion,
   computePerfectRecord,
   computeNailBiters,
+  computeMostGamesPlayed,
 } from './gameStats';
 
 function scoreLine(r: RoundRow): string {
@@ -47,6 +48,9 @@ export function formatAnalyticsAsText(rounds: RoundRow[]): string {
   if (perfectRecord.length > 0) {
     lines.push(`Perfect record: ${perfectRecord.map(p => `${p.name} (${p.wins}-0)`).join(', ')}`);
   }
+
+  const mostGamesPlayed = computeMostGamesPlayed(rounds);
+  if (mostGamesPlayed) lines.push(`Most games played: ${mostGamesPlayed.name} (${mostGamesPlayed.gamesPlayed})`);
 
   return lines.join('\n');
 }

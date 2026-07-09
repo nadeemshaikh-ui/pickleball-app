@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import { getSession, getRounds, updateRoundScore, markSessionCompleted, type RoundRow, type SessionRow } from '@/lib/db';
 import SessionNav from '@/components/SessionNav';
+import GroupHeader from '@/components/GroupHeader';
 import { ChairIcon } from '@/components/icons';
 import { formatLabel } from '@/lib/formatLabel';
 
@@ -52,6 +53,7 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
   return (
     <>
       <main className="page">
+        {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
         <h1>Live Scoring</h1>
         <p style={{ color: 'var(--muted)', marginTop: 4 }}>
           Round {currentRoundNumber ?? session?.round_count ?? '—'} of {session?.round_count ?? '…'} — tap a score box to enter, it saves automatically
@@ -111,7 +113,7 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                     </div>
                     {!sameSitOut && court.sitting_out.length > 0 && (
                       <div className="resting-badge">
-                        <span className="stat-icon"><ChairIcon size={16} /></span>
+                        <span className="stat-icon"><ChairIcon size={20} /></span>
                         Resting: {court.sitting_out.join(', ')}
                       </div>
                     )}
@@ -121,7 +123,7 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
 
               {sameSitOut && courts[0]?.sitting_out.length > 0 && (
                 <div className="resting-badge">
-                  <span className="stat-icon"><ChairIcon size={16} /></span>
+                  <span className="stat-icon"><ChairIcon size={20} /></span>
                   Resting: {courts[0].sitting_out.join(', ')}
                 </div>
               )}

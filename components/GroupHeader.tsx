@@ -10,15 +10,27 @@ export default function GroupHeader({
   if (!groupName && !logoUrl1 && !logoUrl2) return null;
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 16 }}>
       {logoUrl1 && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={logoUrl1} alt="" style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }} />
+        <img
+          src={logoUrl1}
+          alt={groupName ? `${groupName} logo 1` : 'Group logo'}
+          style={{ width: 72, height: 72, borderRadius: 8, objectFit: 'cover', border: '2px solid var(--border)', boxShadow: 'var(--shadow)', flex: '0 0 auto' }}
+        />
       )}
-      {groupName && <span style={{ fontWeight: 800, fontSize: 16 }}>{groupName}</span>}
+      {groupName && (
+        <span style={{ fontFamily: 'var(--font-display), sans-serif', fontSize: 30, textAlign: 'center', lineHeight: 1.05 }}>
+          {groupName.toUpperCase()}
+        </span>
+      )}
       {logoUrl2 && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={logoUrl2} alt="" style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }} />
+        <img
+          src={logoUrl2}
+          alt={groupName ? `${groupName} logo 2` : 'Group logo'}
+          style={{ width: 72, height: 72, borderRadius: 8, objectFit: 'cover', border: '2px solid var(--border)', boxShadow: 'var(--shadow)', flex: '0 0 auto' }}
+        />
       )}
     </div>
   );

@@ -77,6 +77,9 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
         )}
 
         <h2>Podium</h2>
+        <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', padding: '0 8px', marginBottom: 4 }}>
+          Rank · Player · Win–Loss (Win %)
+        </p>
         <div className="card">
           {top3.map((p, i) => (
             <div key={p.name} className="leaderboard-row">
@@ -89,16 +92,19 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
         </div>
 
         <h2>Full Leaderboard</h2>
+        <p style={{ fontSize: 11, color: 'var(--muted)', padding: '0 8px', marginBottom: 4 }}>
+          W = Wins · L = Losses · For/Ag = Points For/Against · Diff = Point Differential
+        </p>
         <div className="card" style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr>
                 <th style={{ textAlign: 'left', paddingBottom: 8 }}>Player</th>
-                <th style={{ paddingBottom: 8 }}>W</th>
-                <th style={{ paddingBottom: 8 }}>L</th>
-                <th style={{ paddingBottom: 8 }}>For</th>
-                <th style={{ paddingBottom: 8 }}>Ag</th>
-                <th style={{ paddingBottom: 8 }}>Diff</th>
+                <th style={{ paddingBottom: 8 }} title="Wins">W</th>
+                <th style={{ paddingBottom: 8 }} title="Losses">L</th>
+                <th style={{ paddingBottom: 8 }} title="Points For">For</th>
+                <th style={{ paddingBottom: 8 }} title="Points Against">Ag</th>
+                <th style={{ paddingBottom: 8 }} title="Point Differential">Diff</th>
               </tr>
             </thead>
             <tbody>
