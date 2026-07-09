@@ -1,16 +1,15 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { getSession, getRounds, updateRoundScore, markSessionCompleted, type RoundRow, type SessionRow } from '@/lib/db';
+import SessionNav from '@/components/SessionNav';
 
 export default function PlayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const router = useRouter();
   const [session, setSession] = useState<SessionRow | null>(null);
   const [rounds, setRounds] = useState<RoundRow[]>([]);
-  const [activeRoundNumber, setActiveRoundNumber] = useState(1);
-  const [scoreInputs, setScoreInputs] = useState<Record<number, [string, string]>>({});
+  const [drafts, setDrafts] = useState<Record<string, [string, string]>>({});
+  const [savingCourtId, setSavingCourtId] = useState<string | null>(null);
 
   function firstIncompleteRound(r: RoundRow[]): number | undefined {
     return [...new Set(r.map(x => x.round_number))]
@@ -22,7 +21,6 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
     const [s, r] = await Promise.all([getSession(id), getRounds(id)]);
     setSession(s);
     setRounds(r);
-    setActiveRoundNumber(firstIncompleteRound(r) ?? 1);
   }
 
   useEffect(() => {
@@ -30,78 +28,90 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
   }, [id]);
 
   const roundNumbers = [...new Set(rounds.map(r => r.round_number))].sort((a, b) => a - b);
+  const currentRoundNumber = firstIncompleteRound(rounds);
 
-  async function handleSaveRound(roundNumber: number) {
-    const courts = rounds.filter(r => r.round_number === roundNumber);
-    for (const court of courts) {
-      const input = scoreInputs[court.court];
-      if (!input || input[0] === '' || input[1] === '') continue;
-      await updateRoundScore(court.id, Number(input[0]), Number(input[1]));
-    }
-    // Re-derive the next active round from actual data rather than blindly
-    // incrementing — otherwise editing a past round (via "jump to a round")
-    // after the session was already fully scored would incorrectly force
-    // navigation forward instead of respecting the real completion state.
+  function draftFor(court: RoundRow): [string, string] {
+    return drafts[court.id] ?? [court.score_a?.toString() ?? '', court.score_b?.toString() ?? ''];
+  }
+
+  async function handleSaveCourt(court: RoundRow) {
+    const [a, b] = draftFor(court);
+    if (a === '' || b === '') return;
+    setSavingCourtId(court.id);
+    await updateRoundScore(court.id, Number(a), Number(b));
     const updatedRounds = await getRounds(id);
     setRounds(updatedRounds);
-    const stillIncomplete = firstIncompleteRound(updatedRounds);
-    if (stillIncomplete === undefined) {
+    setSavingCourtId(null);
+    if (firstIncompleteRound(updatedRounds) === undefined) {
       await markSessionCompleted(id);
-      router.push(`/session/${id}/results`);
-    } else {
-      setActiveRoundNumber(stillIncomplete);
     }
   }
 
-  const activeCourts = rounds.filter(r => r.round_number === activeRoundNumber).sort((a, b) => a.court - b.court);
-
   return (
-    <main style={{ padding: 24, maxWidth: 480, margin: '0 auto' }}>
-      <h1>Round {activeRoundNumber} of {session?.round_count ?? '…'}</h1>
+    <>
+      <main className="page">
+        <h1>Live Scoring</h1>
+        <p style={{ color: 'var(--muted)', marginTop: 4 }}>
+          Round {currentRoundNumber ?? session?.round_count ?? '—'} of {session?.round_count ?? '…'} — tap a score box to enter, it saves automatically
+        </p>
 
-      {activeCourts.map(court => (
-        <div key={court.id} style={{ marginBottom: 16, padding: 12, border: '1px solid #ddd', borderRadius: 8 }}>
-          <div>Court {court.court}: {court.team_a.join(' & ')} vs {court.team_b.join(' & ')}</div>
-          <input
-            type="number"
-            placeholder={`${court.team_a.join(' & ')} score`}
-            defaultValue={court.score_a ?? ''}
-            onChange={e =>
-              setScoreInputs(prev => ({ ...prev, [court.court]: [e.target.value, prev[court.court]?.[1] ?? ''] }))
-            }
-            style={{ padding: 8, marginRight: 8, width: 80 }}
-          />
-          <input
-            type="number"
-            placeholder={`${court.team_b.join(' & ')} score`}
-            defaultValue={court.score_b ?? ''}
-            onChange={e =>
-              setScoreInputs(prev => ({ ...prev, [court.court]: [prev[court.court]?.[0] ?? '', e.target.value] }))
-            }
-            style={{ padding: 8, width: 80 }}
-          />
-        </div>
-      ))}
+        {roundNumbers.map(roundNumber => {
+          const courts = rounds.filter(r => r.round_number === roundNumber).sort((a, b) => a.court - b.court);
+          const isDone = courts.every(c => c.score_a !== null && c.score_b !== null);
+          const isCurrent = roundNumber === currentRoundNumber;
 
-      <button
-        onClick={() => handleSaveRound(activeRoundNumber)}
-        style={{ padding: '16px 32px', fontSize: 18, background: '#1a5f3f', color: 'white', border: 'none', borderRadius: 8 }}
-      >
-        Save & Next Round
-      </button>
+          return (
+            <div key={roundNumber} className={`round-card ${isCurrent ? 'is-current' : ''} ${isDone ? 'is-done' : ''}`}>
+              <div className="round-card-header">
+                <span className="round-label">Round {roundNumber}</span>
+                <span className={`round-status-badge ${isDone ? '' : 'pending'}`}>
+                  {isDone ? 'Done' : 'Pending'}
+                </span>
+              </div>
 
-      <h2 style={{ marginTop: 32 }}>Jump to a round to edit</h2>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        {roundNumbers.map(rn => (
-          <button
-            key={rn}
-            onClick={() => setActiveRoundNumber(rn)}
-            style={{ padding: 8, background: rn === activeRoundNumber ? '#1a5f3f' : '#eee', color: rn === activeRoundNumber ? 'white' : 'black', border: 'none', borderRadius: 4 }}
-          >
-            {rn}
-          </button>
-        ))}
-      </div>
-    </main>
+              {courts.map(court => {
+                const [scoreA, scoreB] = draftFor(court);
+                const aWins = court.score_a !== null && court.score_b !== null && court.score_a > court.score_b;
+                const bWins = court.score_a !== null && court.score_b !== null && court.score_b > court.score_a;
+                return (
+                  <div key={court.id} className="match-box">
+                    <span className="court-badge" aria-label={`Court ${court.court}`}>{court.court}</span>
+                    <div className={`team-box ${aWins ? 'winner' : ''}`}>
+                      <div className="team-names">{court.team_a.join(' & ')}</div>
+                      <input
+                        className="score-input"
+                        type="number"
+                        inputMode="numeric"
+                        aria-label={`${court.team_a.join(' & ')} score, court ${court.court}, round ${roundNumber}`}
+                        value={scoreA}
+                        onChange={e => setDrafts(prev => ({ ...prev, [court.id]: [e.target.value, draftFor(court)[1]] }))}
+                        onBlur={() => handleSaveCourt(court)}
+                      />
+                    </div>
+                    <span className="vs-pill">VS</span>
+                    <div className={`team-box ${bWins ? 'winner' : ''}`}>
+                      <div className="team-names">{court.team_b.join(' & ')}</div>
+                      <input
+                        className="score-input"
+                        type="number"
+                        inputMode="numeric"
+                        aria-label={`${court.team_b.join(' & ')} score, court ${court.court}, round ${roundNumber}`}
+                        value={scoreB}
+                        onChange={e => setDrafts(prev => ({ ...prev, [court.id]: [draftFor(court)[0], e.target.value] }))}
+                        onBlur={() => handleSaveCourt(court)}
+                      />
+                    </div>
+                    {savingCourtId === court.id && <span style={{ fontSize: 12, color: 'var(--muted)' }}>Saving…</span>}
+                  </div>
+                );
+              })}
+
+              <div className="sitting-note">Sitting: {courts[0]?.sitting_out.join(', ')}</div>
+            </div>
+          );
+        })}
+      </main>
+      <SessionNav sessionId={id} />
+    </>
   );
 }

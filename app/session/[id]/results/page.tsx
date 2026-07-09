@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import { getSession, getRounds, type SessionRow } from '@/lib/db';
 import { computeLeaderboard, computeSquadTotals, type PlayerStats } from '@/lib/analytics';
+import SessionNav from '@/components/SessionNav';
 
 export default function ResultsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -25,58 +26,76 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
   const top3 = leaderboard.slice(0, 3);
 
   return (
-    <main style={{ padding: 24, maxWidth: 480, margin: '0 auto' }}>
-      <h1>Results</h1>
+    <>
+      <main className="page">
+        <h1>Results</h1>
 
-      {squadTotals && (
-        <div style={{ marginBottom: 24, padding: 16, background: '#f5f5f5', borderRadius: 8 }}>
-          <strong>Squad Totals</strong>
-          <div>Gold: {squadTotals.gold}</div>
-          <div>Black: {squadTotals.black}</div>
-        </div>
-      )}
+        {squadTotals && (
+          <div className="card" style={{ marginTop: 16, display: 'flex', justifyContent: 'space-around' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>GOLD</div>
+              <div style={{ fontSize: 28, fontWeight: 800 }}>{squadTotals.gold}</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>BLACK</div>
+              <div style={{ fontSize: 28, fontWeight: 800 }}>{squadTotals.black}</div>
+            </div>
+          </div>
+        )}
 
-      <h2>Podium</h2>
-      <ol>
-        {top3.map(p => (
-          <li key={p.name}>{p.name} — {p.wins}W {p.losses}L ({(p.winPct * 100).toFixed(0)}%)</li>
-        ))}
-      </ol>
-
-      <h2>Full Leaderboard</h2>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            <th style={{ textAlign: 'left' }}>Player</th>
-            <th>W</th>
-            <th>L</th>
-            <th>Pts For</th>
-            <th>Pts Against</th>
-            <th>Diff</th>
-          </tr>
-        </thead>
-        <tbody>
-          {leaderboard.map(p => (
-            <tr key={p.name}>
-              <td>{p.name}</td>
-              <td style={{ textAlign: 'center' }}>{p.wins}</td>
-              <td style={{ textAlign: 'center' }}>{p.losses}</td>
-              <td style={{ textAlign: 'center' }}>{p.pointsFor}</td>
-              <td style={{ textAlign: 'center' }}>{p.pointsAgainst}</td>
-              <td style={{ textAlign: 'center' }}>{p.pointsFor - p.pointsAgainst}</td>
-            </tr>
+        <h2>Podium</h2>
+        <div className="card">
+          {top3.map((p, i) => (
+            <div key={p.name} className="leaderboard-row">
+              <span className={`rank-badge rank-${i + 1}`}>{i + 1}</span>
+              <span className="leaderboard-name">{p.name}</span>
+              <span className="leaderboard-stats">{p.wins}W {p.losses}L ({(p.winPct * 100).toFixed(0)}%)</span>
+            </div>
           ))}
-        </tbody>
-      </table>
-
-      <h2 style={{ marginTop: 24 }}>Wins per Player</h2>
-      {leaderboard.map(p => (
-        <div key={p.name} style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
-          <div style={{ width: 80, fontSize: 12 }}>{p.name}</div>
-          <div style={{ background: '#1a5f3f', height: 16, width: `${(p.wins / Math.max(1, session?.round_count ?? 1)) * 200}px` }} />
-          <div style={{ marginLeft: 8, fontSize: 12 }}>{p.wins}</div>
         </div>
-      ))}
-    </main>
+
+        <h2>Full Leaderboard</h2>
+        <div className="card" style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: 'left', paddingBottom: 8 }}>Player</th>
+                <th style={{ paddingBottom: 8 }}>W</th>
+                <th style={{ paddingBottom: 8 }}>L</th>
+                <th style={{ paddingBottom: 8 }}>For</th>
+                <th style={{ paddingBottom: 8 }}>Ag</th>
+                <th style={{ paddingBottom: 8 }}>Diff</th>
+              </tr>
+            </thead>
+            <tbody>
+              {leaderboard.map(p => (
+                <tr key={p.name} style={{ borderTop: '1px solid var(--border)' }}>
+                  <td style={{ padding: '8px 0', fontWeight: 700 }}>{p.name}</td>
+                  <td style={{ textAlign: 'center' }}>{p.wins}</td>
+                  <td style={{ textAlign: 'center' }}>{p.losses}</td>
+                  <td style={{ textAlign: 'center' }}>{p.pointsFor}</td>
+                  <td style={{ textAlign: 'center' }}>{p.pointsAgainst}</td>
+                  <td style={{ textAlign: 'center' }}>{p.pointsFor - p.pointsAgainst}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <h2>Wins per Player</h2>
+        <div className="card">
+          {leaderboard.map(p => (
+            <div key={p.name} className="leaderboard-row">
+              <span className="leaderboard-name" style={{ flex: '0 0 80px' }}>{p.name}</span>
+              <div className="win-bar-track">
+                <div className="win-bar-fill" style={{ width: `${(p.wins / Math.max(1, session?.round_count ?? 1)) * 100}%` }} />
+              </div>
+              <span className="leaderboard-stats">{p.wins}</span>
+            </div>
+          ))}
+        </div>
+      </main>
+      <SessionNav sessionId={id} />
+    </>
   );
 }

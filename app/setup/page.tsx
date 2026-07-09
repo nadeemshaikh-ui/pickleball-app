@@ -51,37 +51,33 @@ export default function SetupPage() {
   }
 
   return (
-    <main style={{ padding: 24, maxWidth: 480, margin: '0 auto' }}>
+    <main className="page">
       <h1>Session Setup</h1>
 
       <h2>Players (10)</h2>
-      {names.map((name, i) => (
-        <input
-          key={i}
-          value={name}
-          onChange={e => updateName(i, e.target.value)}
-          placeholder={`Player ${i + 1}`}
-          style={{ display: 'block', width: '100%', padding: 12, marginBottom: 8, fontSize: 16 }}
-        />
-      ))}
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {names.map((name, i) => (
+          <input
+            key={i}
+            value={name}
+            onChange={e => updateName(i, e.target.value)}
+            placeholder={`Player ${i + 1}`}
+            style={{ minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+          />
+        ))}
+      </div>
 
       <h2>Format</h2>
-      <label style={{ display: 'block', marginBottom: 8 }}>
-        <input
-          type="radio"
-          checked={format === 'scramble'}
-          onChange={() => setFormat('scramble')}
-        />{' '}
-        Scramble — random partners every round
-      </label>
-      <label style={{ display: 'block', marginBottom: 16 }}>
-        <input
-          type="radio"
-          checked={format === 'squad_rivalry'}
-          onChange={() => setFormat('squad_rivalry')}
-        />{' '}
-        Squad Rivalry — 2 fixed squads all night, partners rotate within squad
-      </label>
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <input type="radio" checked={format === 'scramble'} onChange={() => setFormat('scramble')} />
+          <span>Scramble — random partners every round</span>
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <input type="radio" checked={format === 'squad_rivalry'} onChange={() => setFormat('squad_rivalry')} />
+          <span>Squad Rivalry — 2 fixed squads all night</span>
+        </label>
+      </div>
 
       <h2>Rounds</h2>
       <input
@@ -89,16 +85,12 @@ export default function SetupPage() {
         value={roundCount}
         onChange={e => setRoundCount(Number(e.target.value))}
         min={1}
-        style={{ padding: 12, fontSize: 16, marginBottom: 16, width: 100 }}
+        style={{ minHeight: 44, padding: '10px 12px', fontSize: 16, width: 100, border: '1px solid var(--border)', borderRadius: 8, background: 'white' }}
       />
 
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {error && <p style={{ color: 'var(--danger)', marginTop: 12, fontWeight: 600 }}>{error}</p>}
 
-      <button
-        onClick={handleGenerate}
-        disabled={submitting}
-        style={{ padding: '16px 32px', fontSize: 18, background: '#1a5f3f', color: 'white', border: 'none', borderRadius: 8 }}
-      >
+      <button className="btn-primary" onClick={handleGenerate} disabled={submitting} style={{ width: '100%', marginTop: 20 }}>
         {submitting ? 'Generating…' : 'Generate Schedule'}
       </button>
     </main>

@@ -4,6 +4,7 @@ import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getRounds, type RoundRow } from '@/lib/db';
 import { formatScheduleAsText } from '@/lib/scheduleText';
+import SessionNav from '@/components/SessionNav';
 
 export default function SchedulePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -29,27 +30,41 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
   }
 
   return (
-    <main style={{ padding: 24, maxWidth: 480, margin: '0 auto' }}>
-      <h1>Schedule</h1>
-      <button
-        onClick={handleCopy}
-        style={{ padding: '12px 24px', fontSize: 16, marginBottom: 16, background: '#1a5f3f', color: 'white', border: 'none', borderRadius: 8 }}
-      >
-        {copied ? 'Copied!' : 'Copy as WhatsApp text'}
-      </button>
-      {sortedRoundNumbers.map(roundNumber => {
-        const courts = byRound.get(roundNumber)!.sort((a, b) => a.court - b.court);
-        return (
-          <div key={roundNumber} style={{ marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid #ddd' }}>
-            <strong>Round {roundNumber}</strong>
-            {courts.map(c => (
-              <div key={c.court}>Court {c.court}: {c.team_a.join(' & ')} vs {c.team_b.join(' & ')}</div>
-            ))}
-            <div>Sitting: {courts[0].sitting_out.join(', ')}</div>
-          </div>
-        );
-      })}
-      <Link href={`/session/${id}/play`}>Start Scoring →</Link>
-    </main>
+    <>
+      <main className="page">
+        <h1>Schedule</h1>
+        <button className="btn-primary" onClick={handleCopy} style={{ marginTop: 16, marginBottom: 8, width: '100%' }}>
+          {copied ? 'Copied!' : 'Copy as WhatsApp text'}
+        </button>
+        <Link href={`/session/${id}/play`} className="btn-secondary" style={{ width: '100%', marginBottom: 20 }}>
+          Start Scoring →
+        </Link>
+
+        {sortedRoundNumbers.map(roundNumber => {
+          const courts = byRound.get(roundNumber)!.sort((a, b) => a.court - b.court);
+          return (
+            <div key={roundNumber} className="round-card">
+              <div className="round-card-header">
+                <span className="round-label">Round {roundNumber}</span>
+              </div>
+              {courts.map(c => (
+                <div key={c.court} className="match-box">
+                  <span className="court-badge" aria-label={`Court ${c.court}`}>{c.court}</span>
+                  <div className="team-box">
+                    <div className="team-names">{c.team_a.join(' & ')}</div>
+                  </div>
+                  <span className="vs-pill">VS</span>
+                  <div className="team-box">
+                    <div className="team-names">{c.team_b.join(' & ')}</div>
+                  </div>
+                </div>
+              ))}
+              <div className="sitting-note">Sitting: {courts[0].sitting_out.join(', ')}</div>
+            </div>
+          );
+        })}
+      </main>
+      <SessionNav sessionId={id} />
+    </>
   );
 }

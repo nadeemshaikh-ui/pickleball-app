@@ -1,17 +1,25 @@
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f4f6f5;
+  --surface: #ffffff;
+  --foreground: #10241c;
+  --muted: #52685f;
+  --border: #d7e0dc;
+  --primary: #157a4c;
+  --primary-dark: #0e5c39;
+  --accent: #ff7a1a;
+  --danger: #d64545;
+  --gold: #b8860b;
+  --silver: #7a8a86;
+  --bronze: #a15c2a;
+  --radius: 14px;
+  --shadow: 0 2px 8px rgba(16, 36, 28, 0.08);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* Locked to one bold light theme — this app is used outdoors courtside,
+   where a dark theme reads poorly in direct sunlight. */
 html {
   height: 100%;
+  color-scheme: light;
 }
 
 html,
@@ -26,7 +34,9 @@ body {
   flex-direction: column;
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -42,8 +52,322 @@ a {
   text-decoration: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+h1 {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 24px 0 12px;
+}
+
+/* ---- Layout ---- */
+
+.page {
+  padding: 20px 16px 96px;
+  max-width: 520px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ---- Buttons ---- */
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 12px 28px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 17px;
+  font-weight: 700;
+  transition: background-color 200ms;
+}
+
+.btn-primary:hover {
+  background: var(--primary-dark);
+}
+
+.btn-primary:disabled {
+  background: var(--muted);
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 20px;
+  background: var(--surface);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 600;
+  transition: border-color 200ms, background-color 200ms;
+}
+
+.btn-secondary:hover {
+  border-color: var(--primary);
+}
+
+/* ---- Cards ---- */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+/* ---- Round / match cards ---- */
+
+.round-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px;
+  margin-bottom: 14px;
+  transition: border-color 200ms;
+}
+
+.round-card.is-current {
+  border-color: var(--primary);
+  border-width: 2px;
+}
+
+.round-card.is-done {
+  opacity: 0.85;
+}
+
+.round-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.round-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.round-status-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #e3efe8;
+  color: var(--primary-dark);
+}
+
+.round-status-badge.pending {
+  background: #fdece0;
+  color: var(--accent);
+}
+
+.match-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.match-box:first-of-type {
+  border-top: none;
+}
+
+.court-badge {
+  flex: 0 0 auto;
+  min-width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary);
+  color: white;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.team-box {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  min-width: 0;
+}
+
+.team-box.winner {
+  border-color: var(--primary);
+  background: #e9f5ef;
+}
+
+.team-names {
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.score-input {
+  width: 64px;
+  min-height: 44px;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 800;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  color: var(--foreground);
+}
+
+.vs-pill {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--muted);
+  padding: 0 2px;
+}
+
+.sitting-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ---- Bottom tab nav ---- */
+
+.session-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -2px 8px rgba(16, 36, 28, 0.06);
+  z-index: 30;
+}
+
+.session-nav a {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  transition: color 200ms;
+}
+
+.session-nav a.active {
+  color: var(--primary);
+}
+
+/* ---- Leaderboard ---- */
+
+.leaderboard-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.leaderboard-row:last-child {
+  border-bottom: none;
+}
+
+.rank-badge {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 800;
+  background: var(--background);
+  color: var(--muted);
+}
+
+.rank-badge.rank-1 {
+  background: var(--gold);
+  color: white;
+}
+
+.rank-badge.rank-2 {
+  background: var(--silver);
+  color: white;
+}
+
+.rank-badge.rank-3 {
+  background: var(--bronze);
+  color: white;
+}
+
+.leaderboard-name {
+  flex: 1 1 auto;
+  font-size: 15px;
+  font-weight: 700;
+  min-width: 0;
+}
+
+.leaderboard-stats {
+  flex: 0 0 auto;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: right;
+}
+
+.win-bar-track {
+  flex: 1 1 auto;
+  height: 10px;
+  background: var(--background);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.win-bar-fill {
+  height: 100%;
+  background: var(--primary);
+  transition: width 300ms ease;
 }
