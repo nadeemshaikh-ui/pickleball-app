@@ -1,22 +1,23 @@
-// Remembers the last-used player roster on this device (localStorage), so
-// the same group doesn't need to retype every name each week.
-const KEY = 'pickleball-saved-roster-v1';
+import { supabase } from './supabase';
 
-export function saveRoster(names: string[]): void {
+// Shared roster stored in Supabase (not localStorage) so it's the same on
+// every device/phone, not just the one that last saved it.
+const ROSTER_ID = 'default';
+
+export async function saveRoster(names: string[]): Promise<void> {
   try {
-    localStorage.setItem(KEY, JSON.stringify(names));
+    await supabase.from('saved_rosters').upsert({ id: ROSTER_ID, names, updated_at: new Date().toISOString() });
   } catch {
-    // Private browsing / quota errors — losing the convenience save isn't
-    // worth failing the whole session-creation flow over.
+    // Losing the convenience save isn't worth failing session creation over.
   }
 }
 
-export function loadRoster(): string[] | null {
+export async function loadRoster(): Promise<string[] | null> {
   try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.every(n => typeof n === 'string') ? parsed : null;
+    const { data, error } = await supabase.from('saved_rosters').select('names').eq('id', ROSTER_ID).maybeSingle();
+    if (error || !data) return null;
+    const names = data.names;
+    return Array.isArray(names) && names.every(n => typeof n === 'string') ? names : null;
   } catch {
     return null;
   }

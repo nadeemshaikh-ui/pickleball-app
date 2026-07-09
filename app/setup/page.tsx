@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   generateScrambleSchedule,
@@ -82,7 +82,11 @@ export default function SetupPage() {
   const [error, setError] = useState<string | null>(null);
 
   const minPlayers = courtCount * 4;
-  const savedRoster = loadRoster();
+  const [savedRoster, setSavedRoster] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    loadRoster().then(setSavedRoster);
+  }, []);
 
   function resizeKeepingExisting<T>(current: T[], newLength: number, blank: T): T[] {
     const resized = Array(newLength).fill(blank) as T[];
@@ -238,7 +242,7 @@ export default function SetupPage() {
         });
         await insertRounds(sessionId, rounds);
       }
-      saveRoster(trimmed);
+      await saveRoster(trimmed);
       router.push(`/session/${sessionId}/schedule`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create session.');
