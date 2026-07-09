@@ -12,6 +12,7 @@ export interface SessionRow {
   round_count: number;
   status: 'setup' | 'in_progress' | 'completed';
   court_labels: [string, string];
+  round_duration_minutes: number | null;
 }
 
 export interface RoundRow {
@@ -35,7 +36,8 @@ export async function createSession(
   format: Format,
   roundCount: number,
   squads: Squads | null,
-  courtLabels: [string, string]
+  courtLabels: [string, string],
+  roundDurationMinutes: number | null
 ): Promise<string> {
   const id = randomSessionId();
   const { error } = await supabase.from('sessions').insert({
@@ -45,6 +47,7 @@ export async function createSession(
     squads,
     round_count: roundCount,
     court_labels: courtLabels,
+    round_duration_minutes: roundDurationMinutes,
     status: 'in_progress',
   });
   if (error) throw error;

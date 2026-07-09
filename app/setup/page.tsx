@@ -11,6 +11,7 @@ export default function SetupPage() {
   const [format, setFormat] = useState<'scramble' | 'squad_rivalry'>('scramble');
   const [roundCount, setRoundCount] = useState(12);
   const [courtLabels, setCourtLabels] = useState<[string, string]>(['1', '2']);
+  const [roundDurationMinutes, setRoundDurationMinutes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,17 +37,22 @@ export default function SetupPage() {
       setError('Both court numbers/names are required.');
       return;
     }
+    const parsedDuration = roundDurationMinutes.trim() === '' ? null : Number(roundDurationMinutes);
+    if (parsedDuration !== null && (!Number.isFinite(parsedDuration) || parsedDuration <= 0)) {
+      setError('Minutes per round must be a positive number, or left blank.');
+      return;
+    }
     setSubmitting(true);
     try {
       const seed = `${Date.now()}`;
       if (format === 'scramble') {
         const rounds = generateScrambleSchedule(trimmed, roundCount, seed);
-        const sessionId = await createSession(trimmed, 'scramble', roundCount, null, trimmedCourtLabels);
+        const sessionId = await createSession(trimmed, 'scramble', roundCount, null, trimmedCourtLabels, parsedDuration);
         await insertRounds(sessionId, rounds);
         router.push(`/session/${sessionId}/schedule`);
       } else {
         const { squads, rounds } = generateSquadRivalrySchedule(trimmed, roundCount, seed);
-        const sessionId = await createSession(trimmed, 'squad_rivalry', roundCount, squads, trimmedCourtLabels);
+        const sessionId = await createSession(trimmed, 'squad_rivalry', roundCount, squads, trimmedCourtLabels, parsedDuration);
         await insertRounds(sessionId, rounds);
         router.push(`/session/${sessionId}/schedule`);
       }
@@ -109,6 +115,17 @@ export default function SetupPage() {
         value={roundCount}
         onChange={e => setRoundCount(Number(e.target.value))}
         min={1}
+        style={{ minHeight: 44, padding: '10px 12px', fontSize: 16, width: 100, border: '1px solid var(--border)', borderRadius: 8, background: 'white' }}
+      />
+
+      <h2>Minutes per Round (optional)</h2>
+      <input
+        type="number"
+        value={roundDurationMinutes}
+        onChange={e => setRoundDurationMinutes(e.target.value)}
+        min={1}
+        placeholder="e.g. 10"
+        aria-label="Minutes per round, optional"
         style={{ minHeight: 44, padding: '10px 12px', fontSize: 16, width: 100, border: '1px solid var(--border)', borderRadius: 8, background: 'white' }}
       />
 

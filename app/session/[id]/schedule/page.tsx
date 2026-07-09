@@ -66,7 +66,7 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
   const sortedRoundNumbers = [...byRound.keys()].sort((a, b) => a - b);
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(formatScheduleAsText(rounds, courtLabels));
+    await navigator.clipboard.writeText(formatScheduleAsText(rounds, courtLabels, session?.round_duration_minutes ?? null));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -75,6 +75,12 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
     <>
       <main className="page">
         <h1>Schedule</h1>
+        {session?.round_duration_minutes && (
+          <p style={{ color: 'var(--muted)', marginTop: 4 }}>
+            {session.round_count} rounds × ~{session.round_duration_minutes} min — about{' '}
+            {Math.round((session.round_count * session.round_duration_minutes) / 60 * 10) / 10} hr total
+          </p>
+        )}
         <button className="btn-primary" onClick={handleCopy} style={{ marginTop: 16, marginBottom: 8, width: '100%' }}>
           {copied ? 'Copied!' : 'Copy as WhatsApp text'}
         </button>

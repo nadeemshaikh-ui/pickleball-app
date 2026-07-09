@@ -1,6 +1,10 @@
 import type { RoundRow } from './db';
 
-export function formatScheduleAsText(rounds: RoundRow[], courtLabels: [string, string] = ['1', '2']): string {
+export function formatScheduleAsText(
+  rounds: RoundRow[],
+  courtLabels: [string, string] = ['1', '2'],
+  roundDurationMinutes: number | null = null
+): string {
   const byRound = new Map<number, RoundRow[]>();
   for (const r of rounds) {
     const list = byRound.get(r.round_number) ?? [];
@@ -9,6 +13,10 @@ export function formatScheduleAsText(rounds: RoundRow[], courtLabels: [string, s
   }
 
   const lines: string[] = [];
+  if (roundDurationMinutes) {
+    lines.push(`Each round: ~${roundDurationMinutes} min`);
+    lines.push('');
+  }
   const sortedRoundNumbers = [...byRound.keys()].sort((a, b) => a - b);
   for (const roundNumber of sortedRoundNumbers) {
     const courts = byRound.get(roundNumber)!.sort((a, b) => a.court - b.court);
