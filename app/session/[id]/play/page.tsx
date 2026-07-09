@@ -75,33 +75,35 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                 const bWins = court.score_a !== null && court.score_b !== null && court.score_b > court.score_a;
                 return (
                   <div key={court.id} className="match-box">
-                    <span className="court-badge" aria-label={`Court ${court.court}`}>{court.court}</span>
-                    <div className={`team-box ${aWins ? 'winner' : ''}`}>
-                      <div className="team-names">{court.team_a.join(' & ')}</div>
-                      <input
-                        className="score-input"
-                        type="number"
-                        inputMode="numeric"
-                        aria-label={`${court.team_a.join(' & ')} score, court ${court.court}, round ${roundNumber}`}
-                        value={scoreA}
-                        onChange={e => setDrafts(prev => ({ ...prev, [court.id]: [e.target.value, draftFor(court)[1]] }))}
-                        onBlur={() => handleSaveCourt(court)}
-                      />
+                    <span className="court-label">Court {court.court}</span>
+                    <div className="match-teams-row">
+                      <div className={`team-box ${aWins ? 'winner' : ''}`}>
+                        <div className="team-names">{court.team_a.join(' & ')}</div>
+                        <input
+                          className="score-input"
+                          type="number"
+                          inputMode="numeric"
+                          aria-label={`${court.team_a.join(' & ')} score, court ${court.court}, round ${roundNumber}`}
+                          value={scoreA}
+                          onChange={e => setDrafts(prev => ({ ...prev, [court.id]: [e.target.value, draftFor(court)[1]] }))}
+                          onBlur={() => handleSaveCourt(court)}
+                        />
+                      </div>
+                      <span className="vs-pill">VS</span>
+                      <div className={`team-box ${bWins ? 'winner' : ''}`}>
+                        <div className="team-names">{court.team_b.join(' & ')}</div>
+                        <input
+                          className="score-input"
+                          type="number"
+                          inputMode="numeric"
+                          aria-label={`${court.team_b.join(' & ')} score, court ${court.court}, round ${roundNumber}`}
+                          value={scoreB}
+                          onChange={e => setDrafts(prev => ({ ...prev, [court.id]: [draftFor(court)[0], e.target.value] }))}
+                          onBlur={() => handleSaveCourt(court)}
+                        />
+                      </div>
+                      {savingCourtId === court.id && <span style={{ fontSize: 12, color: 'var(--muted)' }}>Saving…</span>}
                     </div>
-                    <span className="vs-pill">VS</span>
-                    <div className={`team-box ${bWins ? 'winner' : ''}`}>
-                      <div className="team-names">{court.team_b.join(' & ')}</div>
-                      <input
-                        className="score-input"
-                        type="number"
-                        inputMode="numeric"
-                        aria-label={`${court.team_b.join(' & ')} score, court ${court.court}, round ${roundNumber}`}
-                        value={scoreB}
-                        onChange={e => setDrafts(prev => ({ ...prev, [court.id]: [draftFor(court)[0], e.target.value] }))}
-                        onBlur={() => handleSaveCourt(court)}
-                      />
-                    </div>
-                    {savingCourtId === court.id && <span style={{ fontSize: 12, color: 'var(--muted)' }}>Saving…</span>}
                   </div>
                 );
               })}

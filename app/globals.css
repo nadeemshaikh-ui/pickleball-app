@@ -194,9 +194,6 @@ h2 {
 }
 
 .match-box {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   padding: 10px 0;
   border-top: 1px solid var(--border);
 }
@@ -205,18 +202,23 @@ h2 {
   border-top: none;
 }
 
-.court-badge {
-  flex: 0 0 auto;
-  min-width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.court-label {
+  display: inline-block;
   background: var(--primary);
   color: white;
-  border-radius: 8px;
-  font-size: 13px;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
   font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.match-teams-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .team-box {

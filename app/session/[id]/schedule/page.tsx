@@ -49,13 +49,15 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
               </div>
               {courts.map(c => (
                 <div key={c.court} className="match-box">
-                  <span className="court-badge" aria-label={`Court ${c.court}`}>{c.court}</span>
-                  <div className="team-box">
-                    <div className="team-names">{c.team_a.join(' & ')}</div>
-                  </div>
-                  <span className="vs-pill">VS</span>
-                  <div className="team-box">
-                    <div className="team-names">{c.team_b.join(' & ')}</div>
+                  <span className="court-label">Court {c.court}</span>
+                  <div className="match-teams-row">
+                    <div className="team-box">
+                      <div className="team-names">{c.team_a.join(' & ')}</div>
+                    </div>
+                    <span className="vs-pill">VS</span>
+                    <div className="team-box">
+                      <div className="team-names">{c.team_b.join(' & ')}</div>
+                    </div>
                   </div>
                 </div>
               ))}
