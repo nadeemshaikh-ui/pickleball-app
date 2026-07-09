@@ -30,6 +30,17 @@ describe('generateScrambleSchedule', () => {
     expect(rounds).toHaveLength(12);
   });
 
+  it('never sits the same player out two rounds in a row', () => {
+    const rounds = generateScrambleSchedule(players10, 2, 12, 'seed-a');
+    for (let i = 1; i < rounds.length; i++) {
+      const prevSitOut = new Set(rounds[i - 1].sittingOutPerCourt[0]);
+      const currSitOut = rounds[i].sittingOutPerCourt[0];
+      for (const p of currSitOut) {
+        expect(prevSitOut.has(p)).toBe(false);
+      }
+    }
+  });
+
   it('each round has exactly courtCount*4 unique playing players, rest sitting, no overlap', () => {
     const rounds = generateScrambleSchedule(players10, 2, 12, 'seed-a');
     for (const round of rounds) {

@@ -44,14 +44,26 @@ function pairKey(a: string, b: string): string {
 
 // Picks `count` players to sit out this round, prioritizing whoever has sat
 // out the fewest times so far (balances sit-outs across the whole schedule).
-function pickSitOuts(pool: string[], sitCounts: Map<string, number>, count: number, rand: () => number): string[] {
+// Players who sat out last round are pushed to the back of the line so the
+// same person doesn't rest two rounds in a row — unless there aren't enough
+// other players to fill `count` without them, in which case a repeat is
+// unavoidable and allowed.
+function pickSitOuts(
+  pool: string[],
+  sitCounts: Map<string, number>,
+  count: number,
+  rand: () => number,
+  lastSitOut: ReadonlySet<string> = new Set()
+): string[] {
   if (count <= 0) return [];
   const tieBreakers = new Map(pool.map(p => [p, rand()]));
   const sorted = [...pool].sort((a, b) => {
     const diff = sitCounts.get(a)! - sitCounts.get(b)!;
     return diff !== 0 ? diff : tieBreakers.get(a)! - tieBreakers.get(b)!;
   });
-  const chosen = sorted.slice(0, count);
+  const eligible = sorted.filter(p => !lastSitOut.has(p));
+  const repeats = sorted.filter(p => lastSitOut.has(p));
+  const chosen = [...eligible, ...repeats].slice(0, count);
   for (const p of chosen) sitCounts.set(p, sitCounts.get(p)! + 1);
   return chosen;
 }
@@ -130,12 +142,14 @@ export function generateScrambleSchedule(
   const partnerCounts = new Map<string, number>();
   const sitOutCount = players.length - courtCount * 4;
   const rounds: ScrambleRound[] = [];
+  let lastSitOut = new Set<string>();
 
   for (let roundNumber = 1; roundNumber <= roundCount; roundNumber++) {
-    const sittingOut = pickSitOuts(players, sitOutCounts, sitOutCount, rand);
+    const sittingOut = pickSitOuts(players, sitOutCounts, sitOutCount, rand, lastSitOut);
     const playing = players.filter(p => !sittingOut.includes(p));
     const courts = pairIntoNTeams(playing, courtCount, partnerCounts, rand);
     rounds.push({ roundNumber, courts, sittingOutPerCourt: courts.map(() => sittingOut) });
+    lastSitOut = new Set(sittingOut);
   }
 
   return rounds;
@@ -178,9 +192,11 @@ export function generateSquadRivalrySchedule(
   }
 
   const rounds: ScrambleRound[] = [];
+  let lastGoldSitOut = new Set<string>();
+  let lastBlackSitOut = new Set<string>();
   for (let roundNumber = 1; roundNumber <= roundCount; roundNumber++) {
-    const goldSitOut = pickSitOuts(squads.gold, goldSitCounts, goldSitOutCount, rand);
-    const blackSitOut = pickSitOuts(squads.black, blackSitCounts, blackSitOutCount, rand);
+    const goldSitOut = pickSitOuts(squads.gold, goldSitCounts, goldSitOutCount, rand, lastGoldSitOut);
+    const blackSitOut = pickSitOuts(squads.black, blackSitCounts, blackSitOutCount, rand, lastBlackSitOut);
     const goldPlaying = squads.gold.filter(p => !goldSitOut.includes(p));
     const blackPlaying = squads.black.filter(p => !blackSitOut.includes(p));
 
@@ -194,6 +210,8 @@ export function generateSquadRivalrySchedule(
     }
 
     rounds.push({ roundNumber, courts, sittingOutPerCourt: courts.map(() => combinedSitOut) });
+    lastGoldSitOut = new Set(goldSitOut);
+    lastBlackSitOut = new Set(blackSitOut);
   }
 
   return { squads, rounds };
@@ -273,11 +291,13 @@ function generateGroupRounds(
   }
 
   const rounds = [];
+  let lastSitOut = new Set<string>();
   for (let i = 0; i < roundsPerBlock; i++) {
-    const sittingOut = pickSitOuts(group, sitCounts, sitOutCount, rand);
+    const sittingOut = pickSitOuts(group, sitCounts, sitOutCount, rand, lastSitOut);
     const playing = group.filter(p => !sittingOut.includes(p));
     const [court] = pairIntoNTeams(playing, 1, partnerCounts, rand);
     rounds.push({ teams: [court.teamA, court.teamB] as [CourtMatch['teamA'], CourtMatch['teamB']], sittingOut });
+    lastSitOut = new Set(sittingOut);
   }
   return rounds;
 }
