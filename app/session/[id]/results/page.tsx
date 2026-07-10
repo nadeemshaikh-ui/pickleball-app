@@ -16,6 +16,10 @@ import { WhatsAppIcon } from '@/components/icons';
 import { preloadPlayerPhotos } from '@/lib/playerPhotos';
 import { fetchSessionDues, markDuePaid, type DueRow } from '@/lib/dues';
 import { getCurrentUser, isCurrentUserAdmin } from '@/lib/auth';
+import { fetchStreaks, fetchMvpCounts } from '@/lib/leagueStats';
+import { flightForRating } from '@/lib/flights';
+import { computeBadges, type Badge } from '@/lib/badges';
+import { listPlayers } from '@/lib/players';
 
 export default function ResultsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -28,6 +32,9 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
   const [imageShareError, setImageShareError] = useState<string | null>(null);
   const [dues, setDues] = useState<DueRow[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [winnerBadges, setWinnerBadges] = useState<Badge[]>([]);
+  const [winnerStreak, setWinnerStreak] = useState(0);
+  const [winnerMvpCount, setWinnerMvpCount] = useState(0);
   const recapCaptureRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,6 +53,27 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
       if (s.status === 'completed' && board.length > 0 && !sessionStorage.getItem(celebratedKey)) {
         setShowCelebration(true);
         sessionStorage.setItem(celebratedKey, '1');
+        const winnerName = board[0].name;
+        try {
+          const [streaks, mvpCounts, players] = await Promise.all([fetchStreaks(), fetchMvpCounts(), listPlayers()]);
+          const winnerPlayer = players.find(p => p.name === winnerName);
+          const streak = streaks.get(winnerName) ?? 0;
+          const mvpCount = mvpCounts.get(winnerName) ?? 0;
+          setWinnerStreak(streak);
+          setWinnerMvpCount(mvpCount);
+          if (winnerPlayer) {
+            setWinnerBadges(
+              computeBadges({
+                gamesPlayed: winnerPlayer.games_played,
+                currentStreak: streak,
+                mvpCount,
+                flight: flightForRating(winnerPlayer.elo_rating),
+              })
+            );
+          }
+        } catch {
+          // Celebration still shows without the badge/streak/MVP flourish — not worth blocking on.
+        }
       }
     }
     load();
@@ -84,7 +112,13 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
   return (
     <>
       {showCelebration && top3[0] && (
-        <Celebration winnerName={top3[0].name} onDismiss={() => setShowCelebration(false)} />
+        <Celebration
+          winnerName={top3[0].name}
+          onDismiss={() => setShowCelebration(false)}
+          badges={winnerBadges}
+          streak={winnerStreak}
+          mvpCount={winnerMvpCount}
+        />
       )}
       <main className="page">
         <div className="page-header-row">

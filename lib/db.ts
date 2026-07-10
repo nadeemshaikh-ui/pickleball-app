@@ -131,6 +131,16 @@ export async function uploadPlayerPhoto(file: File): Promise<string> {
   return data.publicUrl;
 }
 
+// Most recently created session, for "Repeat Last Session" on Setup — the
+// roster, format, courts, costs, and ladder flag transfer over, but locked
+// partners and skill-balanced toggle don't (never persisted, they're
+// per-generation shuffle inputs, not part of the session row).
+export async function getMostRecentSession(): Promise<SessionRow | null> {
+  const { data, error } = await supabase.from('sessions').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle();
+  if (error) throw error;
+  return data as SessionRow | null;
+}
+
 export async function getSession(sessionId: string): Promise<SessionRow> {
   const { data, error } = await supabase.from('sessions').select('*').eq('id', sessionId).single();
   if (error) throw error;

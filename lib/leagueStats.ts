@@ -141,6 +141,21 @@ export async function fetchClosestRivalries(): Promise<Rivalry[]> {
     });
 }
 
+// All head-to-head pairings where BOTH players are in the given roster —
+// unoriented (players[0]/players[1] is just p1/p2 order), used for the
+// Storylines pregame brief, not a specific-player lookup.
+export async function fetchRivalriesAmongRoster(names: string[]): Promise<Rivalry[]> {
+  if (names.length < 2) return [];
+  const { data, error } = await supabase.from('league_rivalry_stats_mv').select('*').in('p1', names).in('p2', names);
+  if (error) throw error;
+  return data.map((r: { p1: string; p2: string; p1_games: number; p1_wins: number; p2_games: number; p2_wins: number }) => ({
+    players: [r.p1, r.p2] as [string, string],
+    gamesTogether: r.p1_games + r.p2_games,
+    record: [r.p1_wins, r.p2_wins] as [number, number],
+    provisional: r.p1_games + r.p2_games < MIN_GAMES_FOR_RIVALRY,
+  }));
+}
+
 // Every head-to-head pairing involving `name`, oriented so `name` is always
 // players[0]. Unlike fetchClosestRivalries, this has no MIN_GAMES threshold
 // or top-N cutoff — it's a direct lookup for one player's full rivalry list

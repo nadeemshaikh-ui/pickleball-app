@@ -10,14 +10,15 @@ import {
   type CourtBlockAssignment,
   type LockedPair,
 } from '@/lib/shuffle';
-import { createSession, insertRounds, uploadGroupLogo, uploadPlayerPhoto } from '@/lib/db';
+import { createSession, insertRounds, uploadGroupLogo, uploadPlayerPhoto, getMostRecentSession } from '@/lib/db';
 import { saveRoster, loadRoster } from '@/lib/savedRoster';
 import { findPresetLogos } from '@/lib/presetGroups';
 import { getPlayerPhoto, savePlayerPhoto, preloadPlayerPhotos } from '@/lib/playerPhotos';
 import { listPlayers, getSkillRatingsForNames, getOwnPlayer, type PlayerRow } from '@/lib/players';
 import { createSessionDues } from '@/lib/dues';
 import { getCurrentUser } from '@/lib/auth';
-import { fetchRivalriesForPlayer, type Rivalry } from '@/lib/leagueStats';
+import { fetchRivalriesForPlayer, fetchRivalriesAmongRoster, fetchStreaks, type Rivalry } from '@/lib/leagueStats';
+import { buildStorylines } from '@/lib/storylines';
 
 const MIN_GAMES_FOR_NEMESIS_ALERT = 3;
 
@@ -125,6 +126,7 @@ export default function SetupPage() {
 
   const [myName, setMyName] = useState<string | null>(null);
   const [nemesis, setNemesis] = useState<Rivalry | null>(null);
+  const [storylines, setStorylines] = useState<string[]>([]);
 
   useEffect(() => {
     loadRoster().then(setSavedRoster);
@@ -166,6 +168,21 @@ export default function SetupPage() {
     return () => clearTimeout(timer);
   }, [myName, names]);
 
+  // Template-based pregame brief (no LLM) — same debounce reasoning as Nemesis Alert above.
+  useEffect(() => {
+    const roster = names.map(n => n.trim()).filter(Boolean);
+    if (roster.length < 2) {
+      setStorylines([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      Promise.all([fetchStreaks(), fetchRivalriesAmongRoster(roster)])
+        .then(([streaks, rivalries]) => setStorylines(buildStorylines(roster, streaks, rivalries)))
+        .catch(() => setStorylines([]));
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [names]);
+
   function handleAddRegisteredPlayer(playerName: string) {
     if (names.some(n => n.trim() === playerName)) return; // already added
     const emptyIndex = names.findIndex(n => n.trim() === '');
@@ -195,6 +212,42 @@ export default function SetupPage() {
     setNames(prev => resizeKeepingExisting(prev, playerCount, ''));
     setCourtLabels(prev => resizeKeepingExisting(prev.length ? prev : ['1', '2'], courtCount, '').map((v, i) => v || `${i + 1}`));
     setNamesEntered(true);
+  }
+
+  async function handleRepeatLastSession() {
+    setError(null);
+    let last;
+    try {
+      last = await getMostRecentSession();
+    } catch {
+      setError('Failed to load your last session.');
+      return;
+    }
+    if (!last) {
+      setError('No previous session found.');
+      return;
+    }
+    const courts = last.court_labels.length;
+    setCourtCount(courts);
+    setPlayerCount(last.players.length);
+    setNames(last.players);
+    setCourtLabels(last.court_labels);
+    setFormat(last.format);
+    setRoundCount(last.round_count);
+    if (last.format === 'court_blocks' && last.rounds_per_block) {
+      setRoundsPerBlock(last.rounds_per_block);
+      setSwapCount(Math.round(last.round_count / last.rounds_per_block));
+    }
+    setGroupName(last.group_name ?? '');
+    setCourtCost(last.court_cost !== null ? String(last.court_cost) : '');
+    setBallCost(String(last.ball_cost));
+    setIsLadder(last.is_ladder);
+    setStartTime(last.start_time ?? '');
+    setRoundDurationMinutes(last.round_duration_minutes !== null ? String(last.round_duration_minutes) : '');
+    setNamesEntered(true);
+    setRosterNotice(
+      "Loaded your last session's setup — edit anything below. Locked partners, skill-balancing, and logos (unless your group name is saved) don't carry over."
+    );
   }
 
   function handleUseSavedRoster() {
@@ -394,6 +447,9 @@ export default function SetupPage() {
             Use Saved Roster ({savedRoster.length} players)
           </button>
         )}
+        <button className="btn-secondary" onClick={handleRepeatLastSession} style={{ width: '100%', marginTop: 10 }}>
+          🔁 Repeat Last Session
+        </button>
       </main>
     );
   }
@@ -503,6 +559,13 @@ export default function SetupPage() {
       {nemesis && (
         <div className="card" style={{ marginBottom: 16, background: 'var(--background)' }}>
           🔥 <strong>Nemesis Alert:</strong> You vs {nemesis.players[1]} tonight — {nemesis.record[0]}-{nemesis.record[1]} all-time.
+        </div>
+      )}
+
+      {storylines.length > 0 && (
+        <div className="card" style={{ marginBottom: 16, background: 'var(--background)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <strong>Tonight's Storylines</strong>
+          {storylines.map(line => <span key={line}>{line}</span>)}
         </div>
       )}
 
