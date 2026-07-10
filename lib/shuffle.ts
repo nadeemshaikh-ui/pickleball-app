@@ -216,9 +216,13 @@ function pairIntoNTeams(
   courtCount: number,
   partnerCounts: Map<string, number>,
   rand: () => number,
-  lockedPairs: LockedPair[] = []
+  lockedPairs: LockedPair[] = [],
+  rivalryHeatMap?: Map<string, RivalryHeat>
 ): CourtMatch[] {
   const teams = pairIntoPairs(players, partnerCounts, rand, lockedPairs);
+  if (rivalryHeatMap) {
+    return assignCourtsByRivalry(teams, rivalryHeatMap, courtCount, rand);
+  }
   const courts: CourtMatch[] = [];
   for (let c = 0; c < courtCount; c++) {
     courts.push({ teamA: teams[c * 2], teamB: teams[c * 2 + 1] });
@@ -261,6 +265,79 @@ function assignCourtsBySkill(teams: [string, string][], ratings: Map<string, num
   return courts;
 }
 
+// Rivalry-aware court assignment — opt-in, Scramble only. Teams are formed
+// exactly as normal (pairIntoPairs, untouched — partner-repeat-minimization
+// and locked pairs both still apply). This only changes the FINAL step:
+// which two teams share a court. Currently that step has zero test coverage
+// of a specific pairing order (only "each round has courtCount*4 unique
+// playing players" is asserted), so this is additive, not a behavior change
+// to anything already locked in.
+export interface RivalryHeat {
+  gap: number; // |winsA - winsB| between the pair — smaller = closer rivalry
+  games: number; // tiebreaker — more games together = more established
+}
+
+export function buildRivalryHeatMap(
+  rivalries: { players: [string, string]; record: [number, number]; gamesTogether: number; provisional: boolean }[]
+): Map<string, RivalryHeat> {
+  const map = new Map<string, RivalryHeat>();
+  for (const r of rivalries) {
+    if (r.provisional) continue; // not enough games together to count as an established rivalry
+    map.set(pairKey(r.players[0], r.players[1]), { gap: Math.abs(r.record[0] - r.record[1]), games: r.gamesTogether });
+  }
+  return map;
+}
+
+// The "heat" of a potential matchup between two teams = the hottest single
+// rivalry among the 4 cross-team player pairs (smallest gap), since even one
+// close rivalry on court makes the matchup exciting — averaging across all 4
+// would dilute a strong rivalry with two strangers' zero-history pair. Null
+// when none of the 4 cross-pairs have rivalry data — no bias either way.
+function matchupHeat(teamA: [string, string], teamB: [string, string], heatMap: Map<string, RivalryHeat>): RivalryHeat | null {
+  let best: RivalryHeat | null = null;
+  for (const a of teamA) {
+    for (const b of teamB) {
+      const heat = heatMap.get(pairKey(a, b));
+      if (heat && (!best || heat.gap < best.gap || (heat.gap === best.gap && heat.games > best.games))) {
+        best = heat;
+      }
+    }
+  }
+  return best;
+}
+
+// Greedily pairs teams into courts, court by court, always matching the next
+// unassigned team with whichever remaining team produces the hottest
+// matchup. Shuffled first so that when no rivalry data applies, assignment
+// still varies session to session rather than always following team order.
+// Falls back to plain (still randomized) pairing when no rivalry data
+// exists at all — graceful no-op for a group with too little history yet.
+export function assignCourtsByRivalry(
+  teams: [string, string][],
+  heatMap: Map<string, RivalryHeat>,
+  courtCount: number,
+  rand: () => number
+): CourtMatch[] {
+  const remaining = shuffleArray(teams, rand);
+  const courts: CourtMatch[] = [];
+  for (let c = 0; c < courtCount; c++) {
+    const anchor = remaining.shift();
+    if (!anchor || remaining.length === 0) break;
+    let bestIndex = 0;
+    let best: RivalryHeat | null = null;
+    for (let i = 0; i < remaining.length; i++) {
+      const heat = matchupHeat(anchor, remaining[i], heatMap);
+      if (heat && (!best || heat.gap < best.gap || (heat.gap === best.gap && heat.games > best.games))) {
+        best = heat;
+        bestIndex = i;
+      }
+    }
+    const opponent = remaining.splice(bestIndex, 1)[0];
+    courts.push({ teamA: anchor, teamB: opponent });
+  }
+  return courts;
+}
+
 function requireMinPlayers(players: string[], courtCount: number, formatName: string): void {
   const minRequired = courtCount * 4;
   if (courtCount < 1) {
@@ -279,12 +356,16 @@ export function generateScrambleSchedule(
   roundCount: number,
   seed: string,
   lockedPairs: LockedPair[] = [],
-  skillRatings?: Map<string, number>
+  skillRatings?: Map<string, number>,
+  rivalryHeatMap?: Map<string, RivalryHeat>
 ): ScrambleRound[] {
   requireMinPlayers(players, courtCount, 'Scramble');
   validateLockedPairs(players, lockedPairs);
   if (skillRatings && lockedPairs.length > 0) {
     throw new Error('Skill-balanced matchmaking cannot be combined with locked partners yet.');
+  }
+  if (skillRatings && rivalryHeatMap) {
+    throw new Error('Skill-balanced and rivalry-aware matchmaking cannot be combined yet.');
   }
   const rand = seededRandom(seed);
   const sitOutCounts = new Map<string, number>(players.map(p => [p, 0]));
@@ -301,7 +382,7 @@ export function generateScrambleSchedule(
     const playing = players.filter(p => !sittingOut.includes(p));
     const courts = skillRatings
       ? assignCourtsBySkill(formSkillBalancedTeams(playing, skillRatings, courtCount * 2), skillRatings, courtCount)
-      : pairIntoNTeams(playing, courtCount, partnerCounts, rand, lockedPairs);
+      : pairIntoNTeams(playing, courtCount, partnerCounts, rand, lockedPairs, rivalryHeatMap);
     rounds.push({ roundNumber, courts, sittingOutPerCourt: courts.map(() => sittingOut) });
     lastSitOut = new Set(sittingOut);
   }

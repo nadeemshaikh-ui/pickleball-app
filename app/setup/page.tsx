@@ -7,6 +7,7 @@ import {
   generateSquadRivalrySchedule,
   generateCourtBlocksSchedule,
   generateFixedPartnersSchedule,
+  buildRivalryHeatMap,
   type CourtBlockAssignment,
   type LockedPair,
 } from '@/lib/shuffle';
@@ -97,6 +98,7 @@ export default function SetupPage() {
 
   const [lockedPairs, setLockedPairs] = useState<LockedPair[]>([]);
   const [skillBalanced, setSkillBalanced] = useState(false);
+  const [rivalryAware, setRivalryAware] = useState(false);
   const [lockPickerA, setLockPickerA] = useState('');
   const [lockPickerB, setLockPickerB] = useState('');
 
@@ -392,7 +394,10 @@ export default function SetupPage() {
       if (format === 'scramble') {
         const skillRatings =
           skillBalanced && lockedPairs.length === 0 ? (await getSkillRatingsForNames(trimmed)) ?? undefined : undefined;
-        const rounds = generateScrambleSchedule(trimmed, courtCount, roundCount, seed, lockedPairs, skillRatings);
+        const rivalryHeatMap = rivalryAware
+          ? buildRivalryHeatMap(await fetchRivalriesAmongRoster(trimmed))
+          : undefined;
+        const rounds = generateScrambleSchedule(trimmed, courtCount, roundCount, seed, lockedPairs, skillRatings, rivalryHeatMap);
         sessionId = await createSession({
           ...baseOptions,
           format: 'scramble',
@@ -743,7 +748,10 @@ export default function SetupPage() {
                 checked={skillBalanced}
                 onChange={e => {
                   setSkillBalanced(e.target.checked);
-                  if (e.target.checked) setLockedPairs([]);
+                  if (e.target.checked) {
+                    setLockedPairs([]);
+                    setRivalryAware(false);
+                  }
                 }}
               />
               <span>
@@ -752,6 +760,29 @@ export default function SetupPage() {
                   Pairs players so opposing teams are evenly matched, based on results from past sessions. Needs at
                   least 2 registered players with 20+ games logged — falls back to normal random pairing otherwise.
                   Can't be combined with locked partners.
+                </p>
+              </span>
+            </label>
+          </div>
+
+          <h2>Rivalry-Aware Matchmaking (optional)</h2>
+          <div className="card">
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <input
+                type="checkbox"
+                checked={rivalryAware}
+                onChange={e => {
+                  setRivalryAware(e.target.checked);
+                  if (e.target.checked) setSkillBalanced(false);
+                }}
+              />
+              <span>
+                <strong>🔥 Seek out rivalries</strong>
+                <p style={{ fontSize: 12, color: 'var(--muted)', margin: '4px 0 0' }}>
+                  When forming courts, tries to put tonight's closest head-to-head rivalries (5+ games together,
+                  tight record) against each other. Partner pairing and sit-out balancing are unaffected — only who
+                  you face changes. Falls back to normal random matchups when nobody in the roster has enough shared
+                  history yet. Can't be combined with skill-balanced.
                 </p>
               </span>
             </label>
