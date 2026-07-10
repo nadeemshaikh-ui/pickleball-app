@@ -7,8 +7,11 @@ export default function HomePage() {
       <p style={{ color: 'var(--muted)', marginTop: 8 }}>
         Set up tonight&apos;s players, format, and rounds.
       </p>
-      <Link href="/setup" className="btn-primary" style={{ marginTop: 24 }}>
+      <Link href="/setup" className="btn-primary" style={{ marginTop: 24, display: 'inline-block' }}>
         New Session
+      </Link>
+      <Link href="/league" className="btn-secondary" style={{ marginTop: 12, display: 'inline-block' }}>
+        🏆 League
       </Link>
     </main>
   );

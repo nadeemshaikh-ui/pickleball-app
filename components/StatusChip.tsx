@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { getCurrentUser } from '@/lib/auth';
 import { getOwnPlayer } from '@/lib/players';
@@ -38,7 +39,8 @@ export default function StatusChip() {
   if (!text) return null;
 
   return (
-    <div
+    <Link
+      href="/league"
       style={{
         display: 'inline-block',
         padding: '4px 10px',
@@ -48,9 +50,11 @@ export default function StatusChip() {
         fontSize: 12,
         fontWeight: 700,
         marginBottom: 8,
+        textDecoration: 'none',
+        color: 'inherit',
       }}
     >
       {text}
-    </div>
+    </Link>
   );
 }
