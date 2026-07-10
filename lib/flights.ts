@@ -19,3 +19,7 @@ export function flightForRating(elo: number): string {
   }
   return current;
 }
+
+export function flightRank(flight: string): number {
+  return FLIGHT_BANDS.findIndex(b => b.name === flight);
+}

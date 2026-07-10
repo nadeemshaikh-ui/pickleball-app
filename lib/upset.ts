@@ -1,12 +1,8 @@
-import { FLIGHT_BANDS, flightForRating } from './flights';
+import { flightForRating, flightRank } from './flights';
 
 export interface UpsetResult {
   winnerFlight: string;
   loserFlight: string;
-}
-
-function flightRank(flight: string): number {
-  return FLIGHT_BANDS.findIndex(b => b.name === flight);
 }
 
 // Side rating = average of the two teammates' elo. An upset is a lower-flight

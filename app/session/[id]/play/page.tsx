@@ -8,6 +8,7 @@ import { ChairIcon } from '@/components/icons';
 import { formatLabel } from '@/lib/formatLabel';
 import { captureSpokenScore, isVoiceScoreSupported } from '@/lib/voiceScore';
 import { detectUpset } from '@/lib/upset';
+import { detectFlightChange } from '@/lib/flightChange';
 import { listPlayers } from '@/lib/players';
 
 export default function PlayPage({ params }: { params: Promise<{ id: string }> }) {
@@ -18,6 +19,7 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
   const [savingCourtId, setSavingCourtId] = useState<string | null>(null);
   const [listeningCourtId, setListeningCourtId] = useState<string | null>(null);
   const [eloByName, setEloByName] = useState<Map<string, number>>(new Map());
+  const [flightChanges, setFlightChanges] = useState<Record<string, string[]>>({});
   const voiceSupported = isVoiceScoreSupported();
 
   function firstIncompleteRound(r: RoundRow[]): number | undefined {
@@ -63,9 +65,31 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
   async function saveScore(court: RoundRow, a: string, b: string) {
     if (a === '' || b === '') return;
     setSavingCourtId(court.id);
+    const beforeElo = eloByName;
     await updateRoundScore(court.id, Number(a), Number(b));
-    const updatedRounds = await getRounds(id);
+    const [updatedRounds, players] = await Promise.all([getRounds(id), listPlayers()]);
     setRounds(updatedRounds);
+    // Refreshed after every save, not just once on page load — otherwise
+    // both this and the upset badge below would compare against
+    // increasingly stale ratings across a multi-round session.
+    const freshElo = new Map(players.map(p => [p.name, p.elo_rating]));
+    setEloByName(freshElo);
+
+    const participants = [...court.team_a, ...court.team_b];
+    const messages: string[] = [];
+    for (const name of participants) {
+      const before = beforeElo.get(name);
+      const after = freshElo.get(name);
+      if (before === undefined || after === undefined) continue;
+      const change = detectFlightChange(before, after);
+      if (change) {
+        messages.push(
+          change.direction === 'promoted' ? `🎉 ${name} promoted to ${change.flight}!` : `📉 ${name} relegated to ${change.flight}`
+        );
+      }
+    }
+    if (messages.length > 0) setFlightChanges(prev => ({ ...prev, [court.id]: messages }));
+
     setSavingCourtId(null);
     if (firstIncompleteRound(updatedRounds) === undefined) {
       await markSessionCompleted(id);
@@ -165,6 +189,11 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                         🐣 {upsetLabel(court)}
                       </div>
                     )}
+                    {(flightChanges[court.id] ?? []).map(msg => (
+                      <div key={msg} className="resting-badge">
+                        {msg}
+                      </div>
+                    ))}
                     {!sameSitOut && court.sitting_out.length > 0 && (
                       <div className="resting-badge">
                         <span className="stat-icon"><ChairIcon size={20} /></span>
