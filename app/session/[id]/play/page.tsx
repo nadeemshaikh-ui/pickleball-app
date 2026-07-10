@@ -6,6 +6,7 @@ import SessionNav from '@/components/SessionNav';
 import GroupHeader from '@/components/GroupHeader';
 import { ChairIcon } from '@/components/icons';
 import { formatLabel } from '@/lib/formatLabel';
+import { captureSpokenScore, isVoiceScoreSupported } from '@/lib/voiceScore';
 
 export default function PlayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -13,6 +14,8 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
   const [rounds, setRounds] = useState<RoundRow[]>([]);
   const [drafts, setDrafts] = useState<Record<string, [string, string]>>({});
   const [savingCourtId, setSavingCourtId] = useState<string | null>(null);
+  const [listeningCourtId, setListeningCourtId] = useState<string | null>(null);
+  const voiceSupported = isVoiceScoreSupported();
 
   function firstIncompleteRound(r: RoundRow[]): number | undefined {
     return [...new Set(r.map(x => x.round_number))]
@@ -37,8 +40,7 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
     return drafts[court.id] ?? [court.score_a?.toString() ?? '', court.score_b?.toString() ?? ''];
   }
 
-  async function handleSaveCourt(court: RoundRow) {
-    const [a, b] = draftFor(court);
+  async function saveScore(court: RoundRow, a: string, b: string) {
     if (a === '' || b === '') return;
     setSavingCourtId(court.id);
     await updateRoundScore(court.id, Number(a), Number(b));
@@ -48,6 +50,21 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
     if (firstIncompleteRound(updatedRounds) === undefined) {
       await markSessionCompleted(id);
     }
+  }
+
+  async function handleSaveCourt(court: RoundRow) {
+    const [a, b] = draftFor(court);
+    await saveScore(court, a, b);
+  }
+
+  async function handleVoiceScore(court: RoundRow) {
+    setListeningCourtId(court.id);
+    const result = await captureSpokenScore();
+    setListeningCourtId(null);
+    if (!result) return; // unsupported, denied, or unparseable — silently fall back to manual entry
+    const [a, b] = result;
+    setDrafts(prev => ({ ...prev, [court.id]: [a.toString(), b.toString()] }));
+    await saveScore(court, a.toString(), b.toString());
   }
 
   return (
@@ -110,6 +127,18 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                         />
                       </div>
                       {savingCourtId === court.id && <span style={{ fontSize: 12, color: 'var(--muted)' }}>Saving…</span>}
+                      {voiceSupported && (
+                        <button
+                          type="button"
+                          className="icon-btn"
+                          aria-label={`Speak score for court ${court.court}, round ${roundNumber}`}
+                          onClick={() => handleVoiceScore(court)}
+                          disabled={listeningCourtId !== null}
+                          style={{ opacity: listeningCourtId === court.id ? 1 : 0.6 }}
+                        >
+                          {listeningCourtId === court.id ? '🔴' : '🎤'}
+                        </button>
+                      )}
                     </div>
                     {!sameSitOut && court.sitting_out.length > 0 && (
                       <div className="resting-badge">
