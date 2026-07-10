@@ -5,6 +5,7 @@ export type Format = 'scramble' | 'squad_rivalry' | 'court_blocks' | 'fixed_part
 
 export interface SessionRow {
   id: string;
+  club_id: string;
   created_at: string;
   format: Format;
   players: string[];
@@ -41,6 +42,7 @@ function randomSessionId(): string {
 }
 
 export interface CreateSessionOptions {
+  clubId: string;
   players: string[];
   format: Format;
   roundCount: number;
@@ -62,6 +64,7 @@ export async function createSession(options: CreateSessionOptions): Promise<stri
   const id = randomSessionId();
   const { error } = await supabase.from('sessions').insert({
     id,
+    club_id: options.clubId,
     format: options.format,
     players: options.players,
     squads: options.squads,
@@ -138,8 +141,14 @@ export async function uploadPlayerPhoto(file: File): Promise<string> {
 // roster, format, courts, costs, and ladder flag transfer over, but locked
 // partners and skill-balanced toggle don't (never persisted, they're
 // per-generation shuffle inputs, not part of the session row).
-export async function getMostRecentSession(): Promise<SessionRow | null> {
-  const { data, error } = await supabase.from('sessions').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle();
+export async function getMostRecentSession(clubId: string): Promise<SessionRow | null> {
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('club_id', clubId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
   if (error) throw error;
   return data as SessionRow | null;
 }

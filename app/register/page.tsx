@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { getCurrentUser } from '@/lib/auth';
 import { getOwnPlayer, upsertOwnPlayer, listPlayers, type PlayerRow } from '@/lib/players';
 import { uploadPlayerPhoto } from '@/lib/db';
+import { useCurrentClub } from '@/lib/useCurrentClub';
 import type { User } from '@supabase/supabase-js';
 
 export default function RegisterPage() {
+  const { currentClubId, loading: clubLoading } = useCurrentClub();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
@@ -20,12 +22,17 @@ export default function RegisterPage() {
   const [directory, setDirectory] = useState<PlayerRow[]>([]);
 
   useEffect(() => {
+    if (clubLoading) return;
+    if (!currentClubId) {
+      setLoading(false);
+      return;
+    }
     async function load() {
-      const [u, players] = await Promise.all([getCurrentUser(), listPlayers()]);
+      const [u, players] = await Promise.all([getCurrentUser(), listPlayers(currentClubId!)]);
       setUser(u);
       setDirectory(players);
       if (u) {
-        const own = await getOwnPlayer(u.id);
+        const own = await getOwnPlayer(currentClubId!, u.id);
         if (own) {
           setName(own.name);
           setNickname(own.nickname ?? '');
@@ -38,7 +45,7 @@ export default function RegisterPage() {
       setLoading(false);
     }
     load();
-  }, []);
+  }, [currentClubId, clubLoading]);
 
   async function handlePhotoSelect(file: File | null) {
     if (!file) return;
@@ -51,7 +58,7 @@ export default function RegisterPage() {
   }
 
   async function handleSave() {
-    if (!user) return;
+    if (!user || !currentClubId) return;
     const trimmed = name.trim();
     if (!trimmed) {
       setError('Name is required.');
@@ -61,6 +68,7 @@ export default function RegisterPage() {
     setSaving(true);
     try {
       await upsertOwnPlayer({
+        clubId: currentClubId,
         userId: user.id,
         name: trimmed,
         nickname: nickname.trim() || null,
@@ -68,7 +76,7 @@ export default function RegisterPage() {
         bio: bio.trim() || null,
       });
       setSaved(true);
-      setDirectory(await listPlayers());
+      setDirectory(await listPlayers(currentClubId));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Save failed — that name might already be taken.');
     } finally {

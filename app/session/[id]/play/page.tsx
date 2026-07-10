@@ -37,10 +37,17 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
 
   useEffect(() => {
     reload();
-    listPlayers()
+  }, [id]);
+
+  // Scoped to the session's own club, not whatever club is "currently
+  // active" in the switcher — a session's data always belongs to the club
+  // it was created in, regardless of what the user has selected elsewhere.
+  useEffect(() => {
+    if (!session) return;
+    listPlayers(session.club_id)
       .then(players => setEloByName(new Map(players.map(p => [p.name, p.elo_rating]))))
       .catch(() => setEloByName(new Map()));
-  }, [id]);
+  }, [session?.club_id]);
 
   // Flight-mismatch upset badge — only shown when all 4 players are
   // registered (unrated players would make the flight comparison meaningless).
@@ -64,11 +71,11 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
   }
 
   async function saveScore(court: RoundRow, a: string, b: string) {
-    if (a === '' || b === '') return;
+    if (a === '' || b === '' || !session) return;
     setSavingCourtId(court.id);
     const beforeElo = eloByName;
     await updateRoundScore(court.id, Number(a), Number(b));
-    const [updatedRounds, players] = await Promise.all([getRounds(id), listPlayers()]);
+    const [updatedRounds, players] = await Promise.all([getRounds(id), listPlayers(session.club_id)]);
     setRounds(updatedRounds);
     // Refreshed after every save, not just once on page load — otherwise
     // both this and the upset badge below would compare against

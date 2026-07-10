@@ -43,8 +43,15 @@ export interface LifetimePlayerStats extends RankedPlayer {
   lastPlayedAt: string;
 }
 
-export async function fetchLifetimeLeaderboard(): Promise<LifetimePlayerStats[]> {
-  const { data, error } = await supabase.from('league_player_stats_mv').select('*');
+// Note: the `league_*` views (no `_mv` suffix) are thin club-scoped wrappers
+// over the underlying `league_*_mv` materialized views — matviews can't
+// carry RLS in Postgres, so the raw `_mv` tables are locked down and these
+// views are what the client actually queries. Membership alone isn't
+// enough to scope to the *current* club for a multi-club user, so every
+// query here still needs an explicit `.eq('club_id', clubId)`.
+
+export async function fetchLifetimeLeaderboard(clubId: string): Promise<LifetimePlayerStats[]> {
+  const { data, error } = await supabase.from('league_player_stats').select('*').eq('club_id', clubId);
   if (error) throw error;
   const ranked = rankPlayers(data);
   const byName = new Map(data.map(r => [r.name, r]));
@@ -56,16 +63,16 @@ export async function fetchLifetimeLeaderboard(): Promise<LifetimePlayerStats[]>
   }));
 }
 
-export async function fetchPlayerOfTheMonth(): Promise<RankedPlayer | null> {
-  const { data, error } = await supabase.from('league_player_month_stats_mv').select('*');
+export async function fetchPlayerOfTheMonth(clubId: string): Promise<RankedPlayer | null> {
+  const { data, error } = await supabase.from('league_player_month_stats').select('*').eq('club_id', clubId);
   if (error) throw error;
   const ranked = rankPlayers(data);
   const eligible = ranked.find(p => !p.provisional);
   return eligible ?? null;
 }
 
-export async function fetchPlayerOfTheMonthBoard(): Promise<RankedPlayer[]> {
-  const { data, error } = await supabase.from('league_player_month_stats_mv').select('*');
+export async function fetchPlayerOfTheMonthBoard(clubId: string): Promise<RankedPlayer[]> {
+  const { data, error } = await supabase.from('league_player_month_stats').select('*').eq('club_id', clubId);
   if (error) throw error;
   return rankPlayers(data);
 }
@@ -78,8 +85,8 @@ export interface RankedDuo {
   provisional: boolean;
 }
 
-export async function fetchBestDuos(): Promise<RankedDuo[]> {
-  const { data, error } = await supabase.from('league_duo_stats_mv').select('*');
+export async function fetchBestDuos(clubId: string): Promise<RankedDuo[]> {
+  const { data, error } = await supabase.from('league_duo_stats').select('*').eq('club_id', clubId);
   if (error) throw error;
   return data
     .map(r => ({
@@ -101,14 +108,14 @@ export interface MvpStats {
   mvpCount: number;
 }
 
-export async function fetchMvpCounts(): Promise<Map<string, number>> {
-  const { data, error } = await supabase.from('league_mvp_stats_mv').select('*');
+export async function fetchMvpCounts(clubId: string): Promise<Map<string, number>> {
+  const { data, error } = await supabase.from('league_mvp_stats').select('*').eq('club_id', clubId);
   if (error) throw error;
   return new Map(data.map((r: { name: string; mvp_count: number }) => [r.name, r.mvp_count]));
 }
 
-export async function fetchStreaks(): Promise<Map<string, number>> {
-  const { data, error } = await supabase.from('league_streak_stats_mv').select('*');
+export async function fetchStreaks(clubId: string): Promise<Map<string, number>> {
+  const { data, error } = await supabase.from('league_streak_stats').select('*').eq('club_id', clubId);
   if (error) throw error;
   return new Map(data.map((r: { name: string; current_win_streak: number }) => [r.name, r.current_win_streak]));
 }
@@ -122,8 +129,8 @@ export interface Rivalry {
 
 // "Closest" rivalry = smallest win-count gap relative to games played —
 // a 5-5 record over 10 games is a bigger rivalry than a 1-0 record.
-export async function fetchClosestRivalries(): Promise<Rivalry[]> {
-  const { data, error } = await supabase.from('league_rivalry_stats_mv').select('*');
+export async function fetchClosestRivalries(clubId: string): Promise<Rivalry[]> {
+  const { data, error } = await supabase.from('league_rivalry_stats').select('*').eq('club_id', clubId);
   if (error) throw error;
   return data
     .map((r: { p1: string; p2: string; p1_games: number; p1_wins: number; p2_games: number; p2_wins: number }) => ({
@@ -144,9 +151,9 @@ export async function fetchClosestRivalries(): Promise<Rivalry[]> {
 // All head-to-head pairings where BOTH players are in the given roster —
 // unoriented (players[0]/players[1] is just p1/p2 order), used for the
 // Storylines pregame brief, not a specific-player lookup.
-export async function fetchRivalriesAmongRoster(names: string[]): Promise<Rivalry[]> {
+export async function fetchRivalriesAmongRoster(clubId: string, names: string[]): Promise<Rivalry[]> {
   if (names.length < 2) return [];
-  const { data, error } = await supabase.from('league_rivalry_stats_mv').select('*').in('p1', names).in('p2', names);
+  const { data, error } = await supabase.from('league_rivalry_stats').select('*').eq('club_id', clubId).in('p1', names).in('p2', names);
   if (error) throw error;
   return data.map((r: { p1: string; p2: string; p1_games: number; p1_wins: number; p2_games: number; p2_wins: number }) => ({
     players: [r.p1, r.p2] as [string, string],
@@ -160,13 +167,13 @@ export async function fetchRivalriesAmongRoster(names: string[]): Promise<Rivalr
 // players[0]. Unlike fetchClosestRivalries, this has no MIN_GAMES threshold
 // or top-N cutoff — it's a direct lookup for one player's full rivalry list
 // (Nemesis Alert, Head-to-Head Card), not a leaderboard.
-export async function fetchRivalriesForPlayer(name: string): Promise<Rivalry[]> {
+export async function fetchRivalriesForPlayer(clubId: string, name: string): Promise<Rivalry[]> {
   // Two separate .eq() queries rather than .or(`p1.eq.${name},p2.eq.${name}`)
   // — PostgREST's or= filter syntax breaks on a value containing a comma or
   // parenthesis, both of which are valid characters in a human name.
   const [asP1, asP2] = await Promise.all([
-    supabase.from('league_rivalry_stats_mv').select('*').eq('p1', name),
-    supabase.from('league_rivalry_stats_mv').select('*').eq('p2', name),
+    supabase.from('league_rivalry_stats').select('*').eq('club_id', clubId).eq('p1', name),
+    supabase.from('league_rivalry_stats').select('*').eq('club_id', clubId).eq('p2', name),
   ]);
   if (asP1.error) throw asP1.error;
   if (asP2.error) throw asP2.error;
@@ -189,8 +196,10 @@ export async function fetchRivalriesForPlayer(name: string): Promise<Rivalry[]> 
 }
 
 // Admin-only — enforced again at the DB level by refresh_league_stats()
-// itself (raises if the caller isn't in admins), this is just so the UI
-// can surface the real error message instead of a generic RPC failure.
+// itself (raises if the caller isn't an admin of any club), this is just so
+// the UI can surface the real error message instead of a generic RPC
+// failure. Refreshing recomputes every club's stats at once (matviews can't
+// be refreshed per-club) — harmless for any club admin to trigger.
 export async function refreshLeagueStats(): Promise<void> {
   const { error } = await supabase.rpc('refresh_league_stats');
   if (error) throw error;

@@ -8,8 +8,8 @@ export interface PersonalBests {
   longestStreak: number;
 }
 
-export async function fetchPersonalBests(name: string): Promise<PersonalBests> {
-  const { data, error } = await supabase.rpc('player_personal_bests', { target_name: name });
+export async function fetchPersonalBests(clubId: string, name: string): Promise<PersonalBests> {
+  const { data, error } = await supabase.rpc('player_personal_bests', { target_club_id: clubId, target_name: name });
   if (error) throw error;
   const row = data?.[0];
   return {

@@ -21,11 +21,13 @@ import { preloadPlayerPhotos } from '@/lib/playerPhotos';
 import { getCurrentUser, isCurrentUserAdmin } from '@/lib/auth';
 import { listPlayers } from '@/lib/players';
 import { shareToWhatsApp } from '@/lib/whatsapp';
+import { useCurrentClub } from '@/lib/useCurrentClub';
 import Avatar from '@/components/Avatar';
 
 type SortKey = 'rank' | 'wins' | 'winPct' | 'gamesPlayed' | 'pointsFor' | 'mvp';
 
 export default function LeagueStatsPage() {
+  const { currentClubId, loading: clubLoading } = useCurrentClub();
   const [lifetime, setLifetime] = useState<LifetimePlayerStats[]>([]);
   const [mvpCounts, setMvpCounts] = useState<Map<string, number>>(new Map());
   const [streaks, setStreaks] = useState<Map<string, number>>(new Map());
@@ -42,14 +44,19 @@ export default function LeagueStatsPage() {
   const [expandedLoading, setExpandedLoading] = useState(false);
 
   useEffect(() => {
+    if (clubLoading) return;
+    if (!currentClubId) {
+      setLoading(false);
+      return;
+    }
     async function init() {
       try {
         const [lb, mvp, streakMap, players, duoList, , user] = await Promise.all([
-          fetchLifetimeLeaderboard(),
-          fetchMvpCounts(),
-          fetchStreaks(),
-          listPlayers(),
-          fetchBestDuos(),
+          fetchLifetimeLeaderboard(currentClubId!),
+          fetchMvpCounts(currentClubId!),
+          fetchStreaks(currentClubId!),
+          listPlayers(currentClubId!),
+          fetchBestDuos(currentClubId!),
           preloadPlayerPhotos(),
           getCurrentUser(),
         ]);
@@ -58,7 +65,7 @@ export default function LeagueStatsPage() {
         setStreaks(streakMap);
         setFlightByName(new Map(players.map(p => [p.name, flightForRating(p.elo_rating)])));
         setDuos(duoList);
-        if (user) setIsAdmin(await isCurrentUserAdmin());
+        if (user) setIsAdmin(await isCurrentUserAdmin(currentClubId!));
       } catch (e) {
         setLoadError(e instanceof Error ? e.message : 'Failed to load lifetime stats.');
       } finally {
@@ -66,17 +73,18 @@ export default function LeagueStatsPage() {
       }
     }
     init();
-  }, []);
+  }, [currentClubId, clubLoading]);
 
   async function handleToggleExpand(name: string) {
     if (expandedName === name) {
       setExpandedName(null);
       return;
     }
+    if (!currentClubId) return;
     setExpandedName(name);
     setExpandedLoading(true);
     try {
-      const [rivalries, bests] = await Promise.all([fetchRivalriesForPlayer(name), fetchPersonalBests(name)]);
+      const [rivalries, bests] = await Promise.all([fetchRivalriesForPlayer(currentClubId, name), fetchPersonalBests(currentClubId, name)]);
       setExpandedRivalries(rivalries);
       setExpandedBests(bests);
     } catch {
@@ -104,7 +112,8 @@ export default function LeagueStatsPage() {
       .sort((a, b) => Math.abs(b.score) - Math.abs(a.score));
   }
 
-  if (loading) return <main className="page"><p>Loading…</p></main>;
+  if (loading || clubLoading) return <main className="page"><p>Loading…</p></main>;
+  if (!currentClubId) return <main className="page"><p>Join or create a club first — see <a href="/clubs">Clubs</a>.</p></main>;
   if (loadError) return <main className="page"><p style={{ color: 'var(--danger)' }}>{loadError}</p></main>;
 
   const rankedLifetime = lifetime.filter(p => !p.provisional);

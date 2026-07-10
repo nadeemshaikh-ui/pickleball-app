@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 
 export interface PlayerRow {
   id: string;
+  club_id: string;
   user_id: string | null;
   name: string;
   nickname: string | null;
@@ -23,8 +24,8 @@ export interface RatingInfo {
 // registered, or under MIN_GAMES_FOR_SKILL_RATING) with the pool median of
 // players who do have enough games — so they don't skew the balance by
 // being silently treated as some default like 1500.
-export async function getSkillRatingsForNames(names: string[]): Promise<Map<string, number> | null> {
-  const { data, error } = await supabase.from('players').select('name, elo_rating, games_played').in('name', names);
+export async function getSkillRatingsForNames(clubId: string, names: string[]): Promise<Map<string, number> | null> {
+  const { data, error } = await supabase.from('players').select('name, elo_rating, games_played').eq('club_id', clubId).in('name', names);
   if (error || !data) return null;
 
   const rated = data.filter(p => p.games_played >= MIN_GAMES_FOR_SKILL_RATING);
@@ -38,19 +39,22 @@ export async function getSkillRatingsForNames(names: string[]): Promise<Map<stri
   return new Map(names.map(name => [name, ratingByName.get(name) ?? median]));
 }
 
-export async function listPlayers(): Promise<PlayerRow[]> {
-  const { data, error } = await supabase.from('players').select('*').order('name', { ascending: true });
+export async function listPlayers(clubId: string): Promise<PlayerRow[]> {
+  const { data, error } = await supabase.from('players').select('*').eq('club_id', clubId).order('name', { ascending: true });
   if (error) throw error;
   return data as PlayerRow[];
 }
 
-export async function getOwnPlayer(userId: string): Promise<PlayerRow | null> {
-  const { data, error } = await supabase.from('players').select('*').eq('user_id', userId).maybeSingle();
+// A user_id can now have one player row per club (unique per club_id+user_id,
+// not globally) — so "my player" only makes sense scoped to a specific club.
+export async function getOwnPlayer(clubId: string, userId: string): Promise<PlayerRow | null> {
+  const { data, error } = await supabase.from('players').select('*').eq('club_id', clubId).eq('user_id', userId).maybeSingle();
   if (error) throw error;
   return data as PlayerRow | null;
 }
 
 export interface UpsertPlayerOptions {
+  clubId: string;
   userId: string;
   name: string;
   nickname: string | null;
@@ -61,13 +65,14 @@ export interface UpsertPlayerOptions {
 export async function upsertOwnPlayer(options: UpsertPlayerOptions): Promise<void> {
   const { error } = await supabase.from('players').upsert(
     {
+      club_id: options.clubId,
       user_id: options.userId,
       name: options.name,
       nickname: options.nickname,
       photo_url: options.photoUrl,
       bio: options.bio,
     },
-    { onConflict: 'user_id' }
+    { onConflict: 'club_id,user_id' }
   );
   if (error) throw error;
 }

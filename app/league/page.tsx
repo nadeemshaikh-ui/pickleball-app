@@ -16,9 +16,11 @@ import {
 import { getCurrentUser, isCurrentUserAdmin } from '@/lib/auth';
 import { preloadPlayerPhotos } from '@/lib/playerPhotos';
 import { shareToWhatsApp } from '@/lib/whatsapp';
+import { useCurrentClub } from '@/lib/useCurrentClub';
 import Avatar from '@/components/Avatar';
 
 export default function LeaguePage() {
+  const { currentClubId, loading: clubLoading } = useCurrentClub();
   const [potm, setPotm] = useState<RankedPlayer[]>([]);
   const [duos, setDuos] = useState<RankedDuo[]>([]);
   const [rivalries, setRivalries] = useState<Rivalry[]>([]);
@@ -28,11 +30,11 @@ export default function LeaguePage() {
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  async function load() {
+  async function load(clubId: string) {
     const [pb, db, rv] = await Promise.all([
-      fetchPlayerOfTheMonthBoard(),
-      fetchBestDuos(),
-      fetchClosestRivalries(),
+      fetchPlayerOfTheMonthBoard(clubId),
+      fetchBestDuos(clubId),
+      fetchClosestRivalries(clubId),
       preloadPlayerPhotos(),
     ]);
     setPotm(pb);
@@ -41,10 +43,15 @@ export default function LeaguePage() {
   }
 
   useEffect(() => {
+    if (clubLoading) return;
+    if (!currentClubId) {
+      setLoading(false);
+      return;
+    }
     async function init() {
       try {
-        const [user] = await Promise.all([getCurrentUser(), load()]);
-        if (user) setIsAdmin(await isCurrentUserAdmin());
+        const [user] = await Promise.all([getCurrentUser(), load(currentClubId!)]);
+        if (user) setIsAdmin(await isCurrentUserAdmin(currentClubId!));
       } catch (e) {
         setLoadError(e instanceof Error ? e.message : 'Failed to load league stats.');
       } finally {
@@ -52,14 +59,15 @@ export default function LeaguePage() {
       }
     }
     init();
-  }, []);
+  }, [currentClubId, clubLoading]);
 
   async function handleRefresh() {
+    if (!currentClubId) return;
     setRefreshing(true);
     setRefreshError(null);
     try {
       await refreshLeagueStats();
-      await load();
+      await load(currentClubId);
     } catch (e) {
       setRefreshError(e instanceof Error ? e.message : 'Refresh failed.');
     } finally {
@@ -99,7 +107,8 @@ export default function LeaguePage() {
     return lines.join('\n');
   }
 
-  if (loading) return <main className="page"><p>Loading…</p></main>;
+  if (loading || clubLoading) return <main className="page"><p>Loading…</p></main>;
+  if (!currentClubId) return <main className="page"><p>Join or create a club first — see <a href="/clubs">Clubs</a>.</p></main>;
   if (loadError) return <main className="page"><p style={{ color: 'var(--danger)' }}>{loadError}</p></main>;
 
   const monthLeader = potm.find(p => !p.provisional) ?? null;

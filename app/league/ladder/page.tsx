@@ -7,9 +7,11 @@ import { listPlayers, type PlayerRow } from '@/lib/players';
 import { getCurrentUser, isCurrentUserAdmin } from '@/lib/auth';
 import { preloadPlayerPhotos } from '@/lib/playerPhotos';
 import { shareToWhatsApp } from '@/lib/whatsapp';
+import { useCurrentClub } from '@/lib/useCurrentClub';
 import Avatar from '@/components/Avatar';
 
 export default function LadderPage() {
+  const { currentClubId, loading: clubLoading } = useCurrentClub();
   const [standings, setStandings] = useState<LadderStandingRow[]>([]);
   const [players, setPlayers] = useState<PlayerRow[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -18,17 +20,22 @@ export default function LadderPage() {
   const [resetting, setResetting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  async function load() {
-    const [st, pl] = await Promise.all([fetchLadderStandings(), listPlayers(), preloadPlayerPhotos()]);
+  async function load(clubId: string) {
+    const [st, pl] = await Promise.all([fetchLadderStandings(clubId), listPlayers(clubId), preloadPlayerPhotos()]);
     setStandings(st);
     setPlayers(pl);
   }
 
   useEffect(() => {
+    if (clubLoading) return;
+    if (!currentClubId) {
+      setLoading(false);
+      return;
+    }
     async function init() {
       try {
-        const [user] = await Promise.all([getCurrentUser(), load()]);
-        if (user) setIsAdmin(await isCurrentUserAdmin());
+        const [user] = await Promise.all([getCurrentUser(), load(currentClubId!)]);
+        if (user) setIsAdmin(await isCurrentUserAdmin(currentClubId!));
       } catch (e) {
         setActionError(e instanceof Error ? e.message : 'Failed to load ladder standings.');
       } finally {
@@ -36,17 +43,18 @@ export default function LadderPage() {
       }
     }
     init();
-  }, []);
+  }, [currentClubId, clubLoading]);
 
   const enrolledNames = new Set(standings.map(s => s.player_name));
   const unenrolledPlayers = players.filter(p => !enrolledNames.has(p.name));
 
   async function handleEnroll(name: string) {
+    if (!currentClubId) return;
     setBusyName(name);
     setActionError(null);
     try {
-      await enrollInLadder(name);
-      await load();
+      await enrollInLadder(currentClubId, name);
+      await load(currentClubId);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'Failed to enroll player.');
     } finally {
@@ -55,11 +63,12 @@ export default function LadderPage() {
   }
 
   async function handleUnenroll(name: string) {
+    if (!currentClubId) return;
     setBusyName(name);
     setActionError(null);
     try {
-      await unenrollFromLadder(name);
-      await load();
+      await unenrollFromLadder(currentClubId, name);
+      await load(currentClubId);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'Failed to remove player.');
     } finally {
@@ -68,12 +77,13 @@ export default function LadderPage() {
   }
 
   async function handleReset() {
+    if (!currentClubId) return;
     if (!window.confirm('Reset the ladder? Everyone enrolled will be reseeded by current ELO rating and win/loss history on the ladder is cleared. This can\'t be undone.')) return;
     setResetting(true);
     setActionError(null);
     try {
-      await resetLadder();
-      await load();
+      await resetLadder(currentClubId);
+      await load(currentClubId);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'Failed to reset ladder.');
     } finally {
@@ -87,7 +97,8 @@ export default function LadderPage() {
     return lines.join('\n');
   }
 
-  if (loading) return <main className="page"><p>Loading…</p></main>;
+  if (loading || clubLoading) return <main className="page"><p>Loading…</p></main>;
+  if (!currentClubId) return <main className="page"><p>Join or create a club first — see <a href="/clubs">Clubs</a>.</p></main>;
 
   return (
     <main className="page">

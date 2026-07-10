@@ -48,14 +48,14 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
         setSquadTotals(computeSquadTotals(r, s.squads));
       }
       setDues(await fetchSessionDues(id));
-      if (user) setIsAdmin(await isCurrentUserAdmin());
+      if (user) setIsAdmin(await isCurrentUserAdmin(s.club_id));
       const celebratedKey = `celebrated-${id}`;
       if (s.status === 'completed' && board.length > 0 && !sessionStorage.getItem(celebratedKey)) {
         setShowCelebration(true);
         sessionStorage.setItem(celebratedKey, '1');
         const winnerName = board[0].name;
         try {
-          const [streaks, mvpCounts, players] = await Promise.all([fetchStreaks(), fetchMvpCounts(), listPlayers()]);
+          const [streaks, mvpCounts, players] = await Promise.all([fetchStreaks(s.club_id), fetchMvpCounts(s.club_id), listPlayers(s.club_id)]);
           const winnerPlayer = players.find(p => p.name === winnerName);
           const streak = streaks.get(winnerName) ?? 0;
           const mvpCount = mvpCounts.get(winnerName) ?? 0;

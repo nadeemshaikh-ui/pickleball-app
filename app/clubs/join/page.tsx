@@ -1,0 +1,111 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { joinClubByCode, searchClubsByName, requestToJoinClub, type ClubRow } from '@/lib/clubs';
+import { useCurrentClub } from '@/lib/useCurrentClub';
+
+export default function JoinClubPage() {
+  const router = useRouter();
+  const { setCurrentClubId } = useCurrentClub();
+
+  const [code, setCode] = useState('');
+  const [codeSubmitting, setCodeSubmitting] = useState(false);
+  const [codeError, setCodeError] = useState<string | null>(null);
+
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<ClubRow[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set());
+
+  async function handleJoinByCode() {
+    if (!code.trim()) return;
+    setCodeSubmitting(true);
+    setCodeError(null);
+    try {
+      const club = await joinClubByCode(code);
+      setCurrentClubId(club.id);
+      router.push('/setup');
+    } catch (e) {
+      setCodeError(e instanceof Error ? e.message : 'Failed to join.');
+      setCodeSubmitting(false);
+    }
+  }
+
+  async function handleSearch(value: string) {
+    setQuery(value);
+    if (value.trim().length < 2) {
+      setResults([]);
+      return;
+    }
+    setSearching(true);
+    try {
+      setResults(await searchClubsByName(value));
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  async function handleRequest(clubId: string) {
+    await requestToJoinClub(clubId);
+    setRequestedIds(prev => new Set(prev).add(clubId));
+  }
+
+  return (
+    <main className="page">
+      <Link href="/clubs" className="text-link-btn">← Clubs</Link>
+      <h1>Join a Club</h1>
+
+      <h2>Have a Join Code?</h2>
+      <div className="card" style={{ display: 'flex', gap: 8 }}>
+        <input
+          value={code}
+          onChange={e => setCode(e.target.value.toUpperCase())}
+          placeholder="e.g. ABC123"
+          aria-label="Join code"
+          style={{ flex: 1, minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8, textTransform: 'uppercase' }}
+        />
+        <button className="btn-primary" onClick={handleJoinByCode} disabled={codeSubmitting || !code.trim()} style={{ minHeight: 44, padding: '0 16px' }}>
+          {codeSubmitting ? 'Joining…' : 'Join'}
+        </button>
+      </div>
+      {codeError && <p style={{ color: 'var(--danger)', marginTop: 8, fontWeight: 600 }}>{codeError}</p>}
+      <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>
+        A code joins instantly — no approval needed. Get it from your club's admin.
+      </p>
+
+      <h2>Or Find a Club by Name</h2>
+      <div className="card">
+        <input
+          value={query}
+          onChange={e => handleSearch(e.target.value)}
+          placeholder="Search club name…"
+          aria-label="Search clubs"
+          style={{ width: '100%', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+        />
+        {searching && <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 8 }}>Searching…</p>}
+        {results.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+            {results.map(c => (
+              <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ flex: 1, fontWeight: 700 }}>{c.name}</span>
+                <button
+                  className="btn-secondary"
+                  style={{ minHeight: 32, padding: '4px 12px', fontSize: 13 }}
+                  disabled={requestedIds.has(c.id)}
+                  onClick={() => handleRequest(c.id)}
+                >
+                  {requestedIds.has(c.id) ? 'Requested ✓' : 'Request to Join'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>
+        Requesting to join needs the club's admin to approve you first — you'll get access once they do.
+      </p>
+    </main>
+  );
+}

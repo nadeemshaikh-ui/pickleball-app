@@ -4,20 +4,23 @@ import { useEffect, useState } from 'react';
 import { getCurrentUser } from '@/lib/auth';
 import { getOwnPlayer } from '@/lib/players';
 import { fetchLifetimeLeaderboard, fetchStreaks } from '@/lib/leagueStats';
+import { useCurrentClub } from '@/lib/useCurrentClub';
 
 // Renders nothing if signed out, unregistered, or not yet ranked (below
 // MIN_GAMES_FOR_RANKING) — a chip with no real data would just be noise.
 export default function StatusChip() {
+  const { currentClubId } = useCurrentClub();
   const [text, setText] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!currentClubId) return;
     let cancelled = false;
     async function load() {
       const user = await getCurrentUser();
       if (!user) return;
-      const player = await getOwnPlayer(user.id);
+      const player = await getOwnPlayer(currentClubId!, user.id);
       if (!player) return;
-      const [leaderboard, streaks] = await Promise.all([fetchLifetimeLeaderboard(), fetchStreaks()]);
+      const [leaderboard, streaks] = await Promise.all([fetchLifetimeLeaderboard(currentClubId!), fetchStreaks(currentClubId!)]);
       const rank = leaderboard.findIndex(p => p.name === player.name);
       const entry = rank >= 0 ? leaderboard[rank] : null;
       if (cancelled || !entry || entry.provisional) return;
@@ -30,7 +33,7 @@ export default function StatusChip() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [currentClubId]);
 
   if (!text) return null;
 

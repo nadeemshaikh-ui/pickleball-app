@@ -19,14 +19,20 @@ export async function getCurrentUser(): Promise<User | null> {
   return data.user;
 }
 
-// True if the signed-in user is a seeded admin. Not a client-side trust
-// boundary by itself — every write that matters is also gated by the
-// "players self or admin update" RLS policy at the DB level, so this is
-// just for showing/hiding admin UI, not the actual security check.
-export async function isCurrentUserAdmin(): Promise<boolean> {
+// True if the signed-in user is that specific club's admin. Not a
+// client-side trust boundary by itself — every write that matters is also
+// gated by club-scoped RLS policies at the DB level (via is_club_admin()),
+// so this is just for showing/hiding admin UI, not the actual security check.
+export async function isCurrentUserAdmin(clubId: string): Promise<boolean> {
   const user = await getCurrentUser();
   if (!user) return false;
-  const { data, error } = await supabase.from('admins').select('user_id').eq('user_id', user.id).maybeSingle();
+  const { data, error } = await supabase
+    .from('club_members')
+    .select('user_id')
+    .eq('club_id', clubId)
+    .eq('user_id', user.id)
+    .eq('role', 'admin')
+    .maybeSingle();
   if (error) return false;
   return Boolean(data);
 }

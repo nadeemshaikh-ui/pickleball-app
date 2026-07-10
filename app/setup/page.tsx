@@ -12,9 +12,8 @@ import {
   type LockedPair,
 } from '@/lib/shuffle';
 import { generateInitialKingOfCourtRound } from '@/lib/kingOfCourt';
-import { createSession, insertRounds, uploadGroupLogo, uploadPlayerPhoto, getMostRecentSession } from '@/lib/db';
+import { createSession, insertRounds, uploadPlayerPhoto, getMostRecentSession } from '@/lib/db';
 import { saveRoster, loadRoster } from '@/lib/savedRoster';
-import { findPresetLogos } from '@/lib/presetGroups';
 import { getPlayerPhoto, savePlayerPhoto, preloadPlayerPhotos } from '@/lib/playerPhotos';
 import { listPlayers, getSkillRatingsForNames, getOwnPlayer, type PlayerRow } from '@/lib/players';
 import { createSessionDues } from '@/lib/dues';
@@ -22,6 +21,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { fetchRivalriesForPlayer, fetchRivalriesAmongRoster, fetchStreaks, type Rivalry } from '@/lib/leagueStats';
 import { buildStorylines } from '@/lib/storylines';
 import { polishStorylines } from '@/lib/storylinesLLM';
+import { useCurrentClub } from '@/lib/useCurrentClub';
 import StatusChip from '@/components/StatusChip';
 
 const MIN_GAMES_FOR_NEMESIS_ALERT = 3;
@@ -58,6 +58,7 @@ const FORMAT_INFO: Record<Format, { label: string; summary: string; example: str
 
 export default function SetupPage() {
   const router = useRouter();
+  const { currentClubId, currentClub, loading: clubLoading } = useCurrentClub();
 
   const [playerCount, setPlayerCount] = useState(10);
   const [courtCount, setCourtCount] = useState(2);
@@ -117,10 +118,6 @@ export default function SetupPage() {
     setLockedPairs(prev => prev.filter((_, i) => i !== index));
   }
 
-  const [groupName, setGroupName] = useState('');
-  const [logo1File, setLogo1File] = useState<File | null>(null);
-  const [logo2File, setLogo2File] = useState<File | null>(null);
-  const presetLogos = findPresetLogos(groupName);
 
   const [courtCost, setCourtCost] = useState('');
   const [ballCost, setBallCost] = useState('200');
@@ -140,21 +137,22 @@ export default function SetupPage() {
   const [storylines, setStorylines] = useState<string[]>([]);
 
   useEffect(() => {
-    loadRoster().then(setSavedRoster);
+    if (clubLoading || !currentClubId) return;
+    loadRoster(currentClubId).then(setSavedRoster);
     preloadPlayerPhotos().then(() => setPhotoVersion(v => v + 1));
-    listPlayers().then(setRegisteredPlayers).catch(() => setRegisteredPlayers([]));
+    listPlayers(currentClubId).then(setRegisteredPlayers).catch(() => setRegisteredPlayers([]));
     getCurrentUser()
-      .then(user => (user ? getOwnPlayer(user.id) : null))
+      .then(user => (user ? getOwnPlayer(currentClubId, user.id) : null))
       .then(player => setMyName(player?.name ?? null))
       .catch(() => setMyName(null));
-  }, []);
+  }, [currentClubId, clubLoading]);
 
   // Closest rival tonight: among tonight's roster, whoever you've got the
   // tightest head-to-head record against — a fun pregame teaser, not a
   // ranked stat, so the games threshold is deliberately lower than the
   // official MIN_GAMES_FOR_RIVALRY used on the League page.
   useEffect(() => {
-    if (!myName || !names.some(n => n.trim() === myName)) {
+    if (!myName || !currentClubId || !names.some(n => n.trim() === myName)) {
       setNemesis(null);
       return;
     }
@@ -163,7 +161,7 @@ export default function SetupPage() {
     // every single character typed.
     const timer = setTimeout(() => {
       const roster = new Set(names.map(n => n.trim()).filter(Boolean));
-      fetchRivalriesForPlayer(myName)
+      fetchRivalriesForPlayer(currentClubId, myName)
         .then(rivalries => {
           const inRoster = rivalries.filter(r => roster.has(r.players[1]) && r.gamesTogether >= MIN_GAMES_FOR_NEMESIS_ALERT);
           const closest = [...inRoster].sort((a, b) => {
@@ -177,18 +175,18 @@ export default function SetupPage() {
         .catch(() => setNemesis(null));
     }, 500);
     return () => clearTimeout(timer);
-  }, [myName, names]);
+  }, [myName, names, currentClubId]);
 
   // Template-based pregame brief (no LLM) — same debounce reasoning as Nemesis Alert above.
   useEffect(() => {
     const roster = names.map(n => n.trim()).filter(Boolean);
-    if (roster.length < 2) {
+    if (roster.length < 2 || !currentClubId) {
       setStorylines([]);
       return;
     }
     let cancelled = false;
     const timer = setTimeout(() => {
-      Promise.all([fetchStreaks(), fetchRivalriesAmongRoster(roster)])
+      Promise.all([fetchStreaks(currentClubId), fetchRivalriesAmongRoster(currentClubId, roster)])
         .then(([streaks, rivalries]) => {
           if (cancelled) return;
           const templateLines = buildStorylines(roster, streaks, rivalries);
@@ -211,7 +209,7 @@ export default function SetupPage() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [names]);
+  }, [names, currentClubId]);
 
   function handleAddRegisteredPlayer(playerName: string) {
     if (names.some(n => n.trim() === playerName)) return; // already added
@@ -245,10 +243,11 @@ export default function SetupPage() {
   }
 
   async function handleRepeatLastSession() {
+    if (!currentClubId) return;
     setError(null);
     let last;
     try {
-      last = await getMostRecentSession();
+      last = await getMostRecentSession(currentClubId);
     } catch {
       setError('Failed to load your last session.');
       return;
@@ -268,7 +267,6 @@ export default function SetupPage() {
       setRoundsPerBlock(last.rounds_per_block);
       setSwapCount(Math.round(last.round_count / last.rounds_per_block));
     }
-    setGroupName(last.group_name ?? '');
     setCourtCost(last.court_cost !== null ? String(last.court_cost) : '');
     setBallCost(String(last.ball_cost));
     setIsLadder(last.is_ladder);
@@ -277,7 +275,7 @@ export default function SetupPage() {
     setRoundDurationMinutes(last.round_duration_minutes !== null ? String(last.round_duration_minutes) : '');
     setNamesEntered(true);
     setRosterNotice(
-      "Loaded your last session's setup — edit anything below. Locked partners, skill-balancing, and logos (unless your group name is saved) don't carry over."
+      "Loaded your last session's setup — edit anything below. Locked partners and skill-balancing don't carry over."
     );
   }
 
@@ -320,6 +318,10 @@ export default function SetupPage() {
 
   async function handleGenerate() {
     setError(null);
+    if (!currentClubId) {
+      setError('Join or create a club before starting a session.');
+      return;
+    }
     const trimmed = names.map(n => n.trim());
     if (trimmed.some(n => n.length === 0)) {
       setError('All player names are required.');
@@ -368,19 +370,21 @@ export default function SetupPage() {
     setSubmitting(true);
     try {
       const seed = `${Date.now()}`;
-      let logoUrl1: string | null = logo1File ? null : presetLogos?.logo1 ?? null;
-      let logoUrl2: string | null = logo2File ? null : presetLogos?.logo2 ?? null;
-      if (logo1File) logoUrl1 = await uploadGroupLogo(logo1File);
-      if (logo2File) logoUrl2 = await uploadGroupLogo(logo2File);
+      // Branding now comes from the club (Club Settings), not entered per
+      // session — this is just what gets stamped onto this session's row so
+      // GroupHeader keeps working unchanged for historical sessions too.
+      const logoUrl1: string | null = currentClub?.logo_url ?? null;
+      const logoUrl2: string | null = null;
 
       const parsedCourtCost = courtCost.trim() === '' ? null : Number(courtCost);
       const parsedBallCost = ballCost.trim() === '' ? 200 : Number(ballCost);
 
       const baseOptions = {
+        clubId: currentClubId,
         players: trimmed,
         courtLabels: trimmedCourtLabels,
         roundDurationMinutes: parsedDuration,
-        groupName: groupName.trim() || null,
+        groupName: currentClub?.name ?? null,
         logoUrl1,
         logoUrl2,
         startTime: startTime.trim() || null,
@@ -393,9 +397,9 @@ export default function SetupPage() {
       let sessionId: string;
       if (format === 'scramble') {
         const skillRatings =
-          skillBalanced && lockedPairs.length === 0 ? (await getSkillRatingsForNames(trimmed)) ?? undefined : undefined;
+          skillBalanced && lockedPairs.length === 0 ? (await getSkillRatingsForNames(currentClubId, trimmed)) ?? undefined : undefined;
         const rivalryHeatMap = rivalryAware
-          ? buildRivalryHeatMap(await fetchRivalriesAmongRoster(trimmed))
+          ? buildRivalryHeatMap(await fetchRivalriesAmongRoster(currentClubId, trimmed))
           : undefined;
         const rounds = generateScrambleSchedule(trimmed, courtCount, roundCount, seed, lockedPairs, skillRatings, rivalryHeatMap);
         sessionId = await createSession({
@@ -447,7 +451,7 @@ export default function SetupPage() {
         });
         await insertRounds(sessionId, rounds);
       }
-      await saveRoster(trimmed);
+      await saveRoster(currentClubId, trimmed);
       if (parsedCourtCost !== null) {
         await createSessionDues(sessionId, parsedCourtCost, parsedBallCost, trimmed);
       }
@@ -456,6 +460,18 @@ export default function SetupPage() {
       setError(e instanceof Error ? e.message : 'Failed to create session.');
       setSubmitting(false);
     }
+  }
+
+  if (clubLoading) return <main className="page"><p>Loading…</p></main>;
+  if (!currentClubId) {
+    return (
+      <main className="page">
+        <p>Join or create a club before starting a session.</p>
+        <a href="/clubs" className="btn-primary" style={{ display: 'inline-block', marginTop: 12 }}>
+          Go to Clubs
+        </a>
+      </main>
+    );
   }
 
   if (!namesEntered) {
@@ -467,8 +483,8 @@ export default function SetupPage() {
         <div className="card">
           <input
             type="number"
-            value={courtCount}
-            onChange={e => setCourtCount(Math.max(1, Number(e.target.value)))}
+            value={courtCount || ''}
+            onChange={e => setCourtCount(Number(e.target.value) || 0)}
             min={1}
             aria-label="Number of courts"
             style={{ minHeight: 44, padding: '10px 12px', fontSize: 16, width: 100, border: '1px solid var(--border)', borderRadius: 8 }}
@@ -478,8 +494,8 @@ export default function SetupPage() {
         <div className="card">
           <input
             type="number"
-            value={playerCount}
-            onChange={e => setPlayerCount(Number(e.target.value))}
+            value={playerCount || ''}
+            onChange={e => setPlayerCount(Number(e.target.value) || 0)}
             min={minPlayers}
             aria-label="Number of players"
             style={{ minHeight: 44, padding: '10px 12px', fontSize: 16, width: 100, border: '1px solid var(--border)', borderRadius: 8 }}
@@ -650,37 +666,6 @@ export default function SetupPage() {
       <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: -6, marginBottom: 16 }}>
         Leave court cost blank to skip dues tracking for this session. Split evenly across everyone playing.
       </p>
-
-      <h2>Group Branding (optional)</h2>
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <input
-          value={groupName}
-          onChange={e => setGroupName(e.target.value)}
-          placeholder="Group name (e.g. Sunday Smashers)"
-          aria-label="Group name"
-          style={{ minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
-        />
-        {presetLogos && (
-          <p style={{ fontSize: 12, color: 'var(--dark)', fontWeight: 700 }}>
-            ✓ Using saved logos for &quot;{groupName.trim()}&quot; — no upload needed.
-          </p>
-        )}
-        <div>
-          <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>
-            Logo 1 {presetLogos?.logo1 && '(optional — overrides saved logo)'}
-          </label>
-          <input type="file" accept="image/*" aria-label="Logo 1" onChange={e => setLogo1File(e.target.files?.[0] ?? null)} />
-        </div>
-        <div>
-          <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>
-            Logo 2 {presetLogos?.logo2 && '(optional — overrides saved logo)'}
-          </label>
-          <input type="file" accept="image/*" aria-label="Logo 2" onChange={e => setLogo2File(e.target.files?.[0] ?? null)} />
-        </div>
-        <p style={{ fontSize: 11, color: 'var(--muted)' }}>
-          Tip: to reuse the same logos every week without uploading, ask for them to be hard-coded to your group name in <code>lib/presetGroups.ts</code>.
-        </p>
-      </div>
 
       <h2>Ladder League (optional)</h2>
       <div className="card">
@@ -858,8 +843,8 @@ export default function SetupPage() {
           <h2>Rounds</h2>
           <input
             type="number"
-            value={roundCount}
-            onChange={e => setRoundCount(Number(e.target.value))}
+            value={roundCount || ''}
+            onChange={e => setRoundCount(Number(e.target.value) || 0)}
             min={1}
             style={{ minHeight: 44, padding: '10px 12px', fontSize: 16, width: 100, border: '1px solid var(--border)', borderRadius: 8, background: 'white' }}
           />
@@ -899,8 +884,8 @@ export default function SetupPage() {
               </label>
               <input
                 type="number"
-                value={swapCount}
-                onChange={e => setSwapCount(Number(e.target.value))}
+                value={swapCount || ''}
+                onChange={e => setSwapCount(Number(e.target.value) || 0)}
                 min={1}
                 aria-label="Number of swaps"
                 style={{ minHeight: 44, padding: '10px 12px', fontSize: 16, width: 80, border: '1px solid var(--border)', borderRadius: 8 }}
@@ -912,8 +897,8 @@ export default function SetupPage() {
               </label>
               <input
                 type="number"
-                value={roundsPerBlock}
-                onChange={e => setRoundsPerBlock(Number(e.target.value))}
+                value={roundsPerBlock || ''}
+                onChange={e => setRoundsPerBlock(Number(e.target.value) || 0)}
                 min={1}
                 aria-label="Rounds per swap"
                 style={{ minHeight: 44, padding: '10px 12px', fontSize: 16, width: 80, border: '1px solid var(--border)', borderRadius: 8 }}
