@@ -20,6 +20,7 @@ import { createSessionDues } from '@/lib/dues';
 import { getCurrentUser } from '@/lib/auth';
 import { fetchRivalriesForPlayer, fetchRivalriesAmongRoster, fetchStreaks, type Rivalry } from '@/lib/leagueStats';
 import { buildStorylines } from '@/lib/storylines';
+import StatusChip from '@/components/StatusChip';
 
 const MIN_GAMES_FOR_NEMESIS_ALERT = 3;
 
@@ -435,6 +436,7 @@ export default function SetupPage() {
   if (!namesEntered) {
     return (
       <main className="page">
+        <StatusChip />
         <h1>Session Setup</h1>
         <h2>How Many Courts?</h2>
         <div className="card">
