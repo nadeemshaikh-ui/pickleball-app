@@ -11,6 +11,7 @@ import {
   type ClubRow,
   type JoinRequestRow,
 } from '@/lib/clubs';
+import { shareToWhatsApp } from '@/lib/whatsapp';
 
 export default function ClubSettingsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -106,6 +107,17 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
       <div className="card">
         <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 6 }}>Share this code — joining is instant, no approval needed:</p>
         <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: 2 }}>{club.join_code}</div>
+        <button
+          className="btn-secondary"
+          style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: 12 }}
+          onClick={() =>
+            shareToWhatsApp(
+              `🏓 Join ${club.name} on Pickleball Session!\n\nUse code *${club.join_code}* to join instantly — no approval needed.`
+            )
+          }
+        >
+          📤 Share Invite on WhatsApp
+        </button>
       </div>
 
       <h2>Pending Join Requests ({pending.length})</h2>
