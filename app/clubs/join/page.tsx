@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { joinClubByCode, searchClubsByName, requestToJoinClub, type ClubRow } from '@/lib/clubs';
 import { useCurrentClub } from '@/lib/useCurrentClub';
+import SignInGate from '@/components/SignInGate';
 
 export default function JoinClubPage() {
   const router = useRouter();
-  const { setCurrentClubId } = useCurrentClub();
+  const { setCurrentClubId, user, loading: clubLoading } = useCurrentClub();
 
   const [code, setCode] = useState('');
   const [codeSubmitting, setCodeSubmitting] = useState(false);
@@ -18,6 +19,9 @@ export default function JoinClubPage() {
   const [results, setResults] = useState<ClubRow[]>([]);
   const [searching, setSearching] = useState(false);
   const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set());
+
+  if (clubLoading) return <main className="page"><p>Loading…</p></main>;
+  if (!user) return <SignInGate message="Sign in to join a club." />;
 
   async function handleJoinByCode() {
     if (!code.trim()) return;

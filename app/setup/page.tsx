@@ -23,6 +23,7 @@ import { buildStorylines } from '@/lib/storylines';
 import { polishStorylines } from '@/lib/storylinesLLM';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import StatusChip from '@/components/StatusChip';
+import SignInGate from '@/components/SignInGate';
 
 const MIN_GAMES_FOR_NEMESIS_ALERT = 3;
 
@@ -58,7 +59,7 @@ const FORMAT_INFO: Record<Format, { label: string; summary: string; example: str
 
 export default function SetupPage() {
   const router = useRouter();
-  const { currentClubId, currentClub, loading: clubLoading } = useCurrentClub();
+  const { currentClubId, currentClub, user, loading: clubLoading } = useCurrentClub();
 
   const [playerCount, setPlayerCount] = useState(10);
   const [courtCount, setCourtCount] = useState(2);
@@ -463,6 +464,7 @@ export default function SetupPage() {
   }
 
   if (clubLoading) return <main className="page"><p>Loading…</p></main>;
+  if (!user) return <SignInGate message="Sign in to start a session." />;
   if (!currentClubId) {
     return (
       <main className="page">

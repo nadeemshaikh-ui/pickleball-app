@@ -5,14 +5,18 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClub } from '@/lib/clubs';
 import { useCurrentClub } from '@/lib/useCurrentClub';
+import SignInGate from '@/components/SignInGate';
 
 export default function NewClubPage() {
   const router = useRouter();
-  const { setCurrentClubId } = useCurrentClub();
+  const { setCurrentClubId, user, loading: clubLoading } = useCurrentClub();
   const [name, setName] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  if (clubLoading) return <main className="page"><p>Loading…</p></main>;
+  if (!user) return <SignInGate message="Sign in to create a club." />;
 
   async function handleCreate() {
     if (!name.trim()) {

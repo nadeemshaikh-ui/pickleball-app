@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCurrentClub } from '@/lib/useCurrentClub';
+import SignInGate from '@/components/SignInGate';
 
 export default function ClubsPage() {
   const router = useRouter();
-  const { clubs, currentClubId, setCurrentClubId, loading } = useCurrentClub();
+  const { clubs, currentClubId, setCurrentClubId, user, loading } = useCurrentClub();
 
   function handleSwitch(clubId: string) {
     setCurrentClubId(clubId);
@@ -14,6 +15,7 @@ export default function ClubsPage() {
   }
 
   if (loading) return <main className="page"><p>Loading…</p></main>;
+  if (!user) return <SignInGate message="Sign in to see your clubs, or create a new one." />;
 
   return (
     <main className="page">
