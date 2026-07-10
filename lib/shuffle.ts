@@ -226,6 +226,41 @@ function pairIntoNTeams(
   return courts;
 }
 
+// Forms courtCount*2 balanced-strength teams from a rating map (unrated
+// players should already be filled in with the pool median by the caller).
+// Greedy multiway partition: sort by rating desc, always add the next
+// player to whichever in-progress team has fewest members (so all fill to
+// 2 evenly), tie-broken by lowest running sum — a standard, simple
+// heuristic for balanced partitioning at this scale.
+function formSkillBalancedTeams(players: string[], ratings: Map<string, number>, teamCount: number): [string, string][] {
+  const sorted = [...players].sort((a, b) => ratings.get(b)! - ratings.get(a)!);
+  const teams: { members: string[]; sum: number }[] = Array.from({ length: teamCount }, () => ({ members: [], sum: 0 }));
+  for (const p of sorted) {
+    let best = teams[0];
+    for (const t of teams) {
+      if (t.members.length < 2 && (t.members.length < best.members.length || (t.members.length === best.members.length && t.sum < best.sum))) {
+        best = t;
+      }
+    }
+    best.members.push(p);
+    best.sum += ratings.get(p)!;
+  }
+  return teams.map(t => [t.members[0], t.members[1]] as [string, string]);
+}
+
+// Pairs the balanced teams into courts so opposing teams on the same court
+// are as close in combined rating as possible — sort teams by sum, pair
+// adjacent ones.
+function assignCourtsBySkill(teams: [string, string][], ratings: Map<string, number>, courtCount: number): CourtMatch[] {
+  const teamSum = (t: [string, string]) => ratings.get(t[0])! + ratings.get(t[1])!;
+  const sorted = [...teams].sort((a, b) => teamSum(a) - teamSum(b));
+  const courts: CourtMatch[] = [];
+  for (let c = 0; c < courtCount; c++) {
+    courts.push({ teamA: sorted[c * 2], teamB: sorted[c * 2 + 1] });
+  }
+  return courts;
+}
+
 function requireMinPlayers(players: string[], courtCount: number, formatName: string): void {
   const minRequired = courtCount * 4;
   if (courtCount < 1) {
@@ -243,10 +278,14 @@ export function generateScrambleSchedule(
   courtCount: number,
   roundCount: number,
   seed: string,
-  lockedPairs: LockedPair[] = []
+  lockedPairs: LockedPair[] = [],
+  skillRatings?: Map<string, number>
 ): ScrambleRound[] {
   requireMinPlayers(players, courtCount, 'Scramble');
   validateLockedPairs(players, lockedPairs);
+  if (skillRatings && lockedPairs.length > 0) {
+    throw new Error('Skill-balanced matchmaking cannot be combined with locked partners yet.');
+  }
   const rand = seededRandom(seed);
   const sitOutCounts = new Map<string, number>(players.map(p => [p, 0]));
   const partnerCounts = new Map<string, number>();
@@ -260,7 +299,9 @@ export function generateScrambleSchedule(
         ? pickSitOutUnits(buildSitOutUnits(players, lockedPairs), sitOutCounts, sitOutCount, rand, lastSitOut)
         : pickSitOuts(players, sitOutCounts, sitOutCount, rand, lastSitOut);
     const playing = players.filter(p => !sittingOut.includes(p));
-    const courts = pairIntoNTeams(playing, courtCount, partnerCounts, rand, lockedPairs);
+    const courts = skillRatings
+      ? assignCourtsBySkill(formSkillBalancedTeams(playing, skillRatings, courtCount * 2), skillRatings, courtCount)
+      : pairIntoNTeams(playing, courtCount, partnerCounts, rand, lockedPairs);
     rounds.push({ roundNumber, courts, sittingOutPerCourt: courts.map(() => sittingOut) });
     lastSitOut = new Set(sittingOut);
   }

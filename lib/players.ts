@@ -12,6 +12,32 @@ export interface PlayerRow {
   created_at: string;
 }
 
+export const MIN_GAMES_FOR_SKILL_RATING = 20;
+
+export interface RatingInfo {
+  rating: number;
+  gamesPlayed: number;
+}
+
+// Fetches ratings for the given names, then fills in anyone unrated (not
+// registered, or under MIN_GAMES_FOR_SKILL_RATING) with the pool median of
+// players who do have enough games — so they don't skew the balance by
+// being silently treated as some default like 1500.
+export async function getSkillRatingsForNames(names: string[]): Promise<Map<string, number> | null> {
+  const { data, error } = await supabase.from('players').select('name, elo_rating, games_played').in('name', names);
+  if (error || !data) return null;
+
+  const rated = data.filter(p => p.games_played >= MIN_GAMES_FOR_SKILL_RATING);
+  if (rated.length < 2) return null; // not enough signal to balance meaningfully
+
+  const sorted = [...rated].sort((a, b) => a.elo_rating - b.elo_rating);
+  const mid = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2 === 0 ? (sorted[mid - 1].elo_rating + sorted[mid].elo_rating) / 2 : sorted[mid].elo_rating;
+
+  const ratingByName = new Map(rated.map(p => [p.name, p.elo_rating]));
+  return new Map(names.map(name => [name, ratingByName.get(name) ?? median]));
+}
+
 export async function listPlayers(): Promise<PlayerRow[]> {
   const { data, error } = await supabase.from('players').select('*').order('name', { ascending: true });
   if (error) throw error;

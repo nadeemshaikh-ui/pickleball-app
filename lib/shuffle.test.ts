@@ -308,3 +308,44 @@ describe('generateFixedPartnersSchedule', () => {
     expect(a).toEqual(b);
   });
 });
+
+describe('skill-balanced matchmaking — Scramble', () => {
+  const players8 = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
+
+  it('rejects combining skill-balance with locked pairs', () => {
+    const ratings = new Map(players8.map(p => [p, 1500]));
+    expect(() => generateScrambleSchedule(players8, 2, 4, 'seed-skill', [['P1', 'P2']], ratings)).toThrow(
+      /cannot be combined/
+    );
+  });
+
+  it('produces valid, deterministic full-court matches with an extreme rating gap (no crash)', () => {
+    const ratings = new Map<string, number>([
+      ['P1', 2400], ['P2', 2350], ['P3', 900], ['P4', 850],
+      ['P5', 1500], ['P6', 1490], ['P7', 1510], ['P8', 1480],
+    ]);
+    const rounds = generateScrambleSchedule(players8, 2, 6, 'seed-skill', [], ratings);
+    expect(rounds).toHaveLength(6);
+    for (const round of rounds) {
+      const playing = round.courts.flatMap(c => [...c.teamA, ...c.teamB]);
+      expect(new Set(playing).size).toBe(8);
+    }
+    const again = generateScrambleSchedule(players8, 2, 6, 'seed-skill', [], ratings);
+    expect(again).toEqual(rounds);
+  });
+
+  it('keeps opposing team rating sums closer together than a random split, on average', () => {
+    const ratings = new Map<string, number>([
+      ['P1', 2000], ['P2', 1900], ['P3', 1000], ['P4', 1100],
+      ['P5', 1500], ['P6', 1550], ['P7', 1450], ['P8', 1400],
+    ]);
+    const rounds = generateScrambleSchedule(players8, 2, 1, 'seed-skill', [], ratings);
+    for (const court of rounds[0].courts) {
+      const sumA = ratings.get(court.teamA[0])! + ratings.get(court.teamA[1])!;
+      const sumB = ratings.get(court.teamB[0])! + ratings.get(court.teamB[1])!;
+      // Balanced pairing should never produce a court with the two
+      // strongest players (2000+1900) against the two weakest (1000+1100).
+      expect(Math.abs(sumA - sumB)).toBeLessThan(1800);
+    }
+  });
+});

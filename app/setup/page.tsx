@@ -14,7 +14,7 @@ import { createSession, insertRounds, uploadGroupLogo, uploadPlayerPhoto } from 
 import { saveRoster, loadRoster } from '@/lib/savedRoster';
 import { findPresetLogos } from '@/lib/presetGroups';
 import { getPlayerPhoto, savePlayerPhoto, preloadPlayerPhotos } from '@/lib/playerPhotos';
-import { listPlayers, type PlayerRow } from '@/lib/players';
+import { listPlayers, getSkillRatingsForNames, type PlayerRow } from '@/lib/players';
 
 type Format = 'scramble' | 'squad_rivalry' | 'court_blocks' | 'fixed_partners';
 
@@ -82,6 +82,7 @@ export default function SetupPage() {
   const [manualBlocks, setManualBlocks] = useState<(number | null)[][]>([]);
 
   const [lockedPairs, setLockedPairs] = useState<LockedPair[]>([]);
+  const [skillBalanced, setSkillBalanced] = useState(false);
   const [lockPickerA, setLockPickerA] = useState('');
   const [lockPickerB, setLockPickerB] = useState('');
 
@@ -93,6 +94,7 @@ export default function SetupPage() {
     setLockedPairs(prev => [...prev, [lockPickerA, lockPickerB]]);
     setLockPickerA('');
     setLockPickerB('');
+    setSkillBalanced(false);
   }
 
   function handleRemoveLock(index: number) {
@@ -249,7 +251,9 @@ export default function SetupPage() {
 
       let sessionId: string;
       if (format === 'scramble') {
-        const rounds = generateScrambleSchedule(trimmed, courtCount, roundCount, seed, lockedPairs);
+        const skillRatings =
+          skillBalanced && lockedPairs.length === 0 ? (await getSkillRatingsForNames(trimmed)) ?? undefined : undefined;
+        const rounds = generateScrambleSchedule(trimmed, courtCount, roundCount, seed, lockedPairs, skillRatings);
         sessionId = await createSession({
           ...baseOptions,
           format: 'scramble',
@@ -498,7 +502,33 @@ export default function SetupPage() {
         ))}
       </div>
 
-      {(format === 'scramble' || format === 'squad_rivalry') && (
+      {format === 'scramble' && (
+        <>
+          <h2>Skill-Balanced Matchmaking (optional)</h2>
+          <div className="card">
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <input
+                type="checkbox"
+                checked={skillBalanced}
+                onChange={e => {
+                  setSkillBalanced(e.target.checked);
+                  if (e.target.checked) setLockedPairs([]);
+                }}
+              />
+              <span>
+                <strong>⚖️ Balance courts by skill</strong>
+                <p style={{ fontSize: 12, color: 'var(--muted)', margin: '4px 0 0' }}>
+                  Pairs players so opposing teams are evenly matched, based on results from past sessions. Needs at
+                  least 2 registered players with 20+ games logged — falls back to normal random pairing otherwise.
+                  Can't be combined with locked partners.
+                </p>
+              </span>
+            </label>
+          </div>
+        </>
+      )}
+
+      {(format === 'scramble' || format === 'squad_rivalry') && !skillBalanced && (
         <>
           <h2>Lock Partners (optional)</h2>
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
