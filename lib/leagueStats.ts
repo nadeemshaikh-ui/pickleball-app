@@ -141,6 +141,38 @@ export async function fetchClosestRivalries(): Promise<Rivalry[]> {
     });
 }
 
+// Every head-to-head pairing involving `name`, oriented so `name` is always
+// players[0]. Unlike fetchClosestRivalries, this has no MIN_GAMES threshold
+// or top-N cutoff — it's a direct lookup for one player's full rivalry list
+// (Nemesis Alert, Head-to-Head Card), not a leaderboard.
+export async function fetchRivalriesForPlayer(name: string): Promise<Rivalry[]> {
+  // Two separate .eq() queries rather than .or(`p1.eq.${name},p2.eq.${name}`)
+  // — PostgREST's or= filter syntax breaks on a value containing a comma or
+  // parenthesis, both of which are valid characters in a human name.
+  const [asP1, asP2] = await Promise.all([
+    supabase.from('league_rivalry_stats_mv').select('*').eq('p1', name),
+    supabase.from('league_rivalry_stats_mv').select('*').eq('p2', name),
+  ]);
+  if (asP1.error) throw asP1.error;
+  if (asP2.error) throw asP2.error;
+  const data = [...asP1.data, ...asP2.data];
+  return data
+    .map((r: { p1: string; p2: string; p1_games: number; p1_wins: number; p2_games: number; p2_wins: number }) => {
+      const isP1 = r.p1 === name;
+      const opponent = isP1 ? r.p2 : r.p1;
+      const yourWins = isP1 ? r.p1_wins : r.p2_wins;
+      const oppWins = isP1 ? r.p2_wins : r.p1_wins;
+      const gamesTogether = r.p1_games + r.p2_games;
+      return {
+        players: [name, opponent] as [string, string],
+        gamesTogether,
+        record: [yourWins, oppWins] as [number, number],
+        provisional: gamesTogether < MIN_GAMES_FOR_RIVALRY,
+      };
+    })
+    .sort((a, b) => b.gamesTogether - a.gamesTogether);
+}
+
 // Admin-only — enforced again at the DB level by refresh_league_stats()
 // itself (raises if the caller isn't in admins), this is just so the UI
 // can surface the real error message instead of a generic RPC failure.

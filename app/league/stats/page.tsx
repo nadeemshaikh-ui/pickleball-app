@@ -1,14 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   fetchLifetimeLeaderboard,
   fetchMvpCounts,
   fetchStreaks,
+  fetchBestDuos,
+  fetchRivalriesForPlayer,
   MIN_GAMES_FOR_RANKING,
   type LifetimePlayerStats,
+  type RankedDuo,
+  type Rivalry,
 } from '@/lib/leagueStats';
+import { fetchPersonalBests, type PersonalBests } from '@/lib/personalBests';
+import { computeChemistryScore } from '@/lib/chemistry';
 import { flightForRating } from '@/lib/flights';
 import { computeBadges } from '@/lib/badges';
 import { preloadPlayerPhotos } from '@/lib/playerPhotos';
@@ -24,31 +30,82 @@ export default function LeagueStatsPage() {
   const [mvpCounts, setMvpCounts] = useState<Map<string, number>>(new Map());
   const [streaks, setStreaks] = useState<Map<string, number>>(new Map());
   const [flightByName, setFlightByName] = useState<Map<string, string>>(new Map());
+  const [duos, setDuos] = useState<RankedDuo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>('rank');
 
+  const [expandedName, setExpandedName] = useState<string | null>(null);
+  const [expandedRivalries, setExpandedRivalries] = useState<Rivalry[]>([]);
+  const [expandedBests, setExpandedBests] = useState<PersonalBests | null>(null);
+  const [expandedLoading, setExpandedLoading] = useState(false);
+
   useEffect(() => {
     async function init() {
-      const [lb, mvp, streakMap, players, , user] = await Promise.all([
-        fetchLifetimeLeaderboard(),
-        fetchMvpCounts(),
-        fetchStreaks(),
-        listPlayers(),
-        preloadPlayerPhotos(),
-        getCurrentUser(),
-      ]);
-      setLifetime(lb);
-      setMvpCounts(mvp);
-      setStreaks(streakMap);
-      setFlightByName(new Map(players.map(p => [p.name, flightForRating(p.elo_rating)])));
-      if (user) setIsAdmin(await isCurrentUserAdmin());
-      setLoading(false);
+      try {
+        const [lb, mvp, streakMap, players, duoList, , user] = await Promise.all([
+          fetchLifetimeLeaderboard(),
+          fetchMvpCounts(),
+          fetchStreaks(),
+          listPlayers(),
+          fetchBestDuos(),
+          preloadPlayerPhotos(),
+          getCurrentUser(),
+        ]);
+        setLifetime(lb);
+        setMvpCounts(mvp);
+        setStreaks(streakMap);
+        setFlightByName(new Map(players.map(p => [p.name, flightForRating(p.elo_rating)])));
+        setDuos(duoList);
+        if (user) setIsAdmin(await isCurrentUserAdmin());
+      } catch (e) {
+        setLoadError(e instanceof Error ? e.message : 'Failed to load lifetime stats.');
+      } finally {
+        setLoading(false);
+      }
     }
     init();
   }, []);
 
+  async function handleToggleExpand(name: string) {
+    if (expandedName === name) {
+      setExpandedName(null);
+      return;
+    }
+    setExpandedName(name);
+    setExpandedLoading(true);
+    try {
+      const [rivalries, bests] = await Promise.all([fetchRivalriesForPlayer(name), fetchPersonalBests(name)]);
+      setExpandedRivalries(rivalries);
+      setExpandedBests(bests);
+    } catch {
+      setExpandedRivalries([]);
+      setExpandedBests(null);
+    } finally {
+      setExpandedLoading(false);
+    }
+  }
+
+  function chemistryFor(name: string) {
+    const totalsByName = new Map(lifetime.map(p => [p.name, { wins: p.wins, gamesPlayed: p.gamesPlayed }]));
+    const myTotals = totalsByName.get(name);
+    if (!myTotals) return [];
+    return duos
+      .filter(d => d.players.includes(name))
+      .map(d => {
+        const partner = d.players[0] === name ? d.players[1] : d.players[0];
+        const partnerTotals = totalsByName.get(partner);
+        if (!partnerTotals) return null;
+        const score = computeChemistryScore({ wins: d.wins, gamesPlayed: d.gamesPlayed }, myTotals, partnerTotals);
+        return score === null ? null : { partner, score };
+      })
+      .filter((x): x is { partner: string; score: number } => x !== null)
+      .sort((a, b) => Math.abs(b.score) - Math.abs(a.score));
+  }
+
   if (loading) return <main className="page"><p>Loading…</p></main>;
+  if (loadError) return <main className="page"><p style={{ color: 'var(--danger)' }}>{loadError}</p></main>;
 
   const rankedLifetime = lifetime.filter(p => !p.provisional);
   const provisionalLifetime = lifetime.filter(p => p.provisional);
@@ -133,25 +190,73 @@ export default function LeagueStatsPage() {
                 mvpCount: mvpCounts.get(p.name) ?? 0,
                 flight,
               });
+              const isExpanded = expandedName === p.name;
               return (
-                <tr key={p.name} style={{ borderTop: '1px solid var(--border)' }}>
-                  <td style={{ padding: '8px 0' }}>{i + 1}</td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Avatar name={p.name} size={22} />
-                      {p.name}
-                    </div>
-                  </td>
-                  <td style={{ textAlign: 'center' }}>{p.wins}</td>
-                  <td style={{ textAlign: 'center' }}>{p.losses}</td>
-                  <td style={{ textAlign: 'center' }}>{(p.winPct * 100).toFixed(0)}%</td>
-                  <td style={{ textAlign: 'center' }}>{p.gamesPlayed}</td>
-                  <td style={{ textAlign: 'center' }}>{p.pointsFor}</td>
-                  <td style={{ textAlign: 'center' }}>{p.pointsAgainst}</td>
-                  <td style={{ textAlign: 'center' }}>{mvpCounts.get(p.name) ?? 0}</td>
-                  <td style={{ textAlign: 'center' }}>{flightByName.get(p.name) ?? '—'}</td>
-                  <td title={badges.map(b => b.label).join(', ')}>{badges.map(b => b.emoji).join(' ') || '—'}</td>
-                </tr>
+                <Fragment key={p.name}>
+                  <tr
+                    style={{ borderTop: '1px solid var(--border)', cursor: 'pointer' }}
+                    onClick={() => handleToggleExpand(p.name)}
+                  >
+                    <td style={{ padding: '8px 0' }}>{i + 1}</td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Avatar name={p.name} size={22} />
+                        {p.name}
+                      </div>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>{p.wins}</td>
+                    <td style={{ textAlign: 'center' }}>{p.losses}</td>
+                    <td style={{ textAlign: 'center' }}>{(p.winPct * 100).toFixed(0)}%</td>
+                    <td style={{ textAlign: 'center' }}>{p.gamesPlayed}</td>
+                    <td style={{ textAlign: 'center' }}>{p.pointsFor}</td>
+                    <td style={{ textAlign: 'center' }}>{p.pointsAgainst}</td>
+                    <td style={{ textAlign: 'center' }}>{mvpCounts.get(p.name) ?? 0}</td>
+                    <td style={{ textAlign: 'center' }}>{flightByName.get(p.name) ?? '—'}</td>
+                    <td title={badges.map(b => b.label).join(', ')}>{badges.map(b => b.emoji).join(' ') || '—'}</td>
+                  </tr>
+                  {isExpanded && (
+                    <tr>
+                      <td colSpan={11} style={{ background: 'var(--background)', padding: 12 }}>
+                        {expandedLoading ? (
+                          <p style={{ fontSize: 13, color: 'var(--muted)' }}>Loading…</p>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
+                            {expandedBests && expandedBests.biggestMargin !== null && (
+                              <div>
+                                <strong>🏆 Personal Bests</strong>
+                                <p style={{ margin: '4px 0 0' }}>
+                                  Biggest win: {expandedBests.biggestMarginOwnScore}-{expandedBests.biggestMarginOppScore} vs{' '}
+                                  {expandedBests.biggestMarginOpponents} (margin of {expandedBests.biggestMargin})
+                                </p>
+                                <p style={{ margin: '2px 0 0' }}>Longest-ever win streak: {expandedBests.longestStreak}</p>
+                              </div>
+                            )}
+
+                            <div>
+                              <strong>⚔️ Head-to-Head</strong>
+                              {expandedRivalries.length === 0 && <p style={{ margin: '4px 0 0', color: 'var(--muted)' }}>No games logged against anyone yet.</p>}
+                              {expandedRivalries.slice(0, 10).map(r => (
+                                <p key={r.players.join('|')} style={{ margin: '2px 0 0' }}>
+                                  vs {r.players[1]} — {r.record[0]}-{r.record[1]} ({r.gamesTogether} games)
+                                </p>
+                              ))}
+                            </div>
+
+                            <div>
+                              <strong>🧪 Team Chemistry</strong>
+                              {chemistryFor(p.name).length === 0 && <p style={{ margin: '4px 0 0', color: 'var(--muted)' }}>Not enough games with any one partner yet.</p>}
+                              {chemistryFor(p.name).slice(0, 5).map(c => (
+                                <p key={c.partner} style={{ margin: '2px 0 0' }}>
+                                  with {c.partner}: {c.score > 0 ? '+' : ''}{(c.score * 100).toFixed(0)}% vs solo form
+                                </p>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               );
             })}
           </tbody>

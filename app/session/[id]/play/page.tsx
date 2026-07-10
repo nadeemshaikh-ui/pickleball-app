@@ -7,6 +7,8 @@ import GroupHeader from '@/components/GroupHeader';
 import { ChairIcon } from '@/components/icons';
 import { formatLabel } from '@/lib/formatLabel';
 import { captureSpokenScore, isVoiceScoreSupported } from '@/lib/voiceScore';
+import { detectUpset } from '@/lib/upset';
+import { listPlayers } from '@/lib/players';
 
 export default function PlayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -15,6 +17,7 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
   const [drafts, setDrafts] = useState<Record<string, [string, string]>>({});
   const [savingCourtId, setSavingCourtId] = useState<string | null>(null);
   const [listeningCourtId, setListeningCourtId] = useState<string | null>(null);
+  const [eloByName, setEloByName] = useState<Map<string, number>>(new Map());
   const voiceSupported = isVoiceScoreSupported();
 
   function firstIncompleteRound(r: RoundRow[]): number | undefined {
@@ -31,7 +34,24 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
 
   useEffect(() => {
     reload();
+    listPlayers()
+      .then(players => setEloByName(new Map(players.map(p => [p.name, p.elo_rating]))))
+      .catch(() => setEloByName(new Map()));
   }, [id]);
+
+  // Flight-mismatch upset badge — only shown when all 4 players are
+  // registered (unrated players would make the flight comparison meaningless).
+  function upsetLabel(court: RoundRow): string | null {
+    if (court.score_a === null || court.score_b === null) return null;
+    const [a1, a2] = court.team_a;
+    const [b1, b2] = court.team_b;
+    const ratings = [a1, a2, b1, b2].map(n => eloByName.get(n));
+    if (ratings.some(r => r === undefined)) return null;
+    const [ra1, ra2, rb1, rb2] = ratings as number[];
+    const aWon = court.score_a > court.score_b;
+    const upset = aWon ? detectUpset([ra1, ra2], [rb1, rb2]) : detectUpset([rb1, rb2], [ra1, ra2]);
+    return upset ? `${upset.winnerFlight} slays ${upset.loserFlight}` : null;
+  }
 
   const roundNumbers = [...new Set(rounds.map(r => r.round_number))].sort((a, b) => a - b);
   const currentRoundNumber = firstIncompleteRound(rounds);
@@ -140,6 +160,11 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                         </button>
                       )}
                     </div>
+                    {upsetLabel(court) && (
+                      <div className="resting-badge">
+                        🐣 {upsetLabel(court)}
+                      </div>
+                    )}
                     {!sameSitOut && court.sitting_out.length > 0 && (
                       <div className="resting-badge">
                         <span className="stat-icon"><ChairIcon size={20} /></span>

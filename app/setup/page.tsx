@@ -14,8 +14,12 @@ import { createSession, insertRounds, uploadGroupLogo, uploadPlayerPhoto } from 
 import { saveRoster, loadRoster } from '@/lib/savedRoster';
 import { findPresetLogos } from '@/lib/presetGroups';
 import { getPlayerPhoto, savePlayerPhoto, preloadPlayerPhotos } from '@/lib/playerPhotos';
-import { listPlayers, getSkillRatingsForNames, type PlayerRow } from '@/lib/players';
+import { listPlayers, getSkillRatingsForNames, getOwnPlayer, type PlayerRow } from '@/lib/players';
 import { createSessionDues } from '@/lib/dues';
+import { getCurrentUser } from '@/lib/auth';
+import { fetchRivalriesForPlayer, type Rivalry } from '@/lib/leagueStats';
+
+const MIN_GAMES_FOR_NEMESIS_ALERT = 3;
 
 type Format = 'scramble' | 'squad_rivalry' | 'court_blocks' | 'fixed_partners';
 
@@ -119,11 +123,48 @@ export default function SetupPage() {
 
   const [registeredPlayers, setRegisteredPlayers] = useState<PlayerRow[]>([]);
 
+  const [myName, setMyName] = useState<string | null>(null);
+  const [nemesis, setNemesis] = useState<Rivalry | null>(null);
+
   useEffect(() => {
     loadRoster().then(setSavedRoster);
     preloadPlayerPhotos().then(() => setPhotoVersion(v => v + 1));
     listPlayers().then(setRegisteredPlayers).catch(() => setRegisteredPlayers([]));
+    getCurrentUser()
+      .then(user => (user ? getOwnPlayer(user.id) : null))
+      .then(player => setMyName(player?.name ?? null))
+      .catch(() => setMyName(null));
   }, []);
+
+  // Closest rival tonight: among tonight's roster, whoever you've got the
+  // tightest head-to-head record against — a fun pregame teaser, not a
+  // ranked stat, so the games threshold is deliberately lower than the
+  // official MIN_GAMES_FOR_RIVALRY used on the League page.
+  useEffect(() => {
+    if (!myName || !names.some(n => n.trim() === myName)) {
+      setNemesis(null);
+      return;
+    }
+    // Debounced — `names` changes on every keystroke while editing the
+    // roster inline on this screen, and this would otherwise re-fetch on
+    // every single character typed.
+    const timer = setTimeout(() => {
+      const roster = new Set(names.map(n => n.trim()).filter(Boolean));
+      fetchRivalriesForPlayer(myName)
+        .then(rivalries => {
+          const inRoster = rivalries.filter(r => roster.has(r.players[1]) && r.gamesTogether >= MIN_GAMES_FOR_NEMESIS_ALERT);
+          const closest = [...inRoster].sort((a, b) => {
+            const gapA = Math.abs(a.record[0] - a.record[1]);
+            const gapB = Math.abs(b.record[0] - b.record[1]);
+            if (gapA !== gapB) return gapA - gapB;
+            return b.gamesTogether - a.gamesTogether;
+          })[0];
+          setNemesis(closest ?? null);
+        })
+        .catch(() => setNemesis(null));
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [myName, names]);
 
   function handleAddRegisteredPlayer(playerName: string) {
     if (names.some(n => n.trim() === playerName)) return; // already added
@@ -458,6 +499,12 @@ export default function SetupPage() {
       >
         ← Change Players / Courts
       </button>
+
+      {nemesis && (
+        <div className="card" style={{ marginBottom: 16, background: 'var(--background)' }}>
+          🔥 <strong>Nemesis Alert:</strong> You vs {nemesis.players[1]} tonight — {nemesis.record[0]}-{nemesis.record[1]} all-time.
+        </div>
+      )}
 
       <h2>Court & Ball Cost (optional)</h2>
       <div className="card" style={{ display: 'flex', gap: 12 }}>
