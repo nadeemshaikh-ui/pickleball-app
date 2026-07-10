@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
 import { getSession, getRounds, type SessionRow, type RoundRow } from '@/lib/db';
 import {
   findClosestGame,
@@ -14,8 +14,7 @@ import {
   computeNailBiters,
   computeMostGamesPlayed,
 } from '@/lib/gameStats';
-import { formatAnalyticsAsText } from '@/lib/analyticsText';
-import { shareToWhatsApp } from '@/lib/whatsapp';
+import { shareElementAsImage } from '@/lib/shareImage';
 import SessionNav from '@/components/SessionNav';
 import NewSessionLink from '@/components/NewSessionLink';
 import SessionDate from '@/components/SessionDate';
@@ -42,6 +41,8 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
   const { id } = use(params);
   const [session, setSession] = useState<SessionRow | null>(null);
   const [rounds, setRounds] = useState<RoundRow[]>([]);
+  const [imageShareError, setImageShareError] = useState<string | null>(null);
+  const analyticsCaptureRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function load() {
@@ -51,6 +52,19 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
     }
     load();
   }, [id]);
+
+  async function handleShareAnalytics() {
+    if (!analyticsCaptureRef.current) return;
+    setImageShareError(null);
+    try {
+      const result = await shareElementAsImage(analyticsCaptureRef.current, `analytics-${id}.png`);
+      if (result === 'downloaded') {
+        setImageShareError('Image downloaded — attach it to WhatsApp manually (direct share isn\'t supported on this browser).');
+      }
+    } catch (e) {
+      setImageShareError(e instanceof Error ? e.message : 'Failed to share image.');
+    }
+  }
 
   const closest = findClosestGame(rounds);
   const blowout = findBiggestBlowout(rounds);
@@ -70,12 +84,15 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
           <NewSessionLink />
           <button
             className="icon-btn"
-            aria-label="Share analytics on WhatsApp"
-            onClick={() => shareToWhatsApp(formatAnalyticsAsText(rounds))}
+            aria-label="Share analytics image on WhatsApp"
+            onClick={handleShareAnalytics}
           >
             <WhatsAppIcon size={24} />
           </button>
         </div>
+        {imageShareError && <p style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 14 }}>{imageShareError}</p>}
+
+        <div ref={analyticsCaptureRef}>
         {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
         <h1>Today&apos;s Analytics</h1>
         {session && <SessionDate createdAt={session.created_at} />}
@@ -197,6 +214,7 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
         {rounds.length === 0 && (
           <p style={{ color: 'var(--muted)', fontSize: 14 }}>No games scored yet — analytics fill in as you play.</p>
         )}
+        </div>
       </main>
       <SessionNav sessionId={id} />
     </>

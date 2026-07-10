@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { fetchLadderStandings, enrollInLadder, unenrollFromLadder, resetLadder, type LadderStandingRow } from '@/lib/ladderStandings';
 import { listPlayers, type PlayerRow } from '@/lib/players';
 import { getCurrentUser, isCurrentUserAdmin } from '@/lib/auth';
 import { preloadPlayerPhotos } from '@/lib/playerPhotos';
-import { shareToWhatsApp } from '@/lib/whatsapp';
+import { shareElementAsImage } from '@/lib/shareImage';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import Avatar from '@/components/Avatar';
 
@@ -19,6 +19,8 @@ export default function LadderPage() {
   const [busyName, setBusyName] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [imageShareError, setImageShareError] = useState<string | null>(null);
+  const standingsCaptureRef = useRef<HTMLDivElement>(null);
 
   async function load(clubId: string) {
     const [st, pl] = await Promise.all([fetchLadderStandings(clubId), listPlayers(clubId), preloadPlayerPhotos()]);
@@ -91,10 +93,17 @@ export default function LadderPage() {
     }
   }
 
-  function shareText(): string {
-    const lines = ['🪜 Ladder League Standings', ''];
-    standings.forEach((s, i) => lines.push(`${i + 1}. ${s.player_name}`));
-    return lines.join('\n');
+  async function handleShareStandings() {
+    if (!standingsCaptureRef.current) return;
+    setImageShareError(null);
+    try {
+      const result = await shareElementAsImage(standingsCaptureRef.current, 'ladder-standings.png');
+      if (result === 'downloaded') {
+        setImageShareError('Image downloaded — attach it to WhatsApp manually (direct share isn\'t supported on this browser).');
+      }
+    } catch (e) {
+      setImageShareError(e instanceof Error ? e.message : 'Failed to share image.');
+    }
   }
 
   if (loading || clubLoading) return <main className="page"><p>Loading…</p></main>;
@@ -105,7 +114,7 @@ export default function LadderPage() {
       <div className="page-header-row">
         <Link href="/league" className="text-link-btn">← League</Link>
         {isAdmin && standings.length > 0 && (
-          <button className="icon-btn" aria-label="Share ladder standings on WhatsApp" onClick={() => shareToWhatsApp(shareText())}>
+          <button className="icon-btn" aria-label="Share ladder standings image on WhatsApp" onClick={handleShareStandings}>
             📤
           </button>
         )}
@@ -118,6 +127,7 @@ export default function LadderPage() {
       </p>
 
       {actionError && <p style={{ color: 'var(--danger)', marginBottom: 12, fontWeight: 600 }}>{actionError}</p>}
+      {imageShareError && <p style={{ color: 'var(--danger)', marginBottom: 12, fontWeight: 600 }}>{imageShareError}</p>}
 
       {isAdmin && (
         <button className="btn-secondary" onClick={handleReset} disabled={resetting} style={{ marginBottom: 16 }}>
@@ -125,7 +135,7 @@ export default function LadderPage() {
         </button>
       )}
 
-      <div className="card">
+      <div className="card" ref={standingsCaptureRef}>
         {standings.length === 0 && <p style={{ color: 'var(--muted)', fontSize: 14 }}>No players enrolled on the ladder yet.</p>}
         {standings.map(s => (
           <div key={s.player_name} className="leaderboard-row">

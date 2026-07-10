@@ -1,10 +1,9 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
 import { getSession, getRounds, type SessionRow } from '@/lib/db';
 import { computeLeaderboard, computeSquadTotals, type PlayerStats } from '@/lib/analytics';
-import { formatLeaderboardAsText } from '@/lib/leaderboardText';
-import { shareToWhatsApp } from '@/lib/whatsapp';
+import { shareElementAsImage } from '@/lib/shareImage';
 import SessionNav from '@/components/SessionNav';
 import Avatar from '@/components/Avatar';
 import NewSessionLink from '@/components/NewSessionLink';
@@ -22,6 +21,8 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
   const [squadTotals, setSquadTotals] = useState<{ gold: number; black: number } | null>(null);
   const [gamesCompleted, setGamesCompleted] = useState(0);
   const [gamesTotal, setGamesTotal] = useState(0);
+  const [imageShareError, setImageShareError] = useState<string | null>(null);
+  const leaderboardCaptureRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -50,6 +51,19 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
     };
   }, [id]);
 
+  async function handleShareLeaderboard() {
+    if (!leaderboardCaptureRef.current) return;
+    setImageShareError(null);
+    try {
+      const result = await shareElementAsImage(leaderboardCaptureRef.current, `leaderboard-${id}.png`);
+      if (result === 'downloaded') {
+        setImageShareError('Image downloaded — attach it to WhatsApp manually (direct share isn\'t supported on this browser).');
+      }
+    } catch (e) {
+      setImageShareError(e instanceof Error ? e.message : 'Failed to share image.');
+    }
+  }
+
   return (
     <>
       <main className="page">
@@ -57,12 +71,15 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
           <NewSessionLink />
           <button
             className="icon-btn"
-            aria-label="Share leaderboard on WhatsApp"
-            onClick={() => shareToWhatsApp(formatLeaderboardAsText(leaderboard, gamesCompleted, gamesTotal))}
+            aria-label="Share leaderboard image on WhatsApp"
+            onClick={handleShareLeaderboard}
           >
             <WhatsAppIcon size={24} />
           </button>
         </div>
+        {imageShareError && <p style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 14 }}>{imageShareError}</p>}
+
+        <div ref={leaderboardCaptureRef}>
         {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
         <h1>Leaderboard</h1>
         {session && <SessionDate createdAt={session.created_at} />}
@@ -117,6 +134,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
               </div>
             );
           })}
+        </div>
         </div>
       </main>
       <SessionNav sessionId={id} />

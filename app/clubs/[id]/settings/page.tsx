@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   listMyClubs,
@@ -11,7 +11,7 @@ import {
   type ClubRow,
   type JoinRequestRow,
 } from '@/lib/clubs';
-import { shareToWhatsApp } from '@/lib/whatsapp';
+import { shareElementAsImage } from '@/lib/shareImage';
 
 export default function ClubSettingsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -26,6 +26,8 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
+  const [imageShareError, setImageShareError] = useState<string | null>(null);
+  const inviteCaptureRef = useRef<HTMLDivElement>(null);
 
   async function load() {
     const memberships = await listMyClubs();
@@ -70,6 +72,19 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
     if (decision === 'approved') setMemberCount(c => c + 1);
   }
 
+  async function handleShareInvite() {
+    if (!inviteCaptureRef.current) return;
+    setImageShareError(null);
+    try {
+      const result = await shareElementAsImage(inviteCaptureRef.current, `invite-${id}.png`);
+      if (result === 'downloaded') {
+        setImageShareError('Image downloaded — attach it to WhatsApp manually (direct share isn\'t supported on this browser).');
+      }
+    } catch (e) {
+      setImageShareError(e instanceof Error ? e.message : 'Failed to share image.');
+    }
+  }
+
   if (loading) return <main className="page"><p>Loading…</p></main>;
   if (!club) return <main className="page"><p>Club not found, or you're not a member.</p></main>;
   if (!isAdmin) return <main className="page"><p>Only this club's admin can view settings.</p></main>;
@@ -105,16 +120,16 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
 
       <h2>Invite</h2>
       <div className="card">
-        <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 6 }}>Share this code — joining is instant, no approval needed:</p>
-        <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: 2 }}>{club.join_code}</div>
+        <div ref={inviteCaptureRef} style={{ padding: 8 }}>
+          <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>🏓 Join {club.name}!</div>
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 6 }}>Share this code — joining is instant, no approval needed:</p>
+          <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: 2 }}>{club.join_code}</div>
+        </div>
+        {imageShareError && <p style={{ color: 'var(--danger)', fontSize: 13, marginTop: 8 }}>{imageShareError}</p>}
         <button
           className="btn-secondary"
           style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: 12 }}
-          onClick={() =>
-            shareToWhatsApp(
-              `🏓 Join ${club.name} on Pickleball Session!\n\nUse code *${club.join_code}* to join instantly — no approval needed.`
-            )
-          }
+          onClick={handleShareInvite}
         >
           📤 Share Invite on WhatsApp
         </button>

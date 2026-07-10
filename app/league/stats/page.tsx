@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   fetchLifetimeLeaderboard,
@@ -20,7 +20,7 @@ import { computeBadges } from '@/lib/badges';
 import { preloadPlayerPhotos } from '@/lib/playerPhotos';
 import { getCurrentUser, isCurrentUserAdmin } from '@/lib/auth';
 import { listPlayers } from '@/lib/players';
-import { shareToWhatsApp } from '@/lib/whatsapp';
+import { shareElementAsImage } from '@/lib/shareImage';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import Avatar from '@/components/Avatar';
 
@@ -42,6 +42,8 @@ export default function LeagueStatsPage() {
   const [expandedRivalries, setExpandedRivalries] = useState<Rivalry[]>([]);
   const [expandedBests, setExpandedBests] = useState<PersonalBests | null>(null);
   const [expandedLoading, setExpandedLoading] = useState(false);
+  const [imageShareError, setImageShareError] = useState<string | null>(null);
+  const statsCaptureRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (clubLoading) return;
@@ -127,12 +129,17 @@ export default function LeagueStatsPage() {
   else if (sortKey === 'mvp') sorted.sort((a, b) => (mvpCounts.get(b.name) ?? 0) - (mvpCounts.get(a.name) ?? 0));
   // 'rank' keeps the incoming Wilson-score order from fetchLifetimeLeaderboard
 
-  function shareText(): string {
-    const lines = ['📊 Lifetime League Stats', ''];
-    sorted.slice(0, 15).forEach((p, i) => {
-      lines.push(`${i + 1}. ${p.name} — ${p.wins}W-${p.losses}L (${(p.winPct * 100).toFixed(0)}%), ${p.gamesPlayed} games`);
-    });
-    return lines.join('\n');
+  async function handleShareStats() {
+    if (!statsCaptureRef.current) return;
+    setImageShareError(null);
+    try {
+      const result = await shareElementAsImage(statsCaptureRef.current, 'lifetime-stats.png');
+      if (result === 'downloaded') {
+        setImageShareError('Image downloaded — attach it to WhatsApp manually (direct share isn\'t supported on this browser).');
+      }
+    } catch (e) {
+      setImageShareError(e instanceof Error ? e.message : 'Failed to share image.');
+    }
   }
 
   return (
@@ -140,7 +147,7 @@ export default function LeagueStatsPage() {
       <div className="page-header-row">
         <Link href="/league" className="text-link-btn">← League</Link>
         {isAdmin && (
-          <button className="icon-btn" aria-label="Share lifetime stats on WhatsApp" onClick={() => shareToWhatsApp(shareText())}>
+          <button className="icon-btn" aria-label="Share lifetime stats image on WhatsApp" onClick={handleShareStats}>
             📤
           </button>
         )}
@@ -151,6 +158,7 @@ export default function LeagueStatsPage() {
         Min {MIN_GAMES_FOR_RANKING} games to be ranked. Default order is confidence-adjusted (Wilson score) — accounts
         for sample size, not just raw win%.
       </p>
+      {imageShareError && <p style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 13, marginTop: 8 }}>{imageShareError}</p>}
 
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12, marginBottom: 12 }}>
         {([
@@ -172,7 +180,7 @@ export default function LeagueStatsPage() {
         ))}
       </div>
 
-      <div className="card" style={{ overflowX: 'auto' }}>
+      <div className="card" style={{ overflowX: 'auto' }} ref={statsCaptureRef}>
         {sorted.length === 0 && <p style={{ color: 'var(--muted)', fontSize: 14 }}>Nobody's hit {MIN_GAMES_FOR_RANKING} games yet.</p>}
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
           <thead>
