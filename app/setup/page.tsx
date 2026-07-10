@@ -20,6 +20,7 @@ import { createSessionDues } from '@/lib/dues';
 import { getCurrentUser } from '@/lib/auth';
 import { fetchRivalriesForPlayer, fetchRivalriesAmongRoster, fetchStreaks, type Rivalry } from '@/lib/leagueStats';
 import { buildStorylines } from '@/lib/storylines';
+import { polishStorylines } from '@/lib/storylinesLLM';
 import StatusChip from '@/components/StatusChip';
 
 const MIN_GAMES_FOR_NEMESIS_ALERT = 3;
@@ -183,12 +184,31 @@ export default function SetupPage() {
       setStorylines([]);
       return;
     }
+    let cancelled = false;
     const timer = setTimeout(() => {
       Promise.all([fetchStreaks(), fetchRivalriesAmongRoster(roster)])
-        .then(([streaks, rivalries]) => setStorylines(buildStorylines(roster, streaks, rivalries)))
-        .catch(() => setStorylines([]));
+        .then(([streaks, rivalries]) => {
+          if (cancelled) return;
+          const templateLines = buildStorylines(roster, streaks, rivalries);
+          setStorylines(templateLines);
+          // Progressive enhancement — show template lines immediately, swap
+          // in the LLM-polished version if it arrives before the roster
+          // changes again (guarded by `cancelled` so a slow response from an
+          // earlier roster can't clobber newer template lines).
+          if (templateLines.length > 0) {
+            polishStorylines(templateLines).then(polished => {
+              if (polished && !cancelled) setStorylines(polished);
+            });
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setStorylines([]);
+        });
     }, 500);
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [names]);
 
   function handleAddRegisteredPlayer(playerName: string) {
