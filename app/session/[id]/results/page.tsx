@@ -14,6 +14,8 @@ import GroupHeader from '@/components/GroupHeader';
 import RecapImageTemplate from '@/components/RecapImageTemplate';
 import { WhatsAppIcon } from '@/components/icons';
 import { preloadPlayerPhotos } from '@/lib/playerPhotos';
+import { fetchSessionDues, markDuePaid, type DueRow } from '@/lib/dues';
+import { getCurrentUser, isCurrentUserAdmin } from '@/lib/auth';
 
 export default function ResultsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -24,11 +26,13 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
   const [showCelebration, setShowCelebration] = useState(false);
   const [recapFile, setRecapFile] = useState<File | null>(null);
   const [imageShareError, setImageShareError] = useState<string | null>(null);
+  const [dues, setDues] = useState<DueRow[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const recapCaptureRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function load() {
-      const [s, r] = await Promise.all([getSession(id), getRounds(id), preloadPlayerPhotos()]);
+      const [s, r, , user] = await Promise.all([getSession(id), getRounds(id), preloadPlayerPhotos(), getCurrentUser()]);
       setSession(s);
       setRounds(r);
       const board = computeLeaderboard(r);
@@ -36,6 +40,8 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
       if (s.format === 'squad_rivalry' && s.squads) {
         setSquadTotals(computeSquadTotals(r, s.squads));
       }
+      setDues(await fetchSessionDues(id));
+      if (user) setIsAdmin(await isCurrentUserAdmin());
       const celebratedKey = `celebrated-${id}`;
       if (s.status === 'completed' && board.length > 0 && !sessionStorage.getItem(celebratedKey)) {
         setShowCelebration(true);
@@ -44,6 +50,11 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
     }
     load();
   }, [id]);
+
+  async function handleTogglePaid(due: DueRow) {
+    await markDuePaid(due.id, !due.paid);
+    setDues(await fetchSessionDues(id));
+  }
 
   // Pre-render the recap image as soon as the data it needs is ready, well
   // before the user clicks share — see lib/shareImage.ts for why this
@@ -179,6 +190,37 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
             </div>
           ))}
         </div>
+
+        {dues.length > 0 && (
+          <>
+            <h2>Dues</h2>
+            <p style={{ fontSize: 11, color: 'var(--muted)', padding: '0 8px', marginBottom: 4 }}>
+              ₹{dues[0].amount_owed} per head · court + ball cost split evenly
+            </p>
+            <div className="card">
+              {dues.map(d => (
+                <div key={d.id} className="leaderboard-row">
+                  <Avatar name={d.player_name} size={22} />
+                  <span className="leaderboard-name">{d.player_name}</span>
+                  <span className="leaderboard-stats">₹{d.amount_owed}</span>
+                  {isAdmin ? (
+                    <button
+                      className={d.paid ? 'btn-primary' : 'btn-secondary'}
+                      style={{ minHeight: 32, padding: '4px 10px', fontSize: 12, marginLeft: 8 }}
+                      onClick={() => handleTogglePaid(d)}
+                    >
+                      {d.paid ? '✓ Paid' : 'Mark Paid'}
+                    </button>
+                  ) : (
+                    <span style={{ fontSize: 12, color: d.paid ? 'var(--dark)' : 'var(--muted)', marginLeft: 8, fontWeight: 700 }}>
+                      {d.paid ? '✓ Paid' : 'Unpaid'}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
         <Link href="/setup" className="btn-primary" style={{ width: '100%', marginTop: 24, textAlign: 'center' }}>
           Start New Session

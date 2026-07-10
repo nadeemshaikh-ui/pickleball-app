@@ -15,6 +15,7 @@ import { saveRoster, loadRoster } from '@/lib/savedRoster';
 import { findPresetLogos } from '@/lib/presetGroups';
 import { getPlayerPhoto, savePlayerPhoto, preloadPlayerPhotos } from '@/lib/playerPhotos';
 import { listPlayers, getSkillRatingsForNames, type PlayerRow } from '@/lib/players';
+import { createSessionDues } from '@/lib/dues';
 
 type Format = 'scramble' | 'squad_rivalry' | 'court_blocks' | 'fixed_partners';
 
@@ -105,6 +106,9 @@ export default function SetupPage() {
   const [logo1File, setLogo1File] = useState<File | null>(null);
   const [logo2File, setLogo2File] = useState<File | null>(null);
   const presetLogos = findPresetLogos(groupName);
+
+  const [courtCost, setCourtCost] = useState('');
+  const [ballCost, setBallCost] = useState('200');
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -239,6 +243,9 @@ export default function SetupPage() {
       if (logo1File) logoUrl1 = await uploadGroupLogo(logo1File);
       if (logo2File) logoUrl2 = await uploadGroupLogo(logo2File);
 
+      const parsedCourtCost = courtCost.trim() === '' ? null : Number(courtCost);
+      const parsedBallCost = ballCost.trim() === '' ? 200 : Number(ballCost);
+
       const baseOptions = {
         players: trimmed,
         courtLabels: trimmedCourtLabels,
@@ -247,6 +254,8 @@ export default function SetupPage() {
         logoUrl1,
         logoUrl2,
         startTime: startTime.trim() || null,
+        courtCost: parsedCourtCost,
+        ballCost: parsedBallCost,
       };
 
       let sessionId: string;
@@ -294,6 +303,9 @@ export default function SetupPage() {
         await insertRounds(sessionId, rounds);
       }
       await saveRoster(trimmed);
+      if (parsedCourtCost !== null) {
+        await createSessionDues(sessionId, parsedCourtCost, parsedBallCost, trimmed);
+      }
       router.push(`/session/${sessionId}/schedule`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create session.');
@@ -444,6 +456,38 @@ export default function SetupPage() {
       >
         ← Change Players / Courts
       </button>
+
+      <h2>Court & Ball Cost (optional)</h2>
+      <div className="card" style={{ display: 'flex', gap: 12 }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>
+            Court cost (₹)
+          </label>
+          <input
+            type="number"
+            value={courtCost}
+            onChange={e => setCourtCost(e.target.value)}
+            placeholder="e.g. 800"
+            aria-label="Court cost"
+            style={{ width: '100%', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>
+            Ball cost (₹)
+          </label>
+          <input
+            type="number"
+            value={ballCost}
+            onChange={e => setBallCost(e.target.value)}
+            aria-label="Ball cost"
+            style={{ width: '100%', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+          />
+        </div>
+      </div>
+      <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: -6, marginBottom: 16 }}>
+        Leave court cost blank to skip dues tracking for this session. Split evenly across everyone playing.
+      </p>
 
       <h2>Group Branding (optional)</h2>
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

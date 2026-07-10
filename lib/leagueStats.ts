@@ -95,6 +95,17 @@ export async function fetchBestDuos(): Promise<RankedDuo[]> {
     });
 }
 
+export interface MvpStats {
+  name: string;
+  mvpCount: number;
+}
+
+export async function fetchMvpCounts(): Promise<Map<string, number>> {
+  const { data, error } = await supabase.from('league_mvp_stats_mv').select('*');
+  if (error) throw error;
+  return new Map(data.map((r: { name: string; mvp_count: number }) => [r.name, r.mvp_count]));
+}
+
 // Admin-only — enforced again at the DB level by refresh_league_stats()
 // itself (raises if the caller isn't in admins), this is just so the UI
 // can surface the real error message instead of a generic RPC failure.

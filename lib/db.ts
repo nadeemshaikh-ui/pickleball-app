@@ -18,6 +18,8 @@ export interface SessionRow {
   logo_url_1: string | null;
   logo_url_2: string | null;
   start_time: string | null;
+  court_cost: number | null;
+  ball_cost: number;
 }
 
 export interface RoundRow {
@@ -48,6 +50,8 @@ export interface CreateSessionOptions {
   logoUrl1: string | null;
   logoUrl2: string | null;
   startTime: string | null;
+  courtCost: number | null;
+  ballCost: number;
 }
 
 export async function createSession(options: CreateSessionOptions): Promise<string> {
@@ -65,6 +69,8 @@ export async function createSession(options: CreateSessionOptions): Promise<stri
     logo_url_1: options.logoUrl1,
     logo_url_2: options.logoUrl2,
     start_time: options.startTime,
+    court_cost: options.courtCost,
+    ball_cost: options.ballCost,
     status: 'in_progress',
   });
   if (error) throw error;

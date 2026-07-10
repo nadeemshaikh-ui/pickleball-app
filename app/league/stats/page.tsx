@@ -4,26 +4,39 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   fetchLifetimeLeaderboard,
+  fetchMvpCounts,
   MIN_GAMES_FOR_RANKING,
   type LifetimePlayerStats,
 } from '@/lib/leagueStats';
+import { flightForRating } from '@/lib/flights';
 import { preloadPlayerPhotos } from '@/lib/playerPhotos';
 import { getCurrentUser, isCurrentUserAdmin } from '@/lib/auth';
+import { listPlayers } from '@/lib/players';
 import { shareToWhatsApp } from '@/lib/whatsapp';
 import Avatar from '@/components/Avatar';
 
-type SortKey = 'rank' | 'wins' | 'winPct' | 'gamesPlayed' | 'pointsFor';
+type SortKey = 'rank' | 'wins' | 'winPct' | 'gamesPlayed' | 'pointsFor' | 'mvp';
 
 export default function LeagueStatsPage() {
   const [lifetime, setLifetime] = useState<LifetimePlayerStats[]>([]);
+  const [mvpCounts, setMvpCounts] = useState<Map<string, number>>(new Map());
+  const [flightByName, setFlightByName] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>('rank');
 
   useEffect(() => {
     async function init() {
-      const [lb, , user] = await Promise.all([fetchLifetimeLeaderboard(), preloadPlayerPhotos(), getCurrentUser()]);
+      const [lb, mvp, players, , user] = await Promise.all([
+        fetchLifetimeLeaderboard(),
+        fetchMvpCounts(),
+        listPlayers(),
+        preloadPlayerPhotos(),
+        getCurrentUser(),
+      ]);
       setLifetime(lb);
+      setMvpCounts(mvp);
+      setFlightByName(new Map(players.map(p => [p.name, flightForRating(p.elo_rating)])));
       if (user) setIsAdmin(await isCurrentUserAdmin());
       setLoading(false);
     }
@@ -40,6 +53,7 @@ export default function LeagueStatsPage() {
   else if (sortKey === 'winPct') sorted.sort((a, b) => b.winPct - a.winPct);
   else if (sortKey === 'gamesPlayed') sorted.sort((a, b) => b.gamesPlayed - a.gamesPlayed);
   else if (sortKey === 'pointsFor') sorted.sort((a, b) => b.pointsFor - a.pointsFor);
+  else if (sortKey === 'mvp') sorted.sort((a, b) => (mvpCounts.get(b.name) ?? 0) - (mvpCounts.get(a.name) ?? 0));
   // 'rank' keeps the incoming Wilson-score order from fetchLifetimeLeaderboard
 
   function shareText(): string {
@@ -74,6 +88,7 @@ export default function LeagueStatsPage() {
           ['winPct', 'Win %'],
           ['gamesPlayed', 'Games'],
           ['pointsFor', 'Points'],
+          ['mvp', 'MVP'],
         ] as [SortKey, string][]).map(([key, label]) => (
           <button
             key={key}
@@ -99,6 +114,8 @@ export default function LeagueStatsPage() {
               <th style={{ paddingBottom: 8 }}>Games</th>
               <th style={{ paddingBottom: 8 }}>For</th>
               <th style={{ paddingBottom: 8 }}>Ag</th>
+              <th style={{ paddingBottom: 8 }}>MVP</th>
+              <th style={{ paddingBottom: 8 }}>Flight</th>
             </tr>
           </thead>
           <tbody>
@@ -117,6 +134,8 @@ export default function LeagueStatsPage() {
                 <td style={{ textAlign: 'center' }}>{p.gamesPlayed}</td>
                 <td style={{ textAlign: 'center' }}>{p.pointsFor}</td>
                 <td style={{ textAlign: 'center' }}>{p.pointsAgainst}</td>
+                <td style={{ textAlign: 'center' }}>{mvpCounts.get(p.name) ?? 0}</td>
+                <td style={{ textAlign: 'center' }}>{flightByName.get(p.name) ?? '—'}</td>
               </tr>
             ))}
           </tbody>
