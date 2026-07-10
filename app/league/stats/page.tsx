@@ -5,10 +5,12 @@ import Link from 'next/link';
 import {
   fetchLifetimeLeaderboard,
   fetchMvpCounts,
+  fetchStreaks,
   MIN_GAMES_FOR_RANKING,
   type LifetimePlayerStats,
 } from '@/lib/leagueStats';
 import { flightForRating } from '@/lib/flights';
+import { computeBadges } from '@/lib/badges';
 import { preloadPlayerPhotos } from '@/lib/playerPhotos';
 import { getCurrentUser, isCurrentUserAdmin } from '@/lib/auth';
 import { listPlayers } from '@/lib/players';
@@ -20,6 +22,7 @@ type SortKey = 'rank' | 'wins' | 'winPct' | 'gamesPlayed' | 'pointsFor' | 'mvp';
 export default function LeagueStatsPage() {
   const [lifetime, setLifetime] = useState<LifetimePlayerStats[]>([]);
   const [mvpCounts, setMvpCounts] = useState<Map<string, number>>(new Map());
+  const [streaks, setStreaks] = useState<Map<string, number>>(new Map());
   const [flightByName, setFlightByName] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -27,15 +30,17 @@ export default function LeagueStatsPage() {
 
   useEffect(() => {
     async function init() {
-      const [lb, mvp, players, , user] = await Promise.all([
+      const [lb, mvp, streakMap, players, , user] = await Promise.all([
         fetchLifetimeLeaderboard(),
         fetchMvpCounts(),
+        fetchStreaks(),
         listPlayers(),
         preloadPlayerPhotos(),
         getCurrentUser(),
       ]);
       setLifetime(lb);
       setMvpCounts(mvp);
+      setStreaks(streakMap);
       setFlightByName(new Map(players.map(p => [p.name, flightForRating(p.elo_rating)])));
       if (user) setIsAdmin(await isCurrentUserAdmin());
       setLoading(false);
@@ -116,28 +121,39 @@ export default function LeagueStatsPage() {
               <th style={{ paddingBottom: 8 }}>Ag</th>
               <th style={{ paddingBottom: 8 }}>MVP</th>
               <th style={{ paddingBottom: 8 }}>Flight</th>
+              <th style={{ paddingBottom: 8, textAlign: 'left' }}>Badges</th>
             </tr>
           </thead>
           <tbody>
-            {sorted.map((p, i) => (
-              <tr key={p.name} style={{ borderTop: '1px solid var(--border)' }}>
-                <td style={{ padding: '8px 0' }}>{i + 1}</td>
-                <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Avatar name={p.name} size={22} />
-                    {p.name}
-                  </div>
-                </td>
-                <td style={{ textAlign: 'center' }}>{p.wins}</td>
-                <td style={{ textAlign: 'center' }}>{p.losses}</td>
-                <td style={{ textAlign: 'center' }}>{(p.winPct * 100).toFixed(0)}%</td>
-                <td style={{ textAlign: 'center' }}>{p.gamesPlayed}</td>
-                <td style={{ textAlign: 'center' }}>{p.pointsFor}</td>
-                <td style={{ textAlign: 'center' }}>{p.pointsAgainst}</td>
-                <td style={{ textAlign: 'center' }}>{mvpCounts.get(p.name) ?? 0}</td>
-                <td style={{ textAlign: 'center' }}>{flightByName.get(p.name) ?? '—'}</td>
-              </tr>
-            ))}
+            {sorted.map((p, i) => {
+              const flight = flightByName.get(p.name) ?? 'Bronze';
+              const badges = computeBadges({
+                gamesPlayed: p.gamesPlayed,
+                currentStreak: streaks.get(p.name) ?? 0,
+                mvpCount: mvpCounts.get(p.name) ?? 0,
+                flight,
+              });
+              return (
+                <tr key={p.name} style={{ borderTop: '1px solid var(--border)' }}>
+                  <td style={{ padding: '8px 0' }}>{i + 1}</td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Avatar name={p.name} size={22} />
+                      {p.name}
+                    </div>
+                  </td>
+                  <td style={{ textAlign: 'center' }}>{p.wins}</td>
+                  <td style={{ textAlign: 'center' }}>{p.losses}</td>
+                  <td style={{ textAlign: 'center' }}>{(p.winPct * 100).toFixed(0)}%</td>
+                  <td style={{ textAlign: 'center' }}>{p.gamesPlayed}</td>
+                  <td style={{ textAlign: 'center' }}>{p.pointsFor}</td>
+                  <td style={{ textAlign: 'center' }}>{p.pointsAgainst}</td>
+                  <td style={{ textAlign: 'center' }}>{mvpCounts.get(p.name) ?? 0}</td>
+                  <td style={{ textAlign: 'center' }}>{flightByName.get(p.name) ?? '—'}</td>
+                  <td title={badges.map(b => b.label).join(', ')}>{badges.map(b => b.emoji).join(' ') || '—'}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

@@ -3,6 +3,7 @@ import { wilsonLowerBound } from './wilsonScore';
 
 export const MIN_GAMES_FOR_RANKING = 10;
 export const MIN_GAMES_FOR_DUO_RANKING = 5;
+export const MIN_GAMES_FOR_RIVALRY = 5;
 
 export { wilsonLowerBound };
 
@@ -104,6 +105,40 @@ export async function fetchMvpCounts(): Promise<Map<string, number>> {
   const { data, error } = await supabase.from('league_mvp_stats_mv').select('*');
   if (error) throw error;
   return new Map(data.map((r: { name: string; mvp_count: number }) => [r.name, r.mvp_count]));
+}
+
+export async function fetchStreaks(): Promise<Map<string, number>> {
+  const { data, error } = await supabase.from('league_streak_stats_mv').select('*');
+  if (error) throw error;
+  return new Map(data.map((r: { name: string; current_win_streak: number }) => [r.name, r.current_win_streak]));
+}
+
+export interface Rivalry {
+  players: [string, string];
+  gamesTogether: number;
+  record: [number, number]; // [p1 wins, p2 wins] — closest to even = biggest rivalry
+  provisional: boolean;
+}
+
+// "Closest" rivalry = smallest win-count gap relative to games played —
+// a 5-5 record over 10 games is a bigger rivalry than a 1-0 record.
+export async function fetchClosestRivalries(): Promise<Rivalry[]> {
+  const { data, error } = await supabase.from('league_rivalry_stats_mv').select('*');
+  if (error) throw error;
+  return data
+    .map((r: { p1: string; p2: string; p1_games: number; p1_wins: number; p2_games: number; p2_wins: number }) => ({
+      players: [r.p1, r.p2] as [string, string],
+      gamesTogether: r.p1_games + r.p2_games,
+      record: [r.p1_wins, r.p2_wins] as [number, number],
+      provisional: r.p1_games + r.p2_games < MIN_GAMES_FOR_RIVALRY,
+    }))
+    .sort((a, b) => {
+      if (a.provisional !== b.provisional) return a.provisional ? 1 : -1;
+      const gapA = Math.abs(a.record[0] - a.record[1]);
+      const gapB = Math.abs(b.record[0] - b.record[1]);
+      if (gapA !== gapB) return gapA - gapB;
+      return b.gamesTogether - a.gamesTogether;
+    });
 }
 
 // Admin-only — enforced again at the DB level by refresh_league_stats()
