@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import type { ScrambleRound, Squads } from './shuffle';
 
-export type Format = 'scramble' | 'squad_rivalry' | 'court_blocks';
+export type Format = 'scramble' | 'squad_rivalry' | 'court_blocks' | 'fixed_partners';
 
 export interface SessionRow {
   id: string;

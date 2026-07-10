@@ -1,10 +1,9 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
 import { getSession, getRounds, type SessionRow, type RoundRow } from '@/lib/db';
 import { computeLeaderboard, computeSquadTotals, type PlayerStats } from '@/lib/analytics';
-import { formatRecapAsText } from '@/lib/recapText';
-import { shareToWhatsApp } from '@/lib/whatsapp';
+import { renderElementToImage, shareCachedImage } from '@/lib/shareImage';
 import Link from 'next/link';
 import SessionNav from '@/components/SessionNav';
 import Avatar from '@/components/Avatar';
@@ -12,6 +11,7 @@ import Celebration from '@/components/Celebration';
 import NewSessionLink from '@/components/NewSessionLink';
 import SessionDate from '@/components/SessionDate';
 import GroupHeader from '@/components/GroupHeader';
+import RecapImageTemplate from '@/components/RecapImageTemplate';
 import { WhatsAppIcon } from '@/components/icons';
 
 export default function ResultsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -21,6 +21,9 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
   const [leaderboard, setLeaderboard] = useState<PlayerStats[]>([]);
   const [squadTotals, setSquadTotals] = useState<{ gold: number; black: number } | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [recapFile, setRecapFile] = useState<File | null>(null);
+  const [imageShareError, setImageShareError] = useState<string | null>(null);
+  const recapCaptureRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function load() {
@@ -41,6 +44,29 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
     load();
   }, [id]);
 
+  // Pre-render the recap image as soon as the data it needs is ready, well
+  // before the user clicks share — see lib/shareImage.ts for why this
+  // matters (the click handler must not await any rendering work itself).
+  useEffect(() => {
+    if (!session || leaderboard.length === 0 || !recapCaptureRef.current) return;
+    renderElementToImage(recapCaptureRef.current, `recap-${id}.png`)
+      .then(setRecapFile)
+      .catch(() => setRecapFile(null));
+  }, [session, leaderboard, rounds, id]);
+
+  async function handleShareRecap() {
+    if (!recapFile) return;
+    setImageShareError(null);
+    try {
+      const result = await shareCachedImage(recapFile);
+      if (result === 'downloaded') {
+        setImageShareError('Image downloaded — attach it to WhatsApp manually (direct share isn\'t supported on this browser).');
+      }
+    } catch (e) {
+      setImageShareError(e instanceof Error ? e.message : 'Failed to share image.');
+    }
+  }
+
   const top3 = leaderboard.slice(0, 3);
 
   return (
@@ -53,12 +79,24 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
           <NewSessionLink />
           <button
             className="icon-btn"
-            aria-label="Share recap on WhatsApp"
-            onClick={() => shareToWhatsApp(formatRecapAsText(leaderboard, rounds))}
+            aria-label="Share recap image on WhatsApp"
+            onClick={handleShareRecap}
+            disabled={!recapFile}
           >
             <WhatsAppIcon size={24} />
           </button>
         </div>
+        {imageShareError && <p style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 14 }}>{imageShareError}</p>}
+
+        {/* Off-screen recap capture — pre-rendered ahead of the share click. */}
+        {session && (
+          <div style={{ position: 'fixed', left: -99999, top: 0 }} aria-hidden="true">
+            <div ref={recapCaptureRef}>
+              <RecapImageTemplate session={session} leaderboard={leaderboard} rounds={rounds} />
+            </div>
+          </div>
+        )}
+
         {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
         <h1>Results</h1>
         {session && <SessionDate createdAt={session.created_at} />}

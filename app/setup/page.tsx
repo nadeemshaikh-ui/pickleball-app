@@ -6,14 +6,16 @@ import {
   generateScrambleSchedule,
   generateSquadRivalrySchedule,
   generateCourtBlocksSchedule,
+  generateFixedPartnersSchedule,
   type CourtBlockAssignment,
+  type LockedPair,
 } from '@/lib/shuffle';
 import { createSession, insertRounds, uploadGroupLogo, uploadPlayerPhoto } from '@/lib/db';
 import { saveRoster, loadRoster } from '@/lib/savedRoster';
 import { findPresetLogos } from '@/lib/presetGroups';
 import { getPlayerPhoto, savePlayerPhoto } from '@/lib/playerPhotos';
 
-type Format = 'scramble' | 'squad_rivalry' | 'court_blocks';
+type Format = 'scramble' | 'squad_rivalry' | 'court_blocks' | 'fixed_partners';
 
 const FORMAT_INFO: Record<Format, { label: string; summary: string; example: string }> = {
   scramble: {
@@ -30,6 +32,11 @@ const FORMAT_INFO: Record<Format, { label: string; summary: string; example: str
     label: 'Court Swap — same group on your court, swap groups every hour',
     summary: 'Players are split into groups — one group per court — for a fixed number of rounds (a "block"). Within a block you only play against/with people in your own group, rotating partners inside it. When the block ends, groups reshuffle and everyone swaps to a different court.',
     example: 'Example: Block 1 (rounds 1-6) you\'re grouped with 4 others on Court 1, rotating partners among just those 5. Block 2 (rounds 7-12), the groups reshuffle and you might end up on Court 2 with a different set of people.',
+  },
+  fixed_partners: {
+    label: 'Fixed Partners — same partner all night',
+    summary: 'Everyone gets one partner for the entire session — that never changes. Only who you\'re facing on the other side of the net rotates each round, balanced so you play against different teams roughly evenly.',
+    example: 'Example: You\'re paired with Sam for the whole night. Round 1 you and Sam face Priya & Tom. Round 2 you and Sam face a different team. Your partner is always Sam.',
   },
 };
 
@@ -72,6 +79,24 @@ export default function SetupPage() {
   const [assignmentMode, setAssignmentMode] = useState<'auto' | 'manual'>('auto');
   // Per block: court index (0-based) assigned to each player, or null if unassigned.
   const [manualBlocks, setManualBlocks] = useState<(number | null)[][]>([]);
+
+  const [lockedPairs, setLockedPairs] = useState<LockedPair[]>([]);
+  const [lockPickerA, setLockPickerA] = useState('');
+  const [lockPickerB, setLockPickerB] = useState('');
+
+  const trimmedNamesForLocks = names.map(n => n.trim()).filter(Boolean);
+  const lockedPlayers = new Set(lockedPairs.flatMap(p => p));
+
+  function handleAddLock() {
+    if (!lockPickerA || !lockPickerB || lockPickerA === lockPickerB) return;
+    setLockedPairs(prev => [...prev, [lockPickerA, lockPickerB]]);
+    setLockPickerA('');
+    setLockPickerB('');
+  }
+
+  function handleRemoveLock(index: number) {
+    setLockedPairs(prev => prev.filter((_, i) => i !== index));
+  }
 
   const [groupName, setGroupName] = useState('');
   const [logo1File, setLogo1File] = useState<File | null>(null);
@@ -212,7 +237,7 @@ export default function SetupPage() {
 
       let sessionId: string;
       if (format === 'scramble') {
-        const rounds = generateScrambleSchedule(trimmed, courtCount, roundCount, seed);
+        const rounds = generateScrambleSchedule(trimmed, courtCount, roundCount, seed, lockedPairs);
         sessionId = await createSession({
           ...baseOptions,
           format: 'scramble',
@@ -222,12 +247,22 @@ export default function SetupPage() {
         });
         await insertRounds(sessionId, rounds);
       } else if (format === 'squad_rivalry') {
-        const { squads, rounds } = generateSquadRivalrySchedule(trimmed, courtCount, roundCount, seed);
+        const { squads, rounds } = generateSquadRivalrySchedule(trimmed, courtCount, roundCount, seed, lockedPairs);
         sessionId = await createSession({
           ...baseOptions,
           format: 'squad_rivalry',
           roundCount,
           squads,
+          roundsPerBlock: null,
+        });
+        await insertRounds(sessionId, rounds);
+      } else if (format === 'fixed_partners') {
+        const { rounds } = generateFixedPartnersSchedule(trimmed, courtCount, roundCount, seed);
+        sessionId = await createSession({
+          ...baseOptions,
+          format: 'fixed_partners',
+          roundCount,
+          squads: null,
           roundsPerBlock: null,
         });
         await insertRounds(sessionId, rounds);
@@ -411,6 +446,55 @@ export default function SetupPage() {
           </div>
         ))}
       </div>
+
+      {(format === 'scramble' || format === 'squad_rivalry') && (
+        <>
+          <h2>Lock Partners (optional)</h2>
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <p style={{ fontSize: 12, color: 'var(--muted)' }}>
+              Keep specific players partnered together all night — the rest still rotate normally.
+            </p>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <select
+                value={lockPickerA}
+                onChange={e => setLockPickerA(e.target.value)}
+                aria-label="First player to lock"
+                style={{ minHeight: 40, padding: '6px 10px', fontSize: 14, border: '1px solid var(--border)', borderRadius: 8 }}
+              >
+                <option value="">Player A…</option>
+                {trimmedNamesForLocks.filter(n => !lockedPlayers.has(n) || n === lockPickerA).map(n => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+              <span>+</span>
+              <select
+                value={lockPickerB}
+                onChange={e => setLockPickerB(e.target.value)}
+                aria-label="Second player to lock"
+                style={{ minHeight: 40, padding: '6px 10px', fontSize: 14, border: '1px solid var(--border)', borderRadius: 8 }}
+              >
+                <option value="">Player B…</option>
+                {trimmedNamesForLocks.filter(n => n !== lockPickerA && (!lockedPlayers.has(n) || n === lockPickerB)).map(n => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+              <button type="button" className="btn-secondary" onClick={handleAddLock} disabled={!lockPickerA || !lockPickerB}>
+                Lock
+              </button>
+            </div>
+            {lockedPairs.length > 0 && (
+              <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {lockedPairs.map(([a, b], i) => (
+                  <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
+                    🔒 {a} & {b}
+                    <button type="button" className="text-link-btn" onClick={() => handleRemoveLock(i)}>Remove</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </>
+      )}
 
       <h2>Court Numbers</h2>
       <div className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, minWidth: 0 }}>

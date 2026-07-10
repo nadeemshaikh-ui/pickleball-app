@@ -4,6 +4,7 @@ import {
   generateScrambleSchedule,
   generateSquadRivalrySchedule,
   generateCourtBlocksSchedule,
+  generateFixedPartnersSchedule,
 } from './shuffle';
 
 describe('seededRandom', () => {
@@ -191,5 +192,119 @@ describe('generateCourtBlocksSchedule', () => {
     const { assignments } = generateCourtBlocksSchedule(players, 3, 4, 1, 'seed-c');
     const sizes = assignments[0].groups.map(g => g.length).sort();
     expect(sizes).toEqual([4, 5, 5]);
+  });
+
+  it('rejects locked pairs (not yet supported)', () => {
+    const players10 = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10'];
+    expect(() =>
+      generateCourtBlocksSchedule(players10, 2, 6, 2, 'seed-c', undefined, [['P1', 'P2']])
+    ).toThrow(/not yet supported/);
+  });
+});
+
+describe('locked pairs — Scramble', () => {
+  const players10 = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10'];
+
+  it('keeps a locked pair together as a team whenever both are playing', () => {
+    const rounds = generateScrambleSchedule(players10, 2, 12, 'seed-lock', [['P1', 'P2']]);
+    for (const round of rounds) {
+      for (const court of round.courts) {
+        const aHasP1 = court.teamA.includes('P1');
+        const aHasP2 = court.teamA.includes('P2');
+        const bHasP1 = court.teamB.includes('P1');
+        const bHasP2 = court.teamB.includes('P2');
+        if (aHasP1 || aHasP2) expect(aHasP1).toBe(aHasP2);
+        if (bHasP1 || bHasP2) expect(bHasP1).toBe(bHasP2);
+      }
+    }
+  });
+
+  it('never splits a locked pair between playing and sitting out', () => {
+    const rounds = generateScrambleSchedule(players10, 2, 12, 'seed-lock', [['P1', 'P2']]);
+    for (const round of rounds) {
+      const sittingOut = round.sittingOutPerCourt[0];
+      const p1Sitting = sittingOut.includes('P1');
+      const p2Sitting = sittingOut.includes('P2');
+      expect(p1Sitting).toBe(p2Sitting);
+    }
+  });
+
+  it('rejects a player appearing in more than one locked pair', () => {
+    expect(() =>
+      generateScrambleSchedule(players10, 2, 12, 'seed-lock', [
+        ['P1', 'P2'],
+        ['P1', 'P3'],
+      ])
+    ).toThrow(/more than one locked pair/);
+  });
+
+  it('rejects a locked pair referencing a player not in the roster', () => {
+    expect(() => generateScrambleSchedule(players10, 2, 12, 'seed-lock', [['P1', 'Ghost']])).toThrow(/not in the roster/);
+  });
+});
+
+describe('locked pairs — Squad Rivalry', () => {
+  const players10 = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10'];
+
+  it('keeps a locked pair on the same squad', () => {
+    const { squads } = generateSquadRivalrySchedule(players10, 2, 12, 'seed-lock', [['P1', 'P2']]);
+    const p1InGold = squads.gold.includes('P1');
+    const p2InGold = squads.gold.includes('P2');
+    expect(p1InGold).toBe(p2InGold);
+  });
+
+  it('keeps a locked pair together as a team whenever both are playing', () => {
+    const { rounds } = generateSquadRivalrySchedule(players10, 2, 12, 'seed-lock', [['P1', 'P2']]);
+    for (const round of rounds) {
+      for (const court of round.courts) {
+        const aHasP1 = court.teamA.includes('P1');
+        const aHasP2 = court.teamA.includes('P2');
+        const bHasP1 = court.teamB.includes('P1');
+        const bHasP2 = court.teamB.includes('P2');
+        if (aHasP1 || aHasP2) expect(aHasP1).toBe(aHasP2);
+        if (bHasP1 || bHasP2) expect(bHasP1).toBe(bHasP2);
+      }
+    }
+  });
+});
+
+describe('generateFixedPartnersSchedule', () => {
+  const players10 = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10'];
+
+  it('rejects an odd number of players', () => {
+    expect(() => generateFixedPartnersSchedule([...players10, 'P11'], 2, 12, 'seed-fp')).toThrow(/even number/);
+  });
+
+  it('keeps the same partner for every round all night', () => {
+    const { teams, rounds } = generateFixedPartnersSchedule(players10, 2, 12, 'seed-fp');
+    const partnerOf = new Map<string, string>();
+    for (const [a, b] of teams) {
+      partnerOf.set(a, b);
+      partnerOf.set(b, a);
+    }
+    for (const round of rounds) {
+      for (const court of round.courts) {
+        expect(partnerOf.get(court.teamA[0])).toBe(court.teamA[1]);
+        expect(partnerOf.get(court.teamB[0])).toBe(court.teamB[1]);
+      }
+    }
+  });
+
+  it('never sits the same team out two rounds in a row', () => {
+    const players = Array.from({ length: 12 }, (_, i) => `P${i + 1}`);
+    const { rounds } = generateFixedPartnersSchedule(players, 2, 12, 'seed-fp');
+    for (let i = 1; i < rounds.length; i++) {
+      const prevPlayers = new Set(rounds[i - 1].sittingOutPerCourt[0]);
+      const currPlayers = rounds[i].sittingOutPerCourt[0];
+      for (const p of currPlayers) {
+        expect(prevPlayers.has(p)).toBe(false);
+      }
+    }
+  });
+
+  it('is deterministic for the same seed', () => {
+    const a = generateFixedPartnersSchedule(players10, 2, 12, 'seed-fp');
+    const b = generateFixedPartnersSchedule(players10, 2, 12, 'seed-fp');
+    expect(a).toEqual(b);
   });
 });

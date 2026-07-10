@@ -8,5 +8,7 @@ export function formatLabel(format: Format): string {
       return 'Squad Rivalry';
     case 'court_blocks':
       return 'Court Swap';
+    case 'fixed_partners':
+      return 'Fixed Partners';
   }
 }
