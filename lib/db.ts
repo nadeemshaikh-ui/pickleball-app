@@ -20,6 +20,7 @@ export interface SessionRow {
   start_time: string | null;
   court_cost: number | null;
   ball_cost: number;
+  is_ladder: boolean;
 }
 
 export interface RoundRow {
@@ -52,6 +53,7 @@ export interface CreateSessionOptions {
   startTime: string | null;
   courtCost: number | null;
   ballCost: number;
+  isLadder: boolean;
 }
 
 export async function createSession(options: CreateSessionOptions): Promise<string> {
@@ -71,6 +73,7 @@ export async function createSession(options: CreateSessionOptions): Promise<stri
     start_time: options.startTime,
     court_cost: options.courtCost,
     ball_cost: options.ballCost,
+    is_ladder: options.isLadder,
     status: 'in_progress',
   });
   if (error) throw error;

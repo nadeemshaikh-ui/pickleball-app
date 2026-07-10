@@ -109,6 +109,7 @@ export default function SetupPage() {
 
   const [courtCost, setCourtCost] = useState('');
   const [ballCost, setBallCost] = useState('200');
+  const [isLadder, setIsLadder] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -256,6 +257,7 @@ export default function SetupPage() {
         startTime: startTime.trim() || null,
         courtCost: parsedCourtCost,
         ballCost: parsedBallCost,
+        isLadder,
       };
 
       let sessionId: string;
@@ -518,6 +520,20 @@ export default function SetupPage() {
         <p style={{ fontSize: 11, color: 'var(--muted)' }}>
           Tip: to reuse the same logos every week without uploading, ask for them to be hard-coded to your group name in <code>lib/presetGroups.ts</code>.
         </p>
+      </div>
+
+      <h2>Ladder League (optional)</h2>
+      <div className="card">
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          <input type="checkbox" checked={isLadder} onChange={e => setIsLadder(e.target.checked)} />
+          <span>
+            <strong>🪜 Count this as a Ladder League session</strong>
+            <p style={{ fontSize: 12, color: 'var(--muted)', margin: '4px 0 0' }}>
+              Rounds where all 4 players are enrolled on the ladder (see /league/ladder) count toward rung movement.
+              Everyone else still plays normally — this doesn't change matchmaking or the format above.
+            </p>
+          </span>
+        </label>
       </div>
 
       <h2>Format</h2>

@@ -26,6 +26,7 @@ export default function LeaguePage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   async function load() {
     const [pb, db, rv] = await Promise.all([
@@ -41,9 +42,14 @@ export default function LeaguePage() {
 
   useEffect(() => {
     async function init() {
-      const [user] = await Promise.all([getCurrentUser(), load()]);
-      if (user) setIsAdmin(await isCurrentUserAdmin());
-      setLoading(false);
+      try {
+        const [user] = await Promise.all([getCurrentUser(), load()]);
+        if (user) setIsAdmin(await isCurrentUserAdmin());
+      } catch (e) {
+        setLoadError(e instanceof Error ? e.message : 'Failed to load league stats.');
+      } finally {
+        setLoading(false);
+      }
     }
     init();
   }, []);
@@ -94,6 +100,7 @@ export default function LeaguePage() {
   }
 
   if (loading) return <main className="page"><p>Loading…</p></main>;
+  if (loadError) return <main className="page"><p style={{ color: 'var(--danger)' }}>{loadError}</p></main>;
 
   const monthLeader = potm.find(p => !p.provisional) ?? null;
   const rankedDuos = duos.filter(d => !d.provisional).slice(0, 5);
@@ -138,6 +145,10 @@ export default function LeaguePage() {
 
       <Link href="/league/stats" className="btn-secondary" style={{ display: 'block', textAlign: 'center', marginBottom: 12 }}>
         📊 View Full Lifetime Stats
+      </Link>
+
+      <Link href="/league/ladder" className="btn-secondary" style={{ display: 'block', textAlign: 'center', marginBottom: 12 }}>
+        🪜 View Ladder League
       </Link>
 
       {isAdmin && (
