@@ -13,6 +13,7 @@ import SessionDate from '@/components/SessionDate';
 import GroupHeader from '@/components/GroupHeader';
 import RecapImageTemplate from '@/components/RecapImageTemplate';
 import { WhatsAppIcon } from '@/components/icons';
+import { preloadPlayerPhotos } from '@/lib/playerPhotos';
 
 export default function ResultsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -27,7 +28,7 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
 
   useEffect(() => {
     async function load() {
-      const [s, r] = await Promise.all([getSession(id), getRounds(id)]);
+      const [s, r] = await Promise.all([getSession(id), getRounds(id), preloadPlayerPhotos()]);
       setSession(s);
       setRounds(r);
       const board = computeLeaderboard(r);

@@ -13,7 +13,8 @@ import {
 import { createSession, insertRounds, uploadGroupLogo, uploadPlayerPhoto } from '@/lib/db';
 import { saveRoster, loadRoster } from '@/lib/savedRoster';
 import { findPresetLogos } from '@/lib/presetGroups';
-import { getPlayerPhoto, savePlayerPhoto } from '@/lib/playerPhotos';
+import { getPlayerPhoto, savePlayerPhoto, preloadPlayerPhotos } from '@/lib/playerPhotos';
+import { listPlayers, type PlayerRow } from '@/lib/players';
 
 type Format = 'scramble' | 'squad_rivalry' | 'court_blocks' | 'fixed_partners';
 
@@ -109,9 +110,20 @@ export default function SetupPage() {
   const minPlayers = courtCount * 4;
   const [savedRoster, setSavedRoster] = useState<string[] | null>(null);
 
+  const [registeredPlayers, setRegisteredPlayers] = useState<PlayerRow[]>([]);
+
   useEffect(() => {
     loadRoster().then(setSavedRoster);
+    preloadPlayerPhotos().then(() => setPhotoVersion(v => v + 1));
+    listPlayers().then(setRegisteredPlayers).catch(() => setRegisteredPlayers([]));
   }, []);
+
+  function handleAddRegisteredPlayer(playerName: string) {
+    if (names.some(n => n.trim() === playerName)) return; // already added
+    const emptyIndex = names.findIndex(n => n.trim() === '');
+    if (emptyIndex === -1) return; // no empty slot — roster full at current player count
+    updateName(emptyIndex, playerName);
+  }
 
   function resizeKeepingExisting<T>(current: T[], newLength: number, blank: T): T[] {
     const resized = Array(newLength).fill(blank) as T[];
@@ -334,6 +346,45 @@ export default function SetupPage() {
       <h2>Players ({playerCount})</h2>
       {rosterNotice && (
         <p style={{ color: 'var(--dark)', fontSize: 13, fontWeight: 700, marginBottom: 8 }}>{rosterNotice}</p>
+      )}
+      {registeredPlayers.length > 0 && (
+        <div className="card" style={{ marginBottom: 12 }}>
+          <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>
+            Tap a registered player to add them — anyone not registered can still be typed in manually below.
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {registeredPlayers.map(p => {
+              const alreadyAdded = names.some(n => n.trim() === p.name);
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => handleAddRegisteredPlayer(p.name)}
+                  disabled={alreadyAdded}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '6px 10px',
+                    borderRadius: 999,
+                    border: '1px solid var(--border)',
+                    background: alreadyAdded ? 'var(--background)' : 'white',
+                    opacity: alreadyAdded ? 0.5 : 1,
+                    fontSize: 13,
+                  }}
+                >
+                  {p.photo_url ? (
+                    <img src={p.photo_url} alt="" width={20} height={20} style={{ borderRadius: '50%', objectFit: 'cover' }} />
+                  ) : (
+                    <span style={{ width: 20, height: 20, borderRadius: '50%', background: '#ddd', display: 'inline-block' }} />
+                  )}
+                  {p.nickname || p.name}
+                  {alreadyAdded && ' ✓'}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       )}
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {names.map((name, i) => {

@@ -11,6 +11,7 @@ import NewSessionLink from '@/components/NewSessionLink';
 import SessionDate from '@/components/SessionDate';
 import GroupHeader from '@/components/GroupHeader';
 import { WhatsAppIcon } from '@/components/icons';
+import { preloadPlayerPhotos } from '@/lib/playerPhotos';
 
 const POLL_INTERVAL_MS = 4000;
 
@@ -26,7 +27,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
     let cancelled = false;
 
     async function load() {
-      const [s, rounds] = await Promise.all([getSession(id), getRounds(id)]);
+      const [s, rounds] = await Promise.all([getSession(id), getRounds(id), preloadPlayerPhotos()]);
       if (cancelled) return;
       setSession(s);
       setLeaderboard(computeLeaderboard(rounds));
