@@ -29,7 +29,7 @@ export interface ScrambleRound {
   sittingOutPerCourt: string[][];
 }
 
-function shuffleArray<T>(arr: T[], rand: () => number): T[] {
+export function shuffleArray<T>(arr: T[], rand: () => number): T[] {
   const copy = [...arr];
   for (let i = copy.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));

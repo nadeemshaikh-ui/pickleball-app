@@ -10,5 +10,7 @@ export function formatLabel(format: Format): string {
       return 'Court Swap';
     case 'fixed_partners':
       return 'Fixed Partners';
+    case 'king_of_court':
+      return 'King of the Court';
   }
 }

@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import type { ScrambleRound, Squads } from './shuffle';
 
-export type Format = 'scramble' | 'squad_rivalry' | 'court_blocks' | 'fixed_partners';
+export type Format = 'scramble' | 'squad_rivalry' | 'court_blocks' | 'fixed_partners' | 'king_of_court';
 
 export interface SessionRow {
   id: string;
@@ -21,6 +21,7 @@ export interface SessionRow {
   court_cost: number | null;
   ball_cost: number;
   is_ladder: boolean;
+  king_of_court_fixed_pairs: boolean | null;
 }
 
 export interface RoundRow {
@@ -54,6 +55,7 @@ export interface CreateSessionOptions {
   courtCost: number | null;
   ballCost: number;
   isLadder: boolean;
+  kingOfCourtFixedPairs: boolean | null;
 }
 
 export async function createSession(options: CreateSessionOptions): Promise<string> {
@@ -74,6 +76,7 @@ export async function createSession(options: CreateSessionOptions): Promise<stri
     court_cost: options.courtCost,
     ball_cost: options.ballCost,
     is_ladder: options.isLadder,
+    king_of_court_fixed_pairs: options.kingOfCourtFixedPairs,
     status: 'in_progress',
   });
   if (error) throw error;

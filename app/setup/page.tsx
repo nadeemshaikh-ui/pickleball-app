@@ -10,6 +10,7 @@ import {
   type CourtBlockAssignment,
   type LockedPair,
 } from '@/lib/shuffle';
+import { generateInitialKingOfCourtRound } from '@/lib/kingOfCourt';
 import { createSession, insertRounds, uploadGroupLogo, uploadPlayerPhoto, getMostRecentSession } from '@/lib/db';
 import { saveRoster, loadRoster } from '@/lib/savedRoster';
 import { findPresetLogos } from '@/lib/presetGroups';
@@ -22,7 +23,7 @@ import { buildStorylines } from '@/lib/storylines';
 
 const MIN_GAMES_FOR_NEMESIS_ALERT = 3;
 
-type Format = 'scramble' | 'squad_rivalry' | 'court_blocks' | 'fixed_partners';
+type Format = 'scramble' | 'squad_rivalry' | 'court_blocks' | 'fixed_partners' | 'king_of_court';
 
 const FORMAT_INFO: Record<Format, { label: string; summary: string; example: string }> = {
   scramble: {
@@ -44,6 +45,11 @@ const FORMAT_INFO: Record<Format, { label: string; summary: string; example: str
     label: 'Fixed Partners — same partner all night',
     summary: 'Everyone gets one partner for the entire session — that never changes. Only who you\'re facing on the other side of the net rotates each round, balanced so you play against different teams roughly evenly.',
     example: 'Example: You\'re paired with Sam for the whole night. Round 1 you and Sam face Priya & Tom. Round 2 you and Sam face a different team. Your partner is always Sam.',
+  },
+  king_of_court: {
+    label: 'King of the Court — winners climb, losers drop',
+    summary: 'Courts are ranked, Court 1 is the top. Win your court and you rise a court next round; lose and you drop a court. The winner on Court 1 defends their spot, the loser on the bottom court stays put. Needs exactly enough players to fill every court (4 per court) — no bench in this format yet. Round 2 onward is generated live as scores come in, not pre-made.',
+    example: "Example: 2 courts, 8 players. Win Court 2 and you rise to Court 1 next round; lose Court 1 and you drop to Court 2. Whoever's on Court 1 at the end is the night's king.",
   },
 };
 
@@ -115,6 +121,7 @@ export default function SetupPage() {
   const [courtCost, setCourtCost] = useState('');
   const [ballCost, setBallCost] = useState('200');
   const [isLadder, setIsLadder] = useState(false);
+  const [kingOfCourtFixedPairs, setKingOfCourtFixedPairs] = useState(true);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -242,6 +249,7 @@ export default function SetupPage() {
     setCourtCost(last.court_cost !== null ? String(last.court_cost) : '');
     setBallCost(String(last.ball_cost));
     setIsLadder(last.is_ladder);
+    if (last.king_of_court_fixed_pairs !== null) setKingOfCourtFixedPairs(last.king_of_court_fixed_pairs);
     setStartTime(last.start_time ?? '');
     setRoundDurationMinutes(last.round_duration_minutes !== null ? String(last.round_duration_minutes) : '');
     setNamesEntered(true);
@@ -298,6 +306,10 @@ export default function SetupPage() {
       setError('Player names must be unique.');
       return;
     }
+    if (format === 'king_of_court' && trimmed.length !== courtCount * 4) {
+      setError(`King of the Court needs exactly ${courtCount * 4} players for ${courtCount} court(s) — no bench in this format yet.`);
+      return;
+    }
     const trimmedCourtLabels = courtLabels.map(l => l.trim());
     if (trimmedCourtLabels.some(l => l === '')) {
       setError('Every court needs a number or name.');
@@ -352,6 +364,7 @@ export default function SetupPage() {
         courtCost: parsedCourtCost,
         ballCost: parsedBallCost,
         isLadder,
+        kingOfCourtFixedPairs: format === 'king_of_court' ? kingOfCourtFixedPairs : null,
       };
 
       let sessionId: string;
@@ -387,6 +400,16 @@ export default function SetupPage() {
           roundsPerBlock: null,
         });
         await insertRounds(sessionId, rounds);
+      } else if (format === 'king_of_court') {
+        const courts = generateInitialKingOfCourtRound(trimmed, courtCount, seed, kingOfCourtFixedPairs);
+        sessionId = await createSession({
+          ...baseOptions,
+          format: 'king_of_court',
+          roundCount,
+          squads: null,
+          roundsPerBlock: null,
+        });
+        await insertRounds(sessionId, [{ roundNumber: 1, courts, sittingOutPerCourt: courts.map(() => []) }]);
       } else {
         const { rounds } = generateCourtBlocksSchedule(trimmed, courtCount, roundsPerBlock, blockCount, seed, manualAssignments);
         sessionId = await createSession({
@@ -402,7 +425,7 @@ export default function SetupPage() {
       if (parsedCourtCost !== null) {
         await createSessionDues(sessionId, parsedCourtCost, parsedBallCost, trimmed);
       }
-      router.push(`/session/${sessionId}/schedule`);
+      router.push(format === 'king_of_court' ? `/session/${sessionId}/play` : `/session/${sessionId}/schedule`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create session.');
       setSubmitting(false);
@@ -671,6 +694,22 @@ export default function SetupPage() {
           </div>
         ))}
       </div>
+
+      {format === 'king_of_court' && (
+        <>
+          <h2>Partner Mode</h2>
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <input type="radio" checked={kingOfCourtFixedPairs} onChange={() => setKingOfCourtFixedPairs(true)} />
+              <span>Fixed pairs — same partner climbs/falls with you all night</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <input type="radio" checked={!kingOfCourtFixedPairs} onChange={() => setKingOfCourtFixedPairs(false)} />
+              <span>Rotating — partner reshuffles every round you move courts</span>
+            </label>
+          </div>
+        </>
+      )}
 
       {format === 'scramble' && (
         <>

@@ -1,7 +1,8 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
-import { getSession, getRounds, updateRoundScore, markSessionCompleted, type RoundRow, type SessionRow } from '@/lib/db';
+import { getSession, getRounds, updateRoundScore, insertRounds, markSessionCompleted, type RoundRow, type SessionRow } from '@/lib/db';
+import { computeNextKingOfCourtRound } from '@/lib/kingOfCourt';
 import SessionNav from '@/components/SessionNav';
 import GroupHeader from '@/components/GroupHeader';
 import { ChairIcon } from '@/components/icons';
@@ -89,6 +90,37 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
       }
     }
     if (messages.length > 0) setFlightChanges(prev => ({ ...prev, [court.id]: messages }));
+
+    // King of the Court only ever has the rounds played so far in the DB —
+    // round N+1 doesn't exist until round N is fully scored, so the generic
+    // firstIncompleteRound() check below (which would see "no incomplete
+    // rounds exist yet" and wrongly mark the session complete after round 1)
+    // doesn't apply here. Generate the next round live instead, or complete
+    // the session once round_count is reached.
+    if (session?.format === 'king_of_court') {
+      const roundJustCompleted = updatedRounds
+        .filter(r => r.round_number === court.round_number)
+        .every(c => c.score_a !== null && c.score_b !== null);
+      if (roundJustCompleted) {
+        if (court.round_number < session.round_count) {
+          const scoredCourts = updatedRounds
+            .filter(r => r.round_number === court.round_number)
+            .sort((x, y) => x.court - y.court)
+            .map(r => ({ court: r.court, teamA: r.team_a, teamB: r.team_b, scoreA: r.score_a as number, scoreB: r.score_b as number }));
+          const nextCourts = computeNextKingOfCourtRound(
+            scoredCourts,
+            session.king_of_court_fixed_pairs ?? true,
+            `${id}-r${court.round_number + 1}`
+          );
+          await insertRounds(id, [{ roundNumber: court.round_number + 1, courts: nextCourts, sittingOutPerCourt: nextCourts.map(() => []) }]);
+          setRounds(await getRounds(id));
+        } else {
+          await markSessionCompleted(id);
+        }
+      }
+      setSavingCourtId(null);
+      return;
+    }
 
     setSavingCourtId(null);
     if (firstIncompleteRound(updatedRounds) === undefined) {
