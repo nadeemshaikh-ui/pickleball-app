@@ -7,6 +7,11 @@ export interface StreakRecord {
   achievedAt: string;
 }
 
+// A streak of 1-2 games is normal noise, not a record — crowning someone
+// "the club's all-time record holder" off a single win reads like a grand
+// permanent title from one match, which is exactly the confusion it caused.
+export const MIN_STREAK_LENGTH_FOR_RECORD = 3;
+
 export async function fetchStreakRecords(clubId: string): Promise<StreakRecord[]> {
   const { data, error } = await supabase.from('league_streak_records').select('*').eq('club_id', clubId);
   if (error) throw error;
@@ -76,6 +81,7 @@ export async function maybeSetStreakRecord(
     .maybeSingle();
   if (fetchError) throw fetchError;
 
+  if (currentStreakLength < MIN_STREAK_LENGTH_FOR_RECORD) return null;
   if (existing && existing.record_length >= currentStreakLength) return null;
 
   const achievedAt = new Date().toISOString();

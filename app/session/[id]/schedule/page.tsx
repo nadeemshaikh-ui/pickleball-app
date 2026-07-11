@@ -174,10 +174,8 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
         </div>
 
         {viewMode === 'table' && session && (
-          <div style={{ overflowX: 'auto', margin: '0 -16px', padding: '0 16px' }}>
-            <div style={{ transform: 'scale(0.72)', transformOrigin: 'top left', width: '138.8%' }}>
-              <ScheduleImageTemplate session={session} rounds={rounds} />
-            </div>
+          <div style={{ overflowX: 'auto', margin: '0 -16px', padding: '0 16px 4px' }}>
+            <ScheduleImageTemplate session={session} rounds={rounds} />
           </div>
         )}
 

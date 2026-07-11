@@ -108,7 +108,11 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
   }
 
   async function handleVoid() {
-    if (!window.confirm('Void this session? Its matches will stop counting toward league stats, badges, and streaks.')) return;
+    const warning =
+      confirmations.length > 0
+        ? `${confirmations.length} player${confirmations.length === 1 ? ' has' : 's have'} already confirmed they played this session. Void anyway? Its matches will stop counting toward league stats, badges, and streaks.`
+        : 'Void this session? Its matches will stop counting toward league stats, badges, and streaks.';
+    if (!window.confirm(warning)) return;
     setVoiding(true);
     try {
       await voidSession(id);

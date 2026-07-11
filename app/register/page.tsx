@@ -120,7 +120,7 @@ export default function RegisterPage() {
       <h1>Register</h1>
       <div className="card" style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
         {photoUrl && (
-          <img src={photoUrl} alt="" width={80} height={80} style={{ borderRadius: '50%', objectFit: 'cover' }} />
+          <img src={photoUrl} alt="" width={140} height={140} style={{ borderRadius: '50%', objectFit: 'cover' }} />
         )}
         <div>
           <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>Photo</label>

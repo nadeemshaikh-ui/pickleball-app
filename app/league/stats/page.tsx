@@ -17,7 +17,7 @@ import { fetchStreakRecords, type StreakRecord } from '@/lib/streakRecords';
 import { recordNewlyEarnedBadges } from '@/lib/badgeEvents';
 import { fetchPendingChallenges, createChallenge, type Challenge } from '@/lib/challenges';
 import ShareableBadgeCard from '@/components/ShareableBadgeCard';
-import { fetchPersonalBests, type PersonalBests } from '@/lib/personalBests';
+import { fetchPersonalBests, fetchClubStreakBests, type PersonalBests, type StreakBest } from '@/lib/personalBests';
 import { computeChemistryScore } from '@/lib/chemistry';
 import { flightForRating } from '@/lib/flights';
 import { computeBadges, BADGE_CATALOG, type Badge } from '@/lib/badges';
@@ -42,6 +42,7 @@ export default function LeagueStatsPage() {
   const [flightByName, setFlightByName] = useState<Map<string, string>>(new Map());
   const [duos, setDuos] = useState<RankedDuo[]>([]);
   const [streakRecords, setStreakRecords] = useState<StreakRecord[]>([]);
+  const [streakBests, setStreakBests] = useState<Map<string, StreakBest>>(new Map());
   const [equippedByName, setEquippedByName] = useState<Map<string, string | null>>(new Map());
   const [ownPlayerId, setOwnPlayerId] = useState<string | null>(null);
   const [ownPlayerName, setOwnPlayerName] = useState<string | null>(null);
@@ -74,17 +75,19 @@ export default function LeagueStatsPage() {
     }
     async function init() {
       try {
-        const [lb, mvp, streakMap, players, duoList, records, , user] = await Promise.all([
+        const [lb, mvp, streakMap, players, duoList, records, bests, , user] = await Promise.all([
           fetchLifetimeLeaderboard(currentClubId!),
           fetchMvpCounts(currentClubId!),
           fetchStreaks(currentClubId!),
           listPlayers(currentClubId!),
           fetchBestDuos(currentClubId!),
           fetchStreakRecords(currentClubId!),
+          fetchClubStreakBests(currentClubId!),
           preloadPlayerPhotos(),
           getCurrentUser(),
         ]);
         setLifetime(lb);
+        setStreakBests(bests);
         setMvpCounts(mvp);
         setStreaks(streakMap);
         setFlightByName(new Map(players.map(p => [p.name, flightForRating(p.elo_rating)])));
@@ -387,6 +390,8 @@ export default function LeagueStatsPage() {
                       <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>For/Ag</div>{p.pointsFor}/{p.pointsAgainst}</div>
                       <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>MVP</div>{mvpCounts.get(p.name) ?? 0}</div>
                       <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>Flight</div>{flightByName.get(p.name) ?? '—'}</div>
+                      <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>Best streak</div>{streakBests.get(p.name)?.longestWinStreak ?? 0}</div>
+                      <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>Worst streak</div>{streakBests.get(p.name)?.longestLossStreak ?? 0}</div>
                     </div>
 
                     {badges.length > 0 && (

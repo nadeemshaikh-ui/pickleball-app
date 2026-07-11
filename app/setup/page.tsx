@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { X } from 'lucide-react';
 import {
   generateScrambleSchedule,
   generateSquadRivalrySchedule,
@@ -292,6 +293,12 @@ export default function SetupPage() {
     setCourtLabels(prev => resizeKeepingExisting(prev.length ? prev : ['1', '2'], courtCount, '').map((v, i) => v || `${i + 1}`));
     setNamesEntered(true);
     setRosterNotice('Loaded your saved roster — edit any name below, or add new players.');
+  }
+
+  function removeName(index: number) {
+    const copy = names.filter((_, i) => i !== index);
+    setNames(copy);
+    setPlayerCount(copy.length);
   }
 
   function updateName(index: number, value: string) {
@@ -612,6 +619,15 @@ export default function SetupPage() {
                 placeholder={`Player ${i + 1}`}
                 style={{ flex: 1, minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
               />
+              <button
+                type="button"
+                aria-label={`Remove player ${i + 1}`}
+                onClick={() => removeName(i)}
+                className="icon-btn"
+                style={{ flex: '0 0 auto' }}
+              >
+                <X size={18} />
+              </button>
             </div>
           );
         })}

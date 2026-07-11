@@ -61,9 +61,9 @@ describe('computeSessionTotals', () => {
     expect(totals.totalPoints).toBe(15 + 14 + 15 + 2 + 15 + 10);
   });
 
-  it('computes average score margin across scored games', () => {
+  it('computes the biggest score margin across scored games', () => {
     const totals = computeSessionTotals(rounds);
-    expect(totals.averageMargin).toBeCloseTo((1 + 13 + 5) / 3);
+    expect(totals.biggestMargin).toBe(13);
   });
 });
 

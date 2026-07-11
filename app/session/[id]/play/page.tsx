@@ -9,7 +9,6 @@ import SessionNav from '@/components/SessionNav';
 import GroupHeader from '@/components/GroupHeader';
 import { ChairIcon } from '@/components/icons';
 import { formatLabel } from '@/lib/formatLabel';
-import { captureSpokenScore, isVoiceScoreSupported } from '@/lib/voiceScore';
 import { detectUpset } from '@/lib/upset';
 import { detectFlightChange } from '@/lib/flightChange';
 import { listPlayers } from '@/lib/players';
@@ -20,10 +19,8 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
   const [rounds, setRounds] = useState<RoundRow[]>([]);
   const [drafts, setDrafts] = useState<Record<string, [string, string]>>({});
   const [savingCourtId, setSavingCourtId] = useState<string | null>(null);
-  const [listeningCourtId, setListeningCourtId] = useState<string | null>(null);
   const [eloByName, setEloByName] = useState<Map<string, number>>(new Map());
   const [flightChanges, setFlightChanges] = useState<Record<string, string[]>>({});
-  const voiceSupported = isVoiceScoreSupported();
 
   function firstIncompleteRound(r: RoundRow[]): number | undefined {
     return [...new Set(r.map(x => x.round_number))]
@@ -163,16 +160,6 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
     await saveScore(court, a, b);
   }
 
-  async function handleVoiceScore(court: RoundRow) {
-    setListeningCourtId(court.id);
-    const result = await captureSpokenScore();
-    setListeningCourtId(null);
-    if (!result) return; // unsupported, denied, or unparseable — silently fall back to manual entry
-    const [a, b] = result;
-    setDrafts(prev => ({ ...prev, [court.id]: [a.toString(), b.toString()] }));
-    await saveScore(court, a.toString(), b.toString());
-  }
-
   return (
     <>
       <main className="page">
@@ -233,18 +220,6 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                         />
                       </div>
                       {savingCourtId === court.id && <span style={{ fontSize: 12, color: 'var(--muted)' }}>Saving…</span>}
-                      {voiceSupported && (
-                        <button
-                          type="button"
-                          className="icon-btn"
-                          aria-label={`Speak score for court ${court.court}, round ${roundNumber}`}
-                          onClick={() => handleVoiceScore(court)}
-                          disabled={listeningCourtId !== null}
-                          style={{ opacity: listeningCourtId === court.id ? 1 : 0.6 }}
-                        >
-                          {listeningCourtId === court.id ? '🔴' : '🎤'}
-                        </button>
-                      )}
                     </div>
                     {upsetLabel(court) && (
                       <div className="resting-badge">

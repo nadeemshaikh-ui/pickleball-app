@@ -111,8 +111,8 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
         <div className="card stat-card">
           <span className="stat-icon" style={{ color: 'var(--dark)' }}><TrendUpIcon size={28} /></span>
           <div>
-            <div className="stat-label">Average Winning Margin</div>
-            <div className="stat-value">{totals.averageMargin.toFixed(1)} points</div>
+            <div className="stat-label">Biggest Winning Margin</div>
+            <div className="stat-value">{totals.biggestMargin} points</div>
           </div>
         </div>
         {topScorer && (

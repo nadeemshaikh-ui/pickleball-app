@@ -90,13 +90,12 @@ export function computeLongestWinStreak(rounds: RoundRow[]): StreakStats | null 
   return best;
 }
 
-export function computeSessionTotals(rounds: RoundRow[]): { totalGames: number; totalPoints: number; averageMargin: number } {
+export function computeSessionTotals(rounds: RoundRow[]): { totalGames: number; totalPoints: number; biggestMargin: number } {
   const scored = scoredRounds(rounds);
   const totalGames = scored.length;
   const totalPoints = scored.reduce((sum, r) => sum + r.score_a! + r.score_b!, 0);
-  const averageMargin =
-    totalGames === 0 ? 0 : scored.reduce((sum, r) => sum + Math.abs(r.score_a! - r.score_b!), 0) / totalGames;
-  return { totalGames, totalPoints, averageMargin };
+  const biggestMargin = scored.reduce((max, r) => Math.max(max, Math.abs(r.score_a! - r.score_b!)), 0);
+  return { totalGames, totalPoints, biggestMargin };
 }
 
 export interface TopScorer {
