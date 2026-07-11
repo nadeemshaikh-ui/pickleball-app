@@ -244,36 +244,21 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
         <p style={{ fontSize: 11, color: 'var(--muted)', padding: '0 8px', marginBottom: 4 }}>
           W = Wins · L = Losses · For/Ag = Points For/Against · Diff = Point Differential
         </p>
-        <div className="card" style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: 'left', paddingBottom: 8 }}>Player</th>
-                <th style={{ paddingBottom: 8 }} title="Wins">W</th>
-                <th style={{ paddingBottom: 8 }} title="Losses">L</th>
-                <th style={{ paddingBottom: 8 }} title="Points For">For</th>
-                <th style={{ paddingBottom: 8 }} title="Points Against">Ag</th>
-                <th style={{ paddingBottom: 8 }} title="Point Differential">Diff</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leaderboard.map(p => (
-                <tr key={p.name} style={{ borderTop: '1px solid var(--border)' }}>
-                  <td style={{ padding: '8px 0', fontWeight: 700 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Avatar name={p.name} size={22} />
-                      {p.name}
-                    </div>
-                  </td>
-                  <td style={{ textAlign: 'center' }}>{p.wins}</td>
-                  <td style={{ textAlign: 'center' }}>{p.losses}</td>
-                  <td style={{ textAlign: 'center' }}>{p.pointsFor}</td>
-                  <td style={{ textAlign: 'center' }}>{p.pointsAgainst}</td>
-                  <td style={{ textAlign: 'center' }}>{p.pointsFor - p.pointsAgainst}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {leaderboard.map(p => (
+            <div key={p.name} className="card">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
+                <Avatar name={p.name} size={22} />
+                {p.name}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: 8, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)', fontSize: 13 }}>
+                <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>W-L</div>{p.wins}-{p.losses}</div>
+                <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>For</div>{p.pointsFor}</div>
+                <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>Ag</div>{p.pointsAgainst}</div>
+                <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>Diff</div>{p.pointsFor - p.pointsAgainst}</div>
+              </div>
+            </div>
+          ))}
         </div>
 
         <h2>Wins per Player</h2>
