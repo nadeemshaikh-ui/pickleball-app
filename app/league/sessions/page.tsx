@@ -1,0 +1,56 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { listSessions, type SessionRow } from '@/lib/db';
+import { formatLabel } from '@/lib/formatLabel';
+import { useCurrentClub } from '@/lib/useCurrentClub';
+
+export default function SessionHistoryPage() {
+  const { currentClubId, loading: clubLoading } = useCurrentClub();
+  const [sessions, setSessions] = useState<SessionRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (clubLoading) return;
+    if (!currentClubId) {
+      setLoading(false);
+      return;
+    }
+    listSessions(currentClubId)
+      .then(setSessions)
+      .finally(() => setLoading(false));
+  }, [currentClubId, clubLoading]);
+
+  if (loading || clubLoading) return <main className="page"><p>Loading…</p></main>;
+  if (!currentClubId) return <main className="page"><p>Join or create a club first — see <a href="/clubs">Clubs</a>.</p></main>;
+
+  return (
+    <main className="page">
+      <Link href="/league" className="text-link-btn">← League</Link>
+      <h1>Session History</h1>
+
+      {sessions.length === 0 && <p style={{ color: 'var(--muted)', fontSize: 14 }}>No sessions played yet.</p>}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+        {sessions.map(s => (
+          <Link key={s.id} href={`/session/${s.id}/results`} className="card" style={{ display: 'block' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontWeight: 700 }}>
+                  {new Date(s.created_at).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+                  {formatLabel(s.format)}
+                  {s.venue ? ` — ${s.venue}` : ''}
+                  {s.status === 'voided' ? ' — voided' : ''}
+                </div>
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--muted)' }}>{s.players.length} players</div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </main>
+  );
+}

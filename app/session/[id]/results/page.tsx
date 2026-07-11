@@ -188,7 +188,7 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
 
         {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
         <h1>Results</h1>
-        {session && <SessionDate createdAt={session.created_at} />}
+        {session && <SessionDate createdAt={session.created_at} venue={session.venue} />}
 
         {squadTotals && (
           <div className="card" style={{ marginTop: 16, display: 'flex', justifyContent: 'space-around' }}>

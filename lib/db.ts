@@ -23,6 +23,7 @@ export interface SessionRow {
   ball_cost: number;
   is_ladder: boolean;
   king_of_court_fixed_pairs: boolean | null;
+  venue: string | null;
 }
 
 export interface RoundRow {
@@ -58,6 +59,7 @@ export interface CreateSessionOptions {
   ballCost: number;
   isLadder: boolean;
   kingOfCourtFixedPairs: boolean | null;
+  venue: string | null;
 }
 
 export async function createSession(options: CreateSessionOptions): Promise<string> {
@@ -80,6 +82,7 @@ export async function createSession(options: CreateSessionOptions): Promise<stri
     ball_cost: options.ballCost,
     is_ladder: options.isLadder,
     king_of_court_fixed_pairs: options.kingOfCourtFixedPairs,
+    venue: options.venue,
     status: 'in_progress',
   });
   if (error) throw error;
@@ -151,6 +154,17 @@ export async function getMostRecentSession(clubId: string): Promise<SessionRow |
     .maybeSingle();
   if (error) throw error;
   return data as SessionRow | null;
+}
+
+export async function listSessions(clubId: string, limit = 30): Promise<SessionRow[]> {
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('club_id', clubId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data as SessionRow[];
 }
 
 export async function getSession(sessionId: string): Promise<SessionRow> {

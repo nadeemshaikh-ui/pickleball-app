@@ -191,6 +191,10 @@ export default function LeaguePage() {
         🏅 Badge Gallery
       </Link>
 
+      <Link href="/league/sessions" className="btn-secondary" style={{ display: 'block', textAlign: 'center', marginBottom: 12 }}>
+        📜 Session History
+      </Link>
+
       {isAdmin && (
         <button
           className="btn-secondary"

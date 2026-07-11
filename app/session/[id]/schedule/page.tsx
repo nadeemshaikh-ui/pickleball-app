@@ -110,7 +110,7 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
 
         {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
         <h1>Schedule</h1>
-        {session && <SessionDate createdAt={session.created_at} />}
+        {session && <SessionDate createdAt={session.created_at} venue={session.venue} />}
         {session?.round_duration_minutes && (
           <p style={{ color: 'var(--muted)', marginTop: 4 }}>
             {session.round_count} rounds × ~{session.round_duration_minutes} min — about{' '}

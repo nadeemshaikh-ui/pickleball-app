@@ -21,6 +21,7 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
   const [savingCourtId, setSavingCourtId] = useState<string | null>(null);
   const [eloByName, setEloByName] = useState<Map<string, number>>(new Map());
   const [flightChanges, setFlightChanges] = useState<Record<string, string[]>>({});
+  const [kotcMovement, setKotcMovement] = useState<Record<number, string[]>>({});
 
   function firstIncompleteRound(r: RoundRow[]): number | undefined {
     return [...new Set(r.map(x => x.round_number))]
@@ -134,6 +135,19 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
             .filter(r => r.round_number === court.round_number)
             .sort((x, y) => x.court - y.court)
             .map(r => ({ court: r.court, teamA: r.team_a, teamB: r.team_b, scoreA: r.score_a as number, scoreB: r.score_b as number }));
+          const labels = session.court_labels;
+          const winnerOf = (c: (typeof scoredCourts)[number]) => (c.scoreA > c.scoreB ? c.teamA : c.teamB);
+          const loserOf = (c: (typeof scoredCourts)[number]) => (c.scoreA > c.scoreB ? c.teamB : c.teamA);
+          const movement: string[] = [];
+          if (scoredCourts.length > 1) {
+            movement.push(`Defending Court ${labels[0]}: ${winnerOf(scoredCourts[0]).join(' & ')}`);
+            for (let i = 0; i < scoredCourts.length - 1; i++) {
+              movement.push(`Moving up to Court ${labels[i]}: ${winnerOf(scoredCourts[i + 1]).join(' & ')}`);
+              movement.push(`Moving down to Court ${labels[i + 1]}: ${loserOf(scoredCourts[i]).join(' & ')}`);
+            }
+          }
+          setKotcMovement(prev => ({ ...prev, [court.round_number]: movement }));
+
           const nextCourts = computeNextKingOfCourtRound(
             scoredCourts,
             session.king_of_court_fixed_pairs ?? true,
@@ -185,6 +199,15 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                   {isDone ? 'Done' : 'Pending'}
                 </span>
               </div>
+
+              {session?.format === 'king_of_court' && isDone && (kotcMovement[roundNumber] ?? []).length > 0 && (
+                <div className="resting-badge" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <strong style={{ fontSize: 12 }}>Next round movement</strong>
+                  {kotcMovement[roundNumber].map(m => (
+                    <span key={m} style={{ fontSize: 12 }}>{m}</span>
+                  ))}
+                </div>
+              )}
 
               {courts.map(court => {
                 const [scoreA, scoreB] = draftFor(court);

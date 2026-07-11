@@ -82,7 +82,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
         <div ref={leaderboardCaptureRef}>
         {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
         <h1>Leaderboard</h1>
-        {session && <SessionDate createdAt={session.created_at} />}
+        {session && <SessionDate createdAt={session.created_at} venue={session.venue} />}
         <p style={{ color: 'var(--muted)', marginTop: 4 }}>
           {gamesCompleted} of {gamesTotal} games played — updates live
         </p>

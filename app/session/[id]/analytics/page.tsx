@@ -95,7 +95,7 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
         <div ref={analyticsCaptureRef}>
         {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
         <h1>Today&apos;s Analytics</h1>
-        {session && <SessionDate createdAt={session.created_at} />}
+        {session && <SessionDate createdAt={session.created_at} venue={session.venue} />}
         <p style={{ color: 'var(--muted)', marginTop: 4 }}>
           {totals.totalGames} of {session?.round_count ? session.round_count * 2 : '…'} games played
         </p>

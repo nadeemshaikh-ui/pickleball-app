@@ -63,10 +63,26 @@ export default function SetupPage() {
   const router = useRouter();
   const { currentClubId, currentClub, user, loading: clubLoading } = useCurrentClub();
 
-  const [playerCount, setPlayerCount] = useState(10);
-  const [courtCount, setCourtCount] = useState(2);
-  const [namesEntered, setNamesEntered] = useState(false);
-  const [names, setNames] = useState<string[]>(Array(10).fill(''));
+  // Restores in-progress setup form state after a back-navigation or
+  // accidental reload — without this, leaving /setup mid-fill (even via the
+  // in-app "Change Players" back link's parent navigation) loses everything
+  // typed so far since it's plain component state with nowhere else to live.
+  const SETUP_DRAFT_KEY = 'pickleball-setup-draft';
+  function readDraft(): { playerCount?: number; courtCount?: number; namesEntered?: boolean; names?: string[]; format?: Format; venue?: string } {
+    if (typeof window === 'undefined') return {};
+    try {
+      const raw = sessionStorage.getItem(SETUP_DRAFT_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  }
+  const draft = readDraft();
+
+  const [playerCount, setPlayerCount] = useState(draft.playerCount ?? 10);
+  const [courtCount, setCourtCount] = useState(draft.courtCount ?? 2);
+  const [namesEntered, setNamesEntered] = useState(draft.namesEntered ?? false);
+  const [names, setNames] = useState<string[]>(draft.names ?? Array(10).fill(''));
   const [rosterNotice, setRosterNotice] = useState<string | null>(null);
   const [photoPreviews, setPhotoPreviews] = useState<Record<number, string>>({});
   const [photoVersion, setPhotoVersion] = useState(0);
@@ -87,12 +103,18 @@ export default function SetupPage() {
     }
   }
 
-  const [format, setFormat] = useState<Format>('scramble');
+  const [format, setFormat] = useState<Format>(draft.format ?? 'scramble');
   const [openFormatInfo, setOpenFormatInfo] = useState<Format | null>(null);
   const [roundCount, setRoundCount] = useState(12);
   const [courtLabels, setCourtLabels] = useState<string[]>(['1', '2']);
   const [roundDurationMinutes, setRoundDurationMinutes] = useState('');
   const [startTime, setStartTime] = useState('');
+  const [venue, setVenue] = useState(draft.venue ?? '');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    sessionStorage.setItem(SETUP_DRAFT_KEY, JSON.stringify({ playerCount, courtCount, namesEntered, names, format, venue }));
+  }, [playerCount, courtCount, namesEntered, names, format, venue]);
 
   const [roundsPerBlock, setRoundsPerBlock] = useState(6);
   const [swapCount, setSwapCount] = useState(2);
@@ -463,6 +485,7 @@ export default function SetupPage() {
         ballCost: parsedBallCost,
         isLadder,
         kingOfCourtFixedPairs: format === 'king_of_court' ? kingOfCourtFixedPairs : null,
+        venue: venue.trim() || null,
       };
 
       let sessionId: string;
@@ -526,6 +549,7 @@ export default function SetupPage() {
       if (parsedCourtCost !== null) {
         await createSessionDues(sessionId, parsedCourtCost, parsedBallCost, trimmed);
       }
+      sessionStorage.removeItem(SETUP_DRAFT_KEY);
       router.push(format === 'king_of_court' ? `/session/${sessionId}/play` : `/session/${sessionId}/schedule`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create session.');
@@ -1034,6 +1058,16 @@ export default function SetupPage() {
           />
         </>
       )}
+
+      <h2>Venue (optional)</h2>
+      <input
+        type="text"
+        value={venue}
+        onChange={e => setVenue(e.target.value)}
+        placeholder="e.g. Oshiwara Sports Complex"
+        aria-label="Venue, optional"
+        style={{ minHeight: 44, padding: '10px 12px', fontSize: 16, width: '100%', border: '1px solid var(--border)', borderRadius: 8, background: 'white', marginBottom: 16 }}
+      />
 
       <h2>Start Time (optional)</h2>
       <input
