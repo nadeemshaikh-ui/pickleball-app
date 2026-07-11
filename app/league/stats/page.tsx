@@ -292,26 +292,9 @@ export default function LeagueStatsPage() {
         style={{ width: '100%', minHeight: 40, padding: '8px 12px', fontSize: 15, border: '1px solid var(--border)', borderRadius: 8, marginBottom: 12 }}
       />
 
-      <div className="card" style={{ overflowX: 'auto' }} ref={statsCaptureRef}>
-        {sorted.length === 0 && <p style={{ color: 'var(--muted)', fontSize: 14 }}>No games played yet.</p>}
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign: 'left', paddingBottom: 8 }}>#</th>
-              <th style={{ textAlign: 'left', paddingBottom: 8 }}>Player</th>
-              <th style={{ paddingBottom: 8 }}>W</th>
-              <th style={{ paddingBottom: 8 }}>L</th>
-              <th style={{ paddingBottom: 8 }}>Win%</th>
-              <th style={{ paddingBottom: 8 }}>Games</th>
-              <th style={{ paddingBottom: 8 }}>For</th>
-              <th style={{ paddingBottom: 8 }}>Ag</th>
-              <th style={{ paddingBottom: 8 }}>MVP</th>
-              <th style={{ paddingBottom: 8 }}>Flight</th>
-              <th style={{ paddingBottom: 8, textAlign: 'left' }}>Badges</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((p, i) => {
+      <div ref={statsCaptureRef} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {sorted.length === 0 && <p className="card" style={{ color: 'var(--muted)', fontSize: 14 }}>No games played yet.</p>}
+        {sorted.map((p, i) => {
               const flight = flightByName.get(p.name) ?? 'Bronze';
               const playerDuos = duos.filter(d => d.players.includes(p.name));
               const badges = computeBadges({
@@ -334,13 +317,10 @@ export default function LeagueStatsPage() {
               const isSelf = p.name === ownPlayerName;
               return (
                 <Fragment key={p.name}>
-                  <tr
-                    style={{ borderTop: '1px solid var(--border)', cursor: 'pointer' }}
-                    onClick={() => handleToggleExpand(p.name)}
-                  >
-                    <td style={{ padding: '8px 0', color: p.provisional ? 'var(--muted)' : undefined }}>{p.provisional ? '–' : i + 1}</td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <div className="card" style={{ cursor: 'pointer' }} onClick={() => handleToggleExpand(p.name)}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 800, width: 20, color: p.provisional ? 'var(--muted)' : undefined }}>{p.provisional ? '–' : i + 1}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: 1 }}>
                         <Avatar name={p.name} size={22} />
                         {p.name}
                         {equippedBadge && (
@@ -388,49 +368,56 @@ export default function LeagueStatsPage() {
                           </select>
                         )}
                       </div>
-                    </td>
-                    <td style={{ textAlign: 'center' }}>{p.wins}</td>
-                    <td style={{ textAlign: 'center' }}>{p.losses}</td>
-                    <td style={{ textAlign: 'center', color: p.provisional ? 'var(--muted)' : undefined }}>{(p.winPct * 100).toFixed(0)}%</td>
-                    <td style={{ textAlign: 'center' }}>{p.gamesPlayed}</td>
-                    <td style={{ textAlign: 'center' }}>{p.pointsFor}</td>
-                    <td style={{ textAlign: 'center' }}>{p.pointsAgainst}</td>
-                    <td style={{ textAlign: 'center' }}>{mvpCounts.get(p.name) ?? 0}</td>
-                    <td style={{ textAlign: 'center' }}>{flightByName.get(p.name) ?? '—'}</td>
-                    <td>
-                      {badges.length === 0 ? (
-                        '—'
-                      ) : (
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                          {badges.slice(0, 3).map(b =>
-                            isSelf ? (
-                              <button
-                                key={b.id}
-                                aria-label={`Share ${b.label} badge`}
-                                onClick={e => {
-                                  e.stopPropagation();
-                                  setShareCardBadge(b);
-                                }}
-                                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                              >
-                                <BadgeMedallion badge={b} />
-                              </button>
-                            ) : (
-                              <BadgeMedallion key={b.id} badge={b} />
-                            )
-                          )}
-                          {badges.length > 3 && (
-                            <Link href="/league/badges" style={{ fontSize: 11, color: 'var(--muted)' }} onClick={e => e.stopPropagation()}>
-                              +{badges.length - 3} more
-                            </Link>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(70px, 1fr))',
+                        gap: 8,
+                        marginTop: 10,
+                        paddingTop: 10,
+                        borderTop: '1px solid var(--border)',
+                        fontSize: 13,
+                      }}
+                    >
+                      <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>W-L</div>{p.wins}-{p.losses}</div>
+                      <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>Win%</div><span style={{ color: p.provisional ? 'var(--muted)' : undefined }}>{(p.winPct * 100).toFixed(0)}%</span></div>
+                      <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>Games</div>{p.gamesPlayed}</div>
+                      <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>For/Ag</div>{p.pointsFor}/{p.pointsAgainst}</div>
+                      <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>MVP</div>{mvpCounts.get(p.name) ?? 0}</div>
+                      <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>Flight</div>{flightByName.get(p.name) ?? '—'}</div>
+                    </div>
+
+                    {badges.length > 0 && (
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 10 }}>
+                        {badges.slice(0, 3).map(b =>
+                          isSelf ? (
+                            <button
+                              key={b.id}
+                              aria-label={`Share ${b.label} badge`}
+                              onClick={e => {
+                                e.stopPropagation();
+                                setShareCardBadge(b);
+                              }}
+                              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                            >
+                              <BadgeMedallion badge={b} />
+                            </button>
+                          ) : (
+                            <BadgeMedallion key={b.id} badge={b} />
+                          )
+                        )}
+                        {badges.length > 3 && (
+                          <Link href="/league/badges" style={{ fontSize: 11, color: 'var(--muted)' }} onClick={e => e.stopPropagation()}>
+                            +{badges.length - 3} more
+                          </Link>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   {isExpanded && (
-                    <tr>
-                      <td colSpan={11} style={{ background: 'var(--background)', padding: 12 }}>
+                    <div className="card" style={{ marginTop: -4, background: 'var(--background)' }}>
                         {expandedLoading ? (
                           <p style={{ fontSize: 13, color: 'var(--muted)' }}>Loading…</p>
                         ) : (
@@ -482,14 +469,11 @@ export default function LeagueStatsPage() {
                             </div>
                           </div>
                         )}
-                      </td>
-                    </tr>
+                    </div>
                   )}
                 </Fragment>
               );
             })}
-          </tbody>
-        </table>
       </div>
 
       {shareCardBadge && (
