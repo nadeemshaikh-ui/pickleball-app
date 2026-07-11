@@ -11,6 +11,7 @@ export interface PlayerRow {
   elo_rating: number;
   games_played: number;
   created_at: string;
+  equipped_badge_id: string | null;
 }
 
 export const MIN_GAMES_FOR_SKILL_RATING = 20;
@@ -60,6 +61,11 @@ export interface UpsertPlayerOptions {
   nickname: string | null;
   photoUrl: string | null;
   bio: string | null;
+}
+
+export async function setEquippedBadge(playerId: string, badgeId: string | null): Promise<void> {
+  const { error } = await supabase.from('players').update({ equipped_badge_id: badgeId }).eq('id', playerId);
+  if (error) throw error;
 }
 
 export async function upsertOwnPlayer(options: UpsertPlayerOptions): Promise<void> {

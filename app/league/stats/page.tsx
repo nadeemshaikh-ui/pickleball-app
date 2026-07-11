@@ -14,13 +14,14 @@ import {
   type Rivalry,
 } from '@/lib/leagueStats';
 import { fetchStreakRecords, type StreakRecord } from '@/lib/streakRecords';
+import { recordNewlyEarnedBadges } from '@/lib/badgeEvents';
 import { fetchPersonalBests, type PersonalBests } from '@/lib/personalBests';
 import { computeChemistryScore } from '@/lib/chemistry';
 import { flightForRating } from '@/lib/flights';
-import { computeBadges } from '@/lib/badges';
+import { computeBadges, BADGE_CATALOG, type Badge } from '@/lib/badges';
 import { preloadPlayerPhotos } from '@/lib/playerPhotos';
 import { getCurrentUser, isCurrentUserAdmin } from '@/lib/auth';
-import { listPlayers } from '@/lib/players';
+import { listPlayers, getOwnPlayer, setEquippedBadge } from '@/lib/players';
 import { shareElementAsImage } from '@/lib/shareImage';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import Avatar from '@/components/Avatar';
@@ -39,6 +40,11 @@ export default function LeagueStatsPage() {
   const [flightByName, setFlightByName] = useState<Map<string, string>>(new Map());
   const [duos, setDuos] = useState<RankedDuo[]>([]);
   const [streakRecords, setStreakRecords] = useState<StreakRecord[]>([]);
+  const [equippedByName, setEquippedByName] = useState<Map<string, string | null>>(new Map());
+  const [ownPlayerId, setOwnPlayerId] = useState<string | null>(null);
+  const [ownPlayerName, setOwnPlayerName] = useState<string | null>(null);
+  const [equipping, setEquipping] = useState(false);
+  const [newlyEarned, setNewlyEarned] = useState<Badge[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -75,7 +81,38 @@ export default function LeagueStatsPage() {
         setFlightByName(new Map(players.map(p => [p.name, flightForRating(p.elo_rating)])));
         setDuos(duoList);
         setStreakRecords(records);
+        setEquippedByName(new Map(players.map(p => [p.name, p.equipped_badge_id])));
         if (user) setIsAdmin(await isCurrentUserAdmin(currentClubId!));
+
+        if (user) {
+          const own = await getOwnPlayer(currentClubId!, user.id);
+          if (own) {
+            setOwnPlayerId(own.id);
+            setOwnPlayerName(own.name);
+
+            const ownStats = lb.find(p => p.name === own.name);
+            if (ownStats) {
+              const winStreakRecordHolder = records.find(r => r.streakType === 'win')?.holderName;
+              const lossStreakRecordHolder = records.find(r => r.streakType === 'loss')?.holderName;
+              const ownDuos = duoList.filter(d => d.players.includes(own.name));
+              const eligible = duoList.filter(d => d.gamesPlayed >= POWER_DUO_MIN_GAMES);
+              const top = eligible.length > 0 ? [...eligible].sort((a, b) => b.winPct - a.winPct)[0] : null;
+              const ownBadges = computeBadges({
+                gamesPlayed: ownStats.gamesPlayed,
+                currentStreak: streakMap.get(own.name) ?? 0,
+                mvpCount: mvp.get(own.name) ?? 0,
+                flight: flightForRating(own.elo_rating),
+                isWinStreakRecordHolder: winStreakRecordHolder === own.name,
+                isLossStreakRecordHolder: lossStreakRecordHolder === own.name,
+                duoCount: ownDuos.length,
+                hasPowerDuo: ownDuos.some(d => d.gamesPlayed >= POWER_DUO_MIN_GAMES && d.winPct >= POWER_DUO_MIN_WIN_RATE),
+                isClubTopDuo: top !== null && top.players.includes(own.name),
+              });
+              const newIds = await recordNewlyEarnedBadges(currentClubId!, own.name, ownBadges.map(b => b.id));
+              if (newIds.length > 0) setNewlyEarned(ownBadges.filter(b => newIds.includes(b.id)));
+            }
+          }
+        }
       } catch (e) {
         setLoadError(e instanceof Error ? e.message : 'Failed to load lifetime stats.');
       } finally {
@@ -164,6 +201,26 @@ export default function LeagueStatsPage() {
         )}
       </div>
 
+      {newlyEarned.length > 0 && (
+        <div
+          className="card"
+          style={{ background: 'var(--surface-2, var(--card-bg))', border: '2px solid var(--text-accent, gold)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}
+        >
+          <span style={{ fontSize: 20 }}>🎉</span>
+          <div style={{ flex: 1 }}>
+            <strong>New badge{newlyEarned.length > 1 ? 's' : ''} unlocked!</strong>
+            <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+              {newlyEarned.map(b => (
+                <span key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}>
+                  <BadgeMedallion badge={b} size={22} /> {b.label}
+                </span>
+              ))}
+            </div>
+          </div>
+          <button className="text-link-btn" onClick={() => setNewlyEarned([])}>Dismiss</button>
+        </div>
+      )}
+
       <h1>Lifetime Stats</h1>
       <p style={{ fontSize: 12, color: 'var(--muted)', padding: '0 8px', marginTop: 4 }}>
         Min {MIN_GAMES_FOR_RANKING} games to be ranked. Default order is confidence-adjusted (Wilson score) — accounts
@@ -225,6 +282,12 @@ export default function LeagueStatsPage() {
                 isClubTopDuo: topDuo !== null && topDuo.players.includes(p.name),
               });
               const isExpanded = expandedName === p.name;
+              const explicitEquipped = equippedByName.get(p.name);
+              const fallbackTitle = [...badges].sort((a, b) => (b.tier ?? 0) - (a.tier ?? 0))[0] ?? null;
+              const equippedBadge = explicitEquipped
+                ? BADGE_CATALOG.find(b => b.id === explicitEquipped) ?? null
+                : fallbackTitle;
+              const isSelf = p.name === ownPlayerName;
               return (
                 <Fragment key={p.name}>
                   <tr
@@ -233,9 +296,17 @@ export default function LeagueStatsPage() {
                   >
                     <td style={{ padding: '8px 0', color: p.provisional ? 'var(--muted)' : undefined }}>{p.provisional ? '–' : i + 1}</td>
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         <Avatar name={p.name} size={22} />
                         {p.name}
+                        {equippedBadge && (
+                          <span
+                            title={equippedBadge.description}
+                            style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: 'var(--muted)', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 6px 1px 2px' }}
+                          >
+                            <BadgeMedallion badge={equippedBadge} size={14} /> {equippedBadge.label}
+                          </span>
+                        )}
                         {p.provisional && (
                           <span
                             title={`Fewer than ${MIN_GAMES_FOR_RANKING} games — score not reliable yet`}
@@ -243,6 +314,34 @@ export default function LeagueStatsPage() {
                           >
                             provisional
                           </span>
+                        )}
+                        {isSelf && badges.length > 0 && (
+                          <select
+                            aria-label="Equip a title"
+                            value={explicitEquipped ?? ''}
+                            disabled={equipping}
+                            onClick={e => e.stopPropagation()}
+                            onChange={async e => {
+                              e.stopPropagation();
+                              if (!ownPlayerId) return;
+                              const value = e.target.value || null;
+                              setEquipping(true);
+                              try {
+                                await setEquippedBadge(ownPlayerId, value);
+                                setEquippedByName(prev => new Map(prev).set(p.name, value));
+                              } catch (err) {
+                                setLoadError(err instanceof Error ? err.message : 'Failed to equip title.');
+                              } finally {
+                                setEquipping(false);
+                              }
+                            }}
+                            style={{ fontSize: 10, maxWidth: 130 }}
+                          >
+                            <option value="">Auto (highest tier)</option>
+                            {badges.map(b => (
+                              <option key={b.id} value={b.id}>{b.label}</option>
+                            ))}
+                          </select>
                         )}
                       </div>
                     </td>
