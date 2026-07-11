@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import { getSession, getRounds, updateRoundScore, insertRounds, markSessionCompleted, type RoundRow, type SessionRow } from '@/lib/db';
 import { resolveChallengesForRound } from '@/lib/challenges';
+import { computeCurrentStreaks, maybeSetStreakRecord } from '@/lib/streakRecords';
 import { computeNextKingOfCourtRound } from '@/lib/kingOfCourt';
 import SessionNav from '@/components/SessionNav';
 import GroupHeader from '@/components/GroupHeader';
@@ -100,6 +101,24 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
         );
       }
     }
+    try {
+      const streaks = await computeCurrentStreaks(session.club_id);
+      for (const name of participants) {
+        const streak = streaks.get(name);
+        if (!streak) continue;
+        const broken = await maybeSetStreakRecord(session.club_id, streak.type, name, streak.length);
+        if (broken) {
+          messages.push(
+            broken.streakType === 'win'
+              ? `👑 NEW CLUB RECORD! ${name} just set a ${broken.recordLength}-game win streak.`
+              : `🥄 ${name} just set the club's longest losing streak (${broken.recordLength}).`
+          );
+        }
+      }
+    } catch (err) {
+      console.error('Failed to check streak records:', err);
+    }
+
     if (messages.length > 0) setFlightChanges(prev => ({ ...prev, [court.id]: messages }));
 
     // King of the Court only ever has the rounds played so far in the DB —
