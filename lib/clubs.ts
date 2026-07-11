@@ -7,6 +7,18 @@ export interface ClubRow {
   join_code: string;
   created_by: string;
   created_at: string;
+  upi_vpa: string | null;
+}
+
+export async function updateClubUpiVpa(clubId: string, upiVpa: string | null): Promise<void> {
+  const { error } = await supabase.from('clubs').update({ upi_vpa: upiVpa }).eq('id', clubId);
+  if (error) throw error;
+}
+
+export async function getClubUpiVpa(clubId: string): Promise<string | null> {
+  const { data, error } = await supabase.from('clubs').select('upi_vpa').eq('id', clubId).maybeSingle();
+  if (error) throw error;
+  return data?.upi_vpa ?? null;
 }
 
 export interface ClubMembership {

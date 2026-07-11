@@ -7,6 +7,7 @@ import {
   listPendingJoinRequests,
   resolveJoinRequest,
   updateClubBranding,
+  updateClubUpiVpa,
   listClubMembers,
   type ClubRow,
   type JoinRequestRow,
@@ -23,9 +24,12 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
 
   const [name, setName] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [upiVpa, setUpiVpa] = useState('');
   const [saving, setSaving] = useState(false);
+  const [savingUpi, setSavingUpi] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
+  const [upiSavedMsg, setUpiSavedMsg] = useState<string | null>(null);
   const [imageShareError, setImageShareError] = useState<string | null>(null);
   const inviteCaptureRef = useRef<HTMLDivElement>(null);
 
@@ -36,6 +40,7 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
     if (mine) {
       setClub(mine.club);
       setName(mine.club.name);
+      setUpiVpa(mine.club.upi_vpa ?? '');
     }
     if (mine?.role === 'admin') {
       const [req, members] = await Promise.all([listPendingJoinRequests(id), listClubMembers(id)]);
@@ -63,6 +68,19 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
       setError(e instanceof Error ? e.message : 'Failed to save.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleSaveUpi() {
+    setSavingUpi(true);
+    setUpiSavedMsg(null);
+    try {
+      await updateClubUpiVpa(id, upiVpa.trim() || null);
+      setUpiSavedMsg('Saved.');
+    } catch (e) {
+      setUpiSavedMsg(e instanceof Error ? e.message : 'Failed to save.');
+    } finally {
+      setSavingUpi(false);
     }
   }
 
@@ -115,6 +133,25 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
         {savedMsg && <p style={{ color: 'var(--dark)', fontWeight: 700, fontSize: 13 }}>{savedMsg}</p>}
         <button className="btn-primary" onClick={handleSaveBranding} disabled={saving}>
           {saving ? 'Saving…' : 'Save Branding'}
+        </button>
+      </div>
+
+      <h2>Dues Payment</h2>
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div>
+          <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>
+            UPI ID (for the pay link on dues)
+          </label>
+          <input
+            value={upiVpa}
+            onChange={e => setUpiVpa(e.target.value)}
+            placeholder="yourname@upi"
+            style={{ width: '100%', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+          />
+        </div>
+        {upiSavedMsg && <p style={{ color: 'var(--dark)', fontWeight: 700, fontSize: 13 }}>{upiSavedMsg}</p>}
+        <button className="btn-primary" onClick={handleSaveUpi} disabled={savingUpi}>
+          {savingUpi ? 'Saving…' : 'Save UPI ID'}
         </button>
       </div>
 

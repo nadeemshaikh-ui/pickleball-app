@@ -57,6 +57,7 @@ export default function LeagueStatsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>('rank');
+  const [nameFilter, setNameFilter] = useState('');
 
   const [expandedName, setExpandedName] = useState<string | null>(null);
   const [expandedRivalries, setExpandedRivalries] = useState<Rivalry[]>([]);
@@ -193,7 +194,7 @@ export default function LeagueStatsPage() {
   const eligibleDuos = duos.filter(d => d.gamesPlayed >= POWER_DUO_MIN_GAMES);
   const topDuo = eligibleDuos.length > 0 ? [...eligibleDuos].sort((a, b) => b.winPct - a.winPct)[0] : null;
 
-  const sorted = [...lifetime];
+  const sorted = lifetime.filter(p => p.name.toLowerCase().includes(nameFilter.trim().toLowerCase()));
   if (sortKey === 'wins') sorted.sort((a, b) => b.wins - a.wins);
   else if (sortKey === 'winPct') sorted.sort((a, b) => b.winPct - a.winPct);
   else if (sortKey === 'gamesPlayed') sorted.sort((a, b) => b.gamesPlayed - a.gamesPlayed);
@@ -282,6 +283,14 @@ export default function LeagueStatsPage() {
           </button>
         ))}
       </div>
+
+      <input
+        value={nameFilter}
+        onChange={e => setNameFilter(e.target.value)}
+        placeholder="Search players…"
+        aria-label="Search players"
+        style={{ width: '100%', minHeight: 40, padding: '8px 12px', fontSize: 15, border: '1px solid var(--border)', borderRadius: 8, marginBottom: 12 }}
+      />
 
       <div className="card" style={{ overflowX: 'auto' }} ref={statsCaptureRef}>
         {sorted.length === 0 && <p style={{ color: 'var(--muted)', fontSize: 14 }}>No games played yet.</p>}
@@ -392,8 +401,8 @@ export default function LeagueStatsPage() {
                       {badges.length === 0 ? (
                         '—'
                       ) : (
-                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                          {badges.map(b =>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                          {badges.slice(0, 3).map(b =>
                             isSelf ? (
                               <button
                                 key={b.id}
@@ -409,6 +418,11 @@ export default function LeagueStatsPage() {
                             ) : (
                               <BadgeMedallion key={b.id} badge={b} />
                             )
+                          )}
+                          {badges.length > 3 && (
+                            <Link href="/league/badges" style={{ fontSize: 11, color: 'var(--muted)' }} onClick={e => e.stopPropagation()}>
+                              +{badges.length - 3} more
+                            </Link>
                           )}
                         </div>
                       )}

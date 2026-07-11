@@ -187,6 +187,10 @@ export default function LeaguePage() {
         🎁 Your Pickleball Wrapped
       </Link>
 
+      <Link href="/league/badges" className="btn-secondary" style={{ display: 'block', textAlign: 'center', marginBottom: 12 }}>
+        🏅 Badge Gallery
+      </Link>
+
       {isAdmin && (
         <button
           className="btn-secondary"

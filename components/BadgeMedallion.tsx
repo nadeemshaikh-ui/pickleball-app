@@ -11,7 +11,7 @@ const TIER_COLORS: Record<1 | 2 | 3 | 4, string> = {
   4: '#b9f2ff', // platinum
 };
 
-export default function BadgeMedallion({ badge, size = 28 }: { badge: Badge; size?: number }) {
+export default function BadgeMedallion({ badge, size = 40 }: { badge: Badge; size?: number }) {
   const ringColor = badge.tier ? TIER_COLORS[badge.tier] : 'var(--border)';
   return (
     <span

@@ -21,6 +21,7 @@ import { flightForRating } from '@/lib/flights';
 import { computeBadges, type Badge } from '@/lib/badges';
 import { listPlayers, getOwnPlayer } from '@/lib/players';
 import { fetchConfirmations, confirmParticipation, voidSession, type Confirmation } from '@/lib/sessionConfirmations';
+import { getClubUpiVpa } from '@/lib/clubs';
 
 export default function ResultsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -38,6 +39,7 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
   const [ownPlayerName, setOwnPlayerName] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [voiding, setVoiding] = useState(false);
+  const [upiVpa, setUpiVpa] = useState<string | null>(null);
   const [winnerBadges, setWinnerBadges] = useState<Badge[]>([]);
   const [winnerStreak, setWinnerStreak] = useState(0);
   const [winnerMvpCount, setWinnerMvpCount] = useState(0);
@@ -55,6 +57,7 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
       }
       setDues(await fetchSessionDues(id));
       setConfirmations(await fetchConfirmations(id));
+      getClubUpiVpa(s.club_id).then(setUpiVpa).catch(() => setUpiVpa(null));
       if (user) {
         setIsAdmin(await isCurrentUserAdmin(s.club_id));
         const own = await getOwnPlayer(s.club_id, user.id);
@@ -299,6 +302,15 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
                   <Avatar name={d.player_name} size={22} />
                   <span className="leaderboard-name">{d.player_name}</span>
                   <span className="leaderboard-stats">₹{d.amount_owed}</span>
+                  {!d.paid && upiVpa && (
+                    <a
+                      href={`upi://pay?pa=${encodeURIComponent(upiVpa)}&pn=${encodeURIComponent('Pickleball Session')}&am=${d.amount_owed}&cu=INR`}
+                      className="text-link-btn"
+                      style={{ fontSize: 12, marginLeft: 8 }}
+                    >
+                      💸 Pay
+                    </a>
+                  )}
                   {isAdmin ? (
                     <button
                       className={d.paid ? 'btn-primary' : 'btn-secondary'}
