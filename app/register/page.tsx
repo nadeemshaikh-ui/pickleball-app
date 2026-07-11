@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { getOwnPlayer, upsertOwnPlayer, listPlayers, type PlayerRow } from '@/lib/players';
 import { uploadPlayerPhoto } from '@/lib/db';
@@ -9,6 +10,7 @@ import { useCurrentClub } from '@/lib/useCurrentClub';
 import type { User } from '@supabase/supabase-js';
 
 export default function RegisterPage() {
+  const router = useRouter();
   const { currentClubId, loading: clubLoading } = useCurrentClub();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -89,6 +91,7 @@ export default function RegisterPage() {
       });
       setSaved(true);
       setDirectory(await listPlayers(currentClubId));
+      setTimeout(() => router.push('/'), 600);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Save failed — that name might already be taken.');
     } finally {
