@@ -336,12 +336,40 @@ export default function SetupPage() {
     });
   }
 
-  function cyclePartnerTeam(playerIndex: number, teamCount: number) {
+  // Tap player A (highlights, pending), tap player B to lock them in as a
+  // pair — not a per-player numeric cycle, which let you assign everyone the
+  // same team number by accident. Tapping an already-paired player unpairs
+  // both members of that pair. Tapping the pending player again cancels it.
+  const [pendingPartnerIndex, setPendingPartnerIndex] = useState<number | null>(null);
+
+  function handlePartnerTap(playerIndex: number) {
     setManualPartnerAssignment(prev => {
       const copy = [...prev];
       while (copy.length <= playerIndex) copy.push(null);
-      const current = copy[playerIndex];
-      copy[playerIndex] = current === null ? 0 : current + 1 >= teamCount ? null : current + 1;
+      const currentTeam = copy[playerIndex];
+
+      if (currentTeam !== null) {
+        // Already paired — tapping unpairs both members of that pair.
+        for (let i = 0; i < copy.length; i++) if (copy[i] === currentTeam) copy[i] = null;
+        return copy;
+      }
+
+      if (pendingPartnerIndex === null) {
+        setPendingPartnerIndex(playerIndex);
+        return copy;
+      }
+      if (pendingPartnerIndex === playerIndex) {
+        setPendingPartnerIndex(null);
+        return copy;
+      }
+
+      while (copy.length <= pendingPartnerIndex) copy.push(null);
+      const usedTeams = new Set(copy.filter((t): t is number => t !== null));
+      let nextTeam = 0;
+      while (usedTeams.has(nextTeam)) nextTeam++;
+      copy[pendingPartnerIndex] = nextTeam;
+      copy[playerIndex] = nextTeam;
+      setPendingPartnerIndex(null);
       return copy;
     });
   }
@@ -942,44 +970,40 @@ export default function SetupPage() {
             </label>
           </div>
 
-          {partnerMode === 'manual' &&
-            (() => {
-              const trimmedForTeams = names.map(n => n.trim()).filter(Boolean);
-              const teamCount = Math.floor(trimmedForTeams.length / 2);
-              return (
-                <div className="card" style={{ marginTop: 12 }}>
-                  <strong>Tap two players in a row to pair them as partners</strong>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-                    {names.map(n => n.trim()).map((name, playerIndex) => {
-                      if (!name) return null;
-                      const team = manualPartnerAssignment[playerIndex] ?? null;
-                      return (
-                        <button
-                          key={playerIndex}
-                          type="button"
-                          onClick={() => cyclePartnerTeam(playerIndex, teamCount)}
-                          style={{
-                            minHeight: 44,
-                            padding: '6px 14px',
-                            borderRadius: 999,
-                            border: '1px solid var(--border)',
-                            background: team === null ? 'white' : `hsl(${(team * 47) % 360}, 55%, 45%)`,
-                            color: team === null ? 'var(--foreground)' : 'white',
-                            fontSize: 13,
-                            fontWeight: 700,
-                          }}
-                        >
-                          {name} {team !== null ? `— Team ${team + 1}` : ''}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>
-                    Tap a player to cycle through teams — every player needs exactly one partner.
-                  </p>
-                </div>
-              );
-            })()}
+          {partnerMode === 'manual' && (
+            <div className="card" style={{ marginTop: 12 }}>
+              <strong>Tap a player, then tap their partner to pair them</strong>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                {names.map(n => n.trim()).map((name, playerIndex) => {
+                  if (!name) return null;
+                  const team = manualPartnerAssignment[playerIndex] ?? null;
+                  const isPending = pendingPartnerIndex === playerIndex;
+                  return (
+                    <button
+                      key={playerIndex}
+                      type="button"
+                      onClick={() => handlePartnerTap(playerIndex)}
+                      style={{
+                        minHeight: 44,
+                        padding: '6px 14px',
+                        borderRadius: 999,
+                        border: isPending ? '2px solid var(--primary)' : '1px solid var(--border)',
+                        background: team === null ? 'white' : `hsl(${(team * 47) % 360}, 55%, 45%)`,
+                        color: team === null ? 'var(--foreground)' : 'white',
+                        fontSize: 13,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {name} {team !== null ? `— Team ${team + 1}` : isPending ? '— tap a partner' : ''}
+                    </button>
+                  );
+                })}
+              </div>
+              <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>
+                Tap two players to pair them. Tap an already-paired player to unpair them. Every player needs exactly one partner.
+              </p>
+            </div>
+          )}
         </>
       )}
 

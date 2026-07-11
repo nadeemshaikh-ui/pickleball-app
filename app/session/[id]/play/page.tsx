@@ -20,6 +20,7 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
   const [drafts, setDrafts] = useState<Record<string, [string, string]>>({});
   const [savingCourtId, setSavingCourtId] = useState<string | null>(null);
   const [eloByName, setEloByName] = useState<Map<string, number>>(new Map());
+  const [nicknameByName, setNicknameByName] = useState<Map<string, string>>(new Map());
   const [flightChanges, setFlightChanges] = useState<Record<string, string[]>>({});
   const [kotcMovement, setKotcMovement] = useState<Record<number, string[]>>({});
 
@@ -45,9 +46,18 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
   useEffect(() => {
     if (!session) return;
     listPlayers(session.club_id)
-      .then(players => setEloByName(new Map(players.map(p => [p.name, p.elo_rating]))))
+      .then(players => {
+        setEloByName(new Map(players.map(p => [p.name, p.elo_rating])));
+        setNicknameByName(new Map(players.filter(p => p.nickname).map(p => [p.name, p.nickname as string])));
+      })
       .catch(() => setEloByName(new Map()));
   }, [session?.club_id]);
+
+  // On-court display name — the full registered name (often first + last)
+  // overflows the score box, and nobody needs the surname mid-match.
+  function displayName(fullName: string): string {
+    return nicknameByName.get(fullName) ?? fullName.split(' ')[0];
+  }
 
   // Flight-mismatch upset badge — only shown when all 4 players are
   // registered (unrated players would make the flight comparison meaningless).
@@ -218,7 +228,7 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                     <span className="court-label-big">COURT {session?.court_labels?.[court.court - 1] ?? court.court}</span>
                     <div className="match-teams-row">
                       <div className={`team-box ${aWins ? 'winner' : ''}`}>
-                        <div className="team-names">{court.team_a.join(' & ')}</div>
+                        <div className="team-names">{court.team_a.map(displayName).join(' & ')}</div>
                         <input
                           className="score-input"
                           type="number"
@@ -231,7 +241,7 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                       </div>
                       <span className="vs-pill">VS</span>
                       <div className={`team-box ${bWins ? 'winner' : ''}`}>
-                        <div className="team-names">{court.team_b.join(' & ')}</div>
+                        <div className="team-names">{court.team_b.map(displayName).join(' & ')}</div>
                         <input
                           className="score-input"
                           type="number"
