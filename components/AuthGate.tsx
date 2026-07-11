@@ -29,7 +29,7 @@ export default function AuthGate() {
       setChecked(true);
       if (!done) router.replace('/onboarding');
     }
-    check();
+    check().catch(() => setChecked(true));
   }, [checked, pathname, router]);
 
   return null;
