@@ -6,12 +6,20 @@ describe('computeBadges', () => {
     expect(computeBadges({ gamesPlayed: 5, currentStreak: 1, mvpCount: 0, flight: 'Bronze' })).toEqual([]);
   });
 
-  it('awards Iron Man at 50 games, Century Club at 100', () => {
+  it('awards the volume tier ladder, highest tier only', () => {
     const ids = (n: number) => computeBadges({ gamesPlayed: n, currentStreak: 0, mvpCount: 0, flight: 'Bronze' }).map(b => b.id);
-    expect(ids(49)).not.toContain('iron_man');
-    expect(ids(50)).toContain('iron_man');
-    expect(ids(99)).not.toContain('century_club');
-    expect(ids(100)).toContain('century_club');
+    expect(ids(9)).not.toContain('kitchen_regular');
+    expect(ids(10)).toEqual(['kitchen_regular']);
+    expect(ids(25)).toEqual(['dink_master']);
+    expect(ids(50)).toEqual(['rally_beast']);
+    expect(ids(100)).toContain('pickle_royalty');
+    expect(ids(100)).not.toContain('kitchen_regular');
+  });
+
+  it('stacks rare milestones on top of the tier badge', () => {
+    const ids = (n: number) => computeBadges({ gamesPlayed: n, currentStreak: 0, mvpCount: 0, flight: 'Bronze' }).map(b => b.id);
+    expect(ids(200)).toEqual(['pickle_royalty', 'paddle_legend']);
+    expect(ids(500)).toEqual(['pickle_royalty', 'ironwood']);
   });
 
   it('awards streak badges at 5 and 10', () => {
@@ -19,6 +27,21 @@ describe('computeBadges', () => {
     expect(ids(4)).toEqual([]);
     expect(ids(5)).toContain('hot_streak_5');
     expect(ids(10)).toContain('unstoppable');
+  });
+
+  it('awards the streak crown only to the record holder', () => {
+    const base = { gamesPlayed: 0, currentStreak: 3, mvpCount: 0, flight: 'Bronze' };
+    expect(computeBadges({ ...base, isWinStreakRecordHolder: true }).map(b => b.id)).toContain('streak_king');
+    expect(computeBadges({ ...base, isLossStreakRecordHolder: true }).map(b => b.id)).toContain('wooden_spoon');
+    expect(computeBadges(base).map(b => b.id)).not.toContain('streak_king');
+  });
+
+  it('awards MVP tiers, highest tier only', () => {
+    const ids = (n: number) => computeBadges({ gamesPlayed: 0, currentStreak: 0, mvpCount: n, flight: 'Bronze' }).map(b => b.id);
+    expect(ids(0)).toEqual([]);
+    expect(ids(1)).toEqual(['fan_favorite']);
+    expect(ids(3)).toEqual(['crowd_pleaser']);
+    expect(ids(15)).toEqual(['hall_of_famer']);
   });
 
   it('awards flight badges only for Gold/Platinum, not lower flights', () => {
@@ -29,9 +52,23 @@ describe('computeBadges', () => {
     expect(idsFor('Platinum')).toEqual(['platinum_flight']);
   });
 
+  it('awards duo badges from the optional partnership inputs', () => {
+    const base = { gamesPlayed: 0, currentStreak: 0, mvpCount: 0, flight: 'Bronze' };
+    expect(computeBadges({ ...base, hasPowerDuo: true }).map(b => b.id)).toContain('power_duo');
+    expect(computeBadges({ ...base, isClubTopDuo: true }).map(b => b.id)).toContain('golden_pair');
+    expect(computeBadges({ ...base, duoCount: 10 }).map(b => b.id)).toContain('chemistry_lab');
+    expect(computeBadges({ ...base, duoCount: 9 }).map(b => b.id)).not.toContain('chemistry_lab');
+  });
+
   it('stacks multiple badges at once', () => {
-    const badges = computeBadges({ gamesPlayed: 100, currentStreak: 10, mvpCount: 3, flight: 'Platinum' });
+    const badges = computeBadges({
+      gamesPlayed: 100,
+      currentStreak: 10,
+      mvpCount: 3,
+      flight: 'Platinum',
+      isWinStreakRecordHolder: true,
+    });
     const ids = badges.map(b => b.id);
-    expect(ids).toEqual(['iron_man', 'century_club', 'hot_streak_5', 'unstoppable', 'fan_favorite', 'platinum_flight']);
+    expect(ids).toEqual(['pickle_royalty', 'hot_streak_5', 'unstoppable', 'streak_king', 'crowd_pleaser', 'platinum_flight']);
   });
 });

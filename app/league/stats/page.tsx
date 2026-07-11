@@ -13,6 +13,7 @@ import {
   type RankedDuo,
   type Rivalry,
 } from '@/lib/leagueStats';
+import { fetchStreakRecords, type StreakRecord } from '@/lib/streakRecords';
 import { fetchPersonalBests, type PersonalBests } from '@/lib/personalBests';
 import { computeChemistryScore } from '@/lib/chemistry';
 import { flightForRating } from '@/lib/flights';
@@ -23,6 +24,10 @@ import { listPlayers } from '@/lib/players';
 import { shareElementAsImage } from '@/lib/shareImage';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import Avatar from '@/components/Avatar';
+import BadgeMedallion from '@/components/BadgeMedallion';
+
+const POWER_DUO_MIN_GAMES = 10;
+const POWER_DUO_MIN_WIN_RATE = 0.7;
 
 type SortKey = 'rank' | 'wins' | 'winPct' | 'gamesPlayed' | 'pointsFor' | 'mvp';
 
@@ -33,6 +38,7 @@ export default function LeagueStatsPage() {
   const [streaks, setStreaks] = useState<Map<string, number>>(new Map());
   const [flightByName, setFlightByName] = useState<Map<string, string>>(new Map());
   const [duos, setDuos] = useState<RankedDuo[]>([]);
+  const [streakRecords, setStreakRecords] = useState<StreakRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -53,12 +59,13 @@ export default function LeagueStatsPage() {
     }
     async function init() {
       try {
-        const [lb, mvp, streakMap, players, duoList, , user] = await Promise.all([
+        const [lb, mvp, streakMap, players, duoList, records, , user] = await Promise.all([
           fetchLifetimeLeaderboard(currentClubId!),
           fetchMvpCounts(currentClubId!),
           fetchStreaks(currentClubId!),
           listPlayers(currentClubId!),
           fetchBestDuos(currentClubId!),
+          fetchStreakRecords(currentClubId!),
           preloadPlayerPhotos(),
           getCurrentUser(),
         ]);
@@ -67,6 +74,7 @@ export default function LeagueStatsPage() {
         setStreaks(streakMap);
         setFlightByName(new Map(players.map(p => [p.name, flightForRating(p.elo_rating)])));
         setDuos(duoList);
+        setStreakRecords(records);
         if (user) setIsAdmin(await isCurrentUserAdmin(currentClubId!));
       } catch (e) {
         setLoadError(e instanceof Error ? e.message : 'Failed to load lifetime stats.');
@@ -118,10 +126,13 @@ export default function LeagueStatsPage() {
   if (!currentClubId) return <main className="page"><p>Join or create a club first — see <a href="/clubs">Clubs</a>.</p></main>;
   if (loadError) return <main className="page"><p style={{ color: 'var(--danger)' }}>{loadError}</p></main>;
 
-  const rankedLifetime = lifetime.filter(p => !p.provisional);
-  const provisionalLifetime = lifetime.filter(p => p.provisional);
+  const winStreakRecordHolder = streakRecords.find(r => r.streakType === 'win')?.holderName;
+  const lossStreakRecordHolder = streakRecords.find(r => r.streakType === 'loss')?.holderName;
 
-  const sorted = [...rankedLifetime];
+  const eligibleDuos = duos.filter(d => d.gamesPlayed >= POWER_DUO_MIN_GAMES);
+  const topDuo = eligibleDuos.length > 0 ? [...eligibleDuos].sort((a, b) => b.winPct - a.winPct)[0] : null;
+
+  const sorted = [...lifetime];
   if (sortKey === 'wins') sorted.sort((a, b) => b.wins - a.wins);
   else if (sortKey === 'winPct') sorted.sort((a, b) => b.winPct - a.winPct);
   else if (sortKey === 'gamesPlayed') sorted.sort((a, b) => b.gamesPlayed - a.gamesPlayed);
@@ -181,7 +192,7 @@ export default function LeagueStatsPage() {
       </div>
 
       <div className="card" style={{ overflowX: 'auto' }} ref={statsCaptureRef}>
-        {sorted.length === 0 && <p style={{ color: 'var(--muted)', fontSize: 14 }}>Nobody's hit {MIN_GAMES_FOR_RANKING} games yet.</p>}
+        {sorted.length === 0 && <p style={{ color: 'var(--muted)', fontSize: 14 }}>No games played yet.</p>}
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
           <thead>
             <tr>
@@ -201,11 +212,17 @@ export default function LeagueStatsPage() {
           <tbody>
             {sorted.map((p, i) => {
               const flight = flightByName.get(p.name) ?? 'Bronze';
+              const playerDuos = duos.filter(d => d.players.includes(p.name));
               const badges = computeBadges({
                 gamesPlayed: p.gamesPlayed,
                 currentStreak: streaks.get(p.name) ?? 0,
                 mvpCount: mvpCounts.get(p.name) ?? 0,
                 flight,
+                isWinStreakRecordHolder: winStreakRecordHolder === p.name,
+                isLossStreakRecordHolder: lossStreakRecordHolder === p.name,
+                duoCount: playerDuos.length,
+                hasPowerDuo: playerDuos.some(d => d.gamesPlayed >= POWER_DUO_MIN_GAMES && d.winPct >= POWER_DUO_MIN_WIN_RATE),
+                isClubTopDuo: topDuo !== null && topDuo.players.includes(p.name),
               });
               const isExpanded = expandedName === p.name;
               return (
@@ -214,22 +231,40 @@ export default function LeagueStatsPage() {
                     style={{ borderTop: '1px solid var(--border)', cursor: 'pointer' }}
                     onClick={() => handleToggleExpand(p.name)}
                   >
-                    <td style={{ padding: '8px 0' }}>{i + 1}</td>
+                    <td style={{ padding: '8px 0', color: p.provisional ? 'var(--muted)' : undefined }}>{p.provisional ? '–' : i + 1}</td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <Avatar name={p.name} size={22} />
                         {p.name}
+                        {p.provisional && (
+                          <span
+                            title={`Fewer than ${MIN_GAMES_FOR_RANKING} games — score not reliable yet`}
+                            style={{ fontSize: 10, color: 'var(--muted)', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px' }}
+                          >
+                            provisional
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td style={{ textAlign: 'center' }}>{p.wins}</td>
                     <td style={{ textAlign: 'center' }}>{p.losses}</td>
-                    <td style={{ textAlign: 'center' }}>{(p.winPct * 100).toFixed(0)}%</td>
+                    <td style={{ textAlign: 'center', color: p.provisional ? 'var(--muted)' : undefined }}>{(p.winPct * 100).toFixed(0)}%</td>
                     <td style={{ textAlign: 'center' }}>{p.gamesPlayed}</td>
                     <td style={{ textAlign: 'center' }}>{p.pointsFor}</td>
                     <td style={{ textAlign: 'center' }}>{p.pointsAgainst}</td>
                     <td style={{ textAlign: 'center' }}>{mvpCounts.get(p.name) ?? 0}</td>
                     <td style={{ textAlign: 'center' }}>{flightByName.get(p.name) ?? '—'}</td>
-                    <td title={badges.map(b => b.label).join(', ')}>{badges.map(b => b.emoji).join(' ') || '—'}</td>
+                    <td>
+                      {badges.length === 0 ? (
+                        '—'
+                      ) : (
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                          {badges.map(b => (
+                            <BadgeMedallion key={b.id} badge={b} />
+                          ))}
+                        </div>
+                      )}
+                    </td>
                   </tr>
                   {isExpanded && (
                     <tr>
@@ -280,25 +315,6 @@ export default function LeagueStatsPage() {
         </table>
       </div>
 
-      {provisionalLifetime.length > 0 && (
-        <>
-          <h2>Still Building a Record</h2>
-          <p style={{ fontSize: 11, color: 'var(--muted)', padding: '0 8px', marginBottom: 4 }}>
-            Fewer than {MIN_GAMES_FOR_RANKING} games — shown here, not yet ranked.
-          </p>
-          <div className="card">
-            {provisionalLifetime.map(p => (
-              <div key={p.name} className="leaderboard-row">
-                <Avatar name={p.name} size={24} />
-                <span className="leaderboard-name">{p.name}</span>
-                <span className="leaderboard-stats">
-                  {p.wins}W-{p.losses}L · {p.gamesPlayed} games
-                </span>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
     </main>
   );
 }
