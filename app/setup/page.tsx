@@ -495,7 +495,7 @@ export default function SetupPage() {
       // session — this is just what gets stamped onto this session's row so
       // GroupHeader keeps working unchanged for historical sessions too.
       const logoUrl1: string | null = currentClub?.logo_url ?? null;
-      const logoUrl2: string | null = null;
+      const logoUrl2: string | null = currentClub?.logo_url_2 ?? null;
 
       const parsedCourtCost = courtCost.trim() === '' ? null : Number(courtCost);
       const parsedBallCost = ballCost.trim() === '' ? 200 : Number(ballCost);

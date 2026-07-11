@@ -4,6 +4,7 @@ export interface ClubRow {
   id: string;
   name: string;
   logo_url: string | null;
+  logo_url_2: string | null;
   join_code: string;
   created_by: string;
   created_at: string;
@@ -59,7 +60,7 @@ async function uploadClubLogo(file: File): Promise<string> {
 export async function listMyClubs(): Promise<ClubMembership[]> {
   const { data, error } = await supabase
     .from('club_members')
-    .select('club_id, role, club:clubs(id, name, logo_url, join_code, created_by, created_at)');
+    .select('club_id, role, club:clubs(id, name, logo_url, logo_url_2, join_code, created_by, created_at, upi_vpa)');
   if (error) throw error;
   return (data as unknown as { club_id: string; role: 'admin' | 'member'; club: ClubRow }[]).map(r => ({
     club_id: r.club_id,
@@ -151,10 +152,14 @@ export async function resolveJoinRequest(request: JoinRequestRow, decision: 'app
   }
 }
 
-export async function updateClubBranding(clubId: string, name: string, logoFile: File | null): Promise<void> {
-  const logoUrl = logoFile ? await uploadClubLogo(logoFile) : undefined;
-  const update: { name: string; logo_url?: string } = { name };
+export async function updateClubBranding(clubId: string, name: string, logoFile: File | null, logoFile2: File | null = null): Promise<void> {
+  const [logoUrl, logoUrl2] = await Promise.all([
+    logoFile ? uploadClubLogo(logoFile) : Promise.resolve(undefined),
+    logoFile2 ? uploadClubLogo(logoFile2) : Promise.resolve(undefined),
+  ]);
+  const update: { name: string; logo_url?: string; logo_url_2?: string } = { name };
   if (logoUrl) update.logo_url = logoUrl;
+  if (logoUrl2) update.logo_url_2 = logoUrl2;
   const { error } = await supabase.from('clubs').update(update).eq('id', clubId);
   if (error) throw error;
 }

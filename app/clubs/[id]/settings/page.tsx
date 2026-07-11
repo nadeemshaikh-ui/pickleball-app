@@ -25,6 +25,7 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
 
   const [name, setName] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoFile2, setLogoFile2] = useState<File | null>(null);
   const [upiVpa, setUpiVpa] = useState('');
   const [saving, setSaving] = useState(false);
   const [savingUpi, setSavingUpi] = useState(false);
@@ -61,9 +62,10 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
     setError(null);
     setSavedMsg(null);
     try {
-      await updateClubBranding(id, name.trim(), logoFile);
+      await updateClubBranding(id, name.trim(), logoFile, logoFile2);
       setSavedMsg('Saved.');
       setLogoFile(null);
+      setLogoFile2(null);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save.');
@@ -115,7 +117,12 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
 
       <h2>Branding</h2>
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {club.logo_url && <img src={club.logo_url} alt="" width={56} height={56} style={{ borderRadius: '50%', objectFit: 'cover' }} />}
+        {(club.logo_url || club.logo_url_2) && (
+          <div style={{ display: 'flex', gap: 12 }}>
+            {club.logo_url && <img src={club.logo_url} alt="" width={56} height={56} style={{ borderRadius: '50%', objectFit: 'cover' }} />}
+            {club.logo_url_2 && <img src={club.logo_url_2} alt="" width={56} height={56} style={{ borderRadius: '50%', objectFit: 'cover' }} />}
+          </div>
+        )}
         <div>
           <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>Club name</label>
           <input
@@ -126,9 +133,15 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
         </div>
         <div>
           <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>
-            Replace logo
+            Replace logo 1
           </label>
           <input type="file" accept="image/*" onChange={e => setLogoFile(e.target.files?.[0] ?? null)} />
+        </div>
+        <div>
+          <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>
+            Replace logo 2 (optional — shown alongside logo 1 on session/league headers)
+          </label>
+          <input type="file" accept="image/*" onChange={e => setLogoFile2(e.target.files?.[0] ?? null)} />
         </div>
         {error && <p style={{ color: 'var(--danger)', fontWeight: 600 }}>{error}</p>}
         {savedMsg && <p style={{ color: 'var(--dark)', fontWeight: 700, fontSize: 13 }}>{savedMsg}</p>}
