@@ -77,6 +77,12 @@ export async function fetchPlayerOfTheMonthBoard(clubId: string): Promise<Ranked
   return rankPlayers(data);
 }
 
+export async function fetchYearlyLeaderboard(clubId: string): Promise<RankedPlayer[]> {
+  const { data, error } = await supabase.from('league_player_year_stats').select('*').eq('club_id', clubId);
+  if (error) throw error;
+  return rankPlayers(data);
+}
+
 export interface RankedDuo {
   players: [string, string];
   gamesPlayed: number;
