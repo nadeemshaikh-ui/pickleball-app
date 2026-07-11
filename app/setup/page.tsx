@@ -11,6 +11,7 @@ import {
   buildRivalryHeatMap,
   type CourtBlockAssignment,
   type LockedPair,
+  type Squads,
 } from '@/lib/shuffle';
 import { generateInitialKingOfCourtRound } from '@/lib/kingOfCourt';
 import { createSession, insertRounds, uploadPlayerPhoto, getMostRecentSession } from '@/lib/db';
@@ -98,6 +99,14 @@ export default function SetupPage() {
   const [assignmentMode, setAssignmentMode] = useState<'auto' | 'manual'>('auto');
   // Per block: court index (0-based) assigned to each player, or null if unassigned.
   const [manualBlocks, setManualBlocks] = useState<(number | null)[][]>([]);
+
+  const [squadMode, setSquadMode] = useState<'auto' | 'manual'>('auto');
+  // 0 = gold, 1 = black, null = unassigned, indexed by player.
+  const [manualSquadAssignment, setManualSquadAssignment] = useState<(0 | 1 | null)[]>([]);
+
+  const [partnerMode, setPartnerMode] = useState<'auto' | 'manual'>('auto');
+  // Team index (0-based), null = unassigned, indexed by player.
+  const [manualPartnerAssignment, setManualPartnerAssignment] = useState<(number | null)[]>([]);
 
   const [lockedPairs, setLockedPairs] = useState<LockedPair[]>([]);
   const [skillBalanced, setSkillBalanced] = useState(false);
@@ -295,6 +304,26 @@ export default function SetupPage() {
     setRosterNotice('Loaded your saved roster — edit any name below, or add new players.');
   }
 
+  function cycleSquadPlayer(playerIndex: number) {
+    setManualSquadAssignment(prev => {
+      const copy = [...prev];
+      while (copy.length <= playerIndex) copy.push(null);
+      const current = copy[playerIndex];
+      copy[playerIndex] = current === null ? 0 : current === 0 ? 1 : null;
+      return copy;
+    });
+  }
+
+  function cyclePartnerTeam(playerIndex: number, teamCount: number) {
+    setManualPartnerAssignment(prev => {
+      const copy = [...prev];
+      while (copy.length <= playerIndex) copy.push(null);
+      const current = copy[playerIndex];
+      copy[playerIndex] = current === null ? 0 : current + 1 >= teamCount ? null : current + 1;
+      return copy;
+    });
+  }
+
   function removeName(index: number) {
     const copy = names.filter((_, i) => i !== index);
     setNames(copy);
@@ -375,6 +404,40 @@ export default function SetupPage() {
       }
     }
 
+    let manualSquads: Squads | undefined;
+    if (format === 'squad_rivalry' && squadMode === 'manual') {
+      const assignment = manualSquadAssignment.length ? manualSquadAssignment : Array(playerCount).fill(null);
+      if (trimmed.some((_, i) => assignment[i] === undefined || assignment[i] === null)) {
+        setError('Assign every player to Gold or Black.');
+        return;
+      }
+      const gold: string[] = [];
+      const black: string[] = [];
+      trimmed.forEach((name, i) => (assignment[i] === 0 ? gold : black).push(name));
+      if (gold.length !== black.length) {
+        setError('Squads must be evenly split — Gold and Black need the same number of players.');
+        return;
+      }
+      manualSquads = { gold, black };
+    }
+
+    let manualTeams: [string, string][] | undefined;
+    if (format === 'fixed_partners' && partnerMode === 'manual') {
+      const teamCount = playerCount / 2;
+      const assignment = manualPartnerAssignment.length ? manualPartnerAssignment : Array(playerCount).fill(null);
+      if (trimmed.some((_, i) => assignment[i] === undefined || assignment[i] === null)) {
+        setError('Assign every player to a partnership.');
+        return;
+      }
+      const teams: (string | undefined)[][] = Array.from({ length: teamCount }, () => []);
+      trimmed.forEach((name, i) => teams[assignment[i] as number].push(name));
+      if (teams.some(t => t.length !== 2)) {
+        setError('Every partnership needs exactly 2 players.');
+        return;
+      }
+      manualTeams = teams.map(t => [t[0]!, t[1]!] as [string, string]);
+    }
+
     setSubmitting(true);
     try {
       const seed = `${Date.now()}`;
@@ -419,7 +482,7 @@ export default function SetupPage() {
         });
         await insertRounds(sessionId, rounds);
       } else if (format === 'squad_rivalry') {
-        const { squads, rounds } = generateSquadRivalrySchedule(trimmed, courtCount, roundCount, seed, lockedPairs);
+        const { squads, rounds } = generateSquadRivalrySchedule(trimmed, courtCount, roundCount, seed, lockedPairs, manualSquads);
         sessionId = await createSession({
           ...baseOptions,
           format: 'squad_rivalry',
@@ -429,7 +492,7 @@ export default function SetupPage() {
         });
         await insertRounds(sessionId, rounds);
       } else if (format === 'fixed_partners') {
-        const { rounds } = generateFixedPartnersSchedule(trimmed, courtCount, roundCount, seed);
+        const { rounds } = generateFixedPartnersSchedule(trimmed, courtCount, roundCount, seed, manualTeams);
         sessionId = await createSession({
           ...baseOptions,
           format: 'fixed_partners',
@@ -790,6 +853,109 @@ export default function SetupPage() {
               </span>
             </label>
           </div>
+        </>
+      )}
+
+      {format === 'squad_rivalry' && (
+        <>
+          <h2>Who Picks the Squads?</h2>
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <input type="radio" checked={squadMode === 'auto'} onChange={() => setSquadMode('auto')} />
+              <span>App decides (recommended)</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <input type="radio" checked={squadMode === 'manual'} onChange={() => setSquadMode('manual')} />
+              <span>I&apos;ll pick manually</span>
+            </label>
+          </div>
+
+          {squadMode === 'manual' && (
+            <div className="card" style={{ marginTop: 12 }}>
+              <strong>Tap a player to assign Gold / Black</strong>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                {names.map(n => n.trim()).map((name, playerIndex) => {
+                  if (!name) return null;
+                  const squad = manualSquadAssignment[playerIndex] ?? null;
+                  return (
+                    <button
+                      key={playerIndex}
+                      type="button"
+                      onClick={() => cycleSquadPlayer(playerIndex)}
+                      style={{
+                        minHeight: 44,
+                        padding: '6px 14px',
+                        borderRadius: 999,
+                        border: '1px solid var(--border)',
+                        background: squad === null ? 'white' : squad === 0 ? '#d4af37' : '#1a1a1a',
+                        color: squad === null ? 'var(--foreground)' : 'white',
+                        fontSize: 13,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {name} {squad === 0 ? '— Gold' : squad === 1 ? '— Black' : ''}
+                    </button>
+                  );
+                })}
+              </div>
+              <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>Every player needs a squad, split evenly.</p>
+            </div>
+          )}
+        </>
+      )}
+
+      {format === 'fixed_partners' && (
+        <>
+          <h2>Who Picks the Partners?</h2>
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <input type="radio" checked={partnerMode === 'auto'} onChange={() => setPartnerMode('auto')} />
+              <span>App decides (recommended)</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <input type="radio" checked={partnerMode === 'manual'} onChange={() => setPartnerMode('manual')} />
+              <span>I&apos;ll pick partners myself</span>
+            </label>
+          </div>
+
+          {partnerMode === 'manual' &&
+            (() => {
+              const trimmedForTeams = names.map(n => n.trim()).filter(Boolean);
+              const teamCount = Math.floor(trimmedForTeams.length / 2);
+              return (
+                <div className="card" style={{ marginTop: 12 }}>
+                  <strong>Tap two players in a row to pair them as partners</strong>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                    {names.map(n => n.trim()).map((name, playerIndex) => {
+                      if (!name) return null;
+                      const team = manualPartnerAssignment[playerIndex] ?? null;
+                      return (
+                        <button
+                          key={playerIndex}
+                          type="button"
+                          onClick={() => cyclePartnerTeam(playerIndex, teamCount)}
+                          style={{
+                            minHeight: 44,
+                            padding: '6px 14px',
+                            borderRadius: 999,
+                            border: '1px solid var(--border)',
+                            background: team === null ? 'white' : `hsl(${(team * 47) % 360}, 55%, 45%)`,
+                            color: team === null ? 'var(--foreground)' : 'white',
+                            fontSize: 13,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {name} {team !== null ? `— Team ${team + 1}` : ''}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>
+                    Tap a player to cycle through teams — every player needs exactly one partner.
+                  </p>
+                </div>
+              );
+            })()}
         </>
       )}
 

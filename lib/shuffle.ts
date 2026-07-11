@@ -426,7 +426,8 @@ export function generateSquadRivalrySchedule(
   courtCount: number,
   roundCount: number,
   seed: string,
-  lockedPairs: LockedPair[] = []
+  lockedPairs: LockedPair[] = [],
+  manualSquads?: Squads
 ): SquadRivalrySchedule {
   if (players.length % 2 !== 0) {
     throw new Error(`Squad Rivalry needs an even number of players to split into 2 squads, got ${players.length}`);
@@ -434,16 +435,23 @@ export function generateSquadRivalrySchedule(
   if (courtCount < 1) {
     throw new Error(`Squad Rivalry requires at least 1 court, got ${courtCount}`);
   }
+  if (manualSquads) {
+    const assigned = new Set([...manualSquads.gold, ...manualSquads.black]);
+    if (assigned.size !== players.length || players.some(p => !assigned.has(p))) {
+      throw new Error('Manual squads must include every player exactly once.');
+    }
+  }
   validateLockedPairs(players, lockedPairs);
   const rand = seededRandom(seed);
   const squads: Squads =
-    lockedPairs.length > 0
+    manualSquads ??
+    (lockedPairs.length > 0
       ? splitIntoSquadsRespectingLocks(players, lockedPairs, rand)
       : (() => {
           const shuffled = shuffleArray(players, rand);
           const half = players.length / 2;
           return { gold: shuffled.slice(0, half), black: shuffled.slice(half) };
-        })();
+        })());
 
   const goldSitCounts = new Map(squads.gold.map(p => [p, 0]));
   const blackSitCounts = new Map(squads.black.map(p => [p, 0]));
@@ -640,7 +648,8 @@ export function generateFixedPartnersSchedule(
   players: string[],
   courtCount: number,
   roundCount: number,
-  seed: string
+  seed: string,
+  manualTeams?: [string, string][]
 ): FixedPartnersSchedule {
   if (courtCount < 1) {
     throw new Error(`Fixed Partners requires at least 1 court, got ${courtCount}`);
@@ -648,10 +657,22 @@ export function generateFixedPartnersSchedule(
   if (players.length % 2 !== 0) {
     throw new Error(`Fixed Partners needs an even number of players to form full-night partnerships, got ${players.length}`);
   }
+  if (manualTeams) {
+    const assigned = manualTeams.flat();
+    const assignedSet = new Set(assigned);
+    if (assigned.length !== players.length || assignedSet.size !== players.length || players.some(p => !assignedSet.has(p))) {
+      throw new Error('Manual partnerships must pair every player exactly once.');
+    }
+  }
   const rand = seededRandom(seed);
-  const shuffled = shuffleArray(players, rand);
-  const teams: [string, string][] = [];
-  for (let i = 0; i < shuffled.length; i += 2) teams.push([shuffled[i], shuffled[i + 1]]);
+  const teams: [string, string][] =
+    manualTeams ??
+    (() => {
+      const shuffled = shuffleArray(players, rand);
+      const pairs: [string, string][] = [];
+      for (let i = 0; i < shuffled.length; i += 2) pairs.push([shuffled[i], shuffled[i + 1]]);
+      return pairs;
+    })();
 
   const teamCount = teams.length;
   if (teamCount < courtCount * 2) {
