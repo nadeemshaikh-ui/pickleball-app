@@ -183,6 +183,10 @@ export default function LeaguePage() {
         🪜 View Ladder League
       </Link>
 
+      <Link href="/league/wrapped" className="btn-secondary" style={{ display: 'block', textAlign: 'center', marginBottom: 12 }}>
+        🎁 Your Pickleball Wrapped
+      </Link>
+
       {isAdmin && (
         <button
           className="btn-secondary"

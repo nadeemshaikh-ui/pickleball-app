@@ -15,6 +15,7 @@ import {
 } from '@/lib/leagueStats';
 import { fetchStreakRecords, type StreakRecord } from '@/lib/streakRecords';
 import { recordNewlyEarnedBadges } from '@/lib/badgeEvents';
+import { fetchPendingChallenges, createChallenge, type Challenge } from '@/lib/challenges';
 import { fetchPersonalBests, type PersonalBests } from '@/lib/personalBests';
 import { computeChemistryScore } from '@/lib/chemistry';
 import { flightForRating } from '@/lib/flights';
@@ -45,6 +46,8 @@ export default function LeagueStatsPage() {
   const [ownPlayerName, setOwnPlayerName] = useState<string | null>(null);
   const [equipping, setEquipping] = useState(false);
   const [newlyEarned, setNewlyEarned] = useState<Badge[]>([]);
+  const [pendingChallenges, setPendingChallenges] = useState<Challenge[]>([]);
+  const [challenging, setChallenging] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -89,6 +92,7 @@ export default function LeagueStatsPage() {
           if (own) {
             setOwnPlayerId(own.id);
             setOwnPlayerName(own.name);
+            fetchPendingChallenges(currentClubId!, own.name).then(setPendingChallenges).catch(() => setPendingChallenges([]));
 
             const ownStats = lb.find(p => p.name === own.name);
             if (ownStats) {
@@ -139,6 +143,20 @@ export default function LeagueStatsPage() {
       setExpandedBests(null);
     } finally {
       setExpandedLoading(false);
+    }
+  }
+
+  async function handleChallenge(opponentName: string) {
+    if (!currentClubId || !ownPlayerName) return;
+    setChallenging(opponentName);
+    try {
+      await createChallenge(currentClubId, ownPlayerName, opponentName);
+      const refreshed = await fetchPendingChallenges(currentClubId, ownPlayerName);
+      setPendingChallenges(refreshed);
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : 'Failed to send challenge.');
+    } finally {
+      setChallenging(null);
     }
   }
 
@@ -218,6 +236,17 @@ export default function LeagueStatsPage() {
             </div>
           </div>
           <button className="text-link-btn" onClick={() => setNewlyEarned([])}>Dismiss</button>
+        </div>
+      )}
+
+      {pendingChallenges.length > 0 && (
+        <div className="card" style={{ marginBottom: 12, fontSize: 13 }}>
+          <strong>🥊 Pending challenges</strong>
+          {pendingChallenges.map(c => (
+            <p key={c.id} style={{ margin: '4px 0 0', color: 'var(--muted)' }}>
+              {c.challengerName === ownPlayerName ? `You challenged ${c.opponentName}` : `${c.challengerName} challenged you`} — resolves next time you're on opposite teams
+            </p>
+          ))}
         </div>
       )}
 
@@ -387,8 +416,23 @@ export default function LeagueStatsPage() {
                               <strong>⚔️ Head-to-Head</strong>
                               {expandedRivalries.length === 0 && <p style={{ margin: '4px 0 0', color: 'var(--muted)' }}>No games logged against anyone yet.</p>}
                               {expandedRivalries.slice(0, 10).map(r => (
-                                <p key={r.players.join('|')} style={{ margin: '2px 0 0' }}>
+                                <p key={r.players.join('|')} style={{ margin: '2px 0 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                                   vs {r.players[1]} — {r.record[0]}-{r.record[1]} ({r.gamesTogether} games)
+                                  {isSelf && (
+                                    <button
+                                      className="text-link-btn"
+                                      style={{ fontSize: 11 }}
+                                      disabled={challenging === r.players[1] || pendingChallenges.some(c => c.opponentName === r.players[1] || c.challengerName === r.players[1])}
+                                      onClick={e => {
+                                        e.stopPropagation();
+                                        handleChallenge(r.players[1]);
+                                      }}
+                                    >
+                                      {pendingChallenges.some(c => c.opponentName === r.players[1] || c.challengerName === r.players[1])
+                                        ? 'Challenge pending'
+                                        : '🥊 Challenge'}
+                                    </button>
+                                  )}
                                 </p>
                               ))}
                             </div>

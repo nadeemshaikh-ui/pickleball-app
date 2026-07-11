@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from 'react';
 import { getSession, getRounds, updateRoundScore, insertRounds, markSessionCompleted, type RoundRow, type SessionRow } from '@/lib/db';
+import { resolveChallengesForRound } from '@/lib/challenges';
 import { computeNextKingOfCourtRound } from '@/lib/kingOfCourt';
 import SessionNav from '@/components/SessionNav';
 import GroupHeader from '@/components/GroupHeader';
@@ -75,6 +76,9 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
     setSavingCourtId(court.id);
     const beforeElo = eloByName;
     await updateRoundScore(court.id, Number(a), Number(b));
+    resolveChallengesForRound(session.club_id, court.team_a, court.team_b, Number(a) > Number(b)).catch(err =>
+      console.error('Failed to resolve challenges for round:', err)
+    );
     const [updatedRounds, players] = await Promise.all([getRounds(id), listPlayers(session.club_id)]);
     setRounds(updatedRounds);
     // Refreshed after every save, not just once on page load — otherwise
