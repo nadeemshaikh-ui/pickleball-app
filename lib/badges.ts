@@ -60,6 +60,21 @@ export const BADGE_CATALOG: Badge[] = [
   { id: 'power_duo', label: 'Power Duo', icon: 'Handshake', description: '10+ games with one partner at a 70%+ win rate' },
   { id: 'golden_pair', label: 'Golden Pair', icon: 'Gem', description: 'Club’s #1 duo by win rate' },
   { id: 'chemistry_lab', label: 'Chemistry Lab', icon: 'FlaskConical', description: 'Played with 10+ different partners' },
+
+  // Lifetime game-log flavor (from fetchLifetimeGameStats — one full scan of scored rounds)
+  { id: 'arch_rivals', label: 'Arch Rivals', icon: 'Swords', description: '15+ games against one rival' },
+  { id: 'format_explorer', label: 'Format Explorer', icon: 'Compass', description: 'Played every session format at least once' },
+  { id: 'squad_legend', label: 'Squad Legend', icon: 'Layers', description: '20+ wins in Squad Rivalry' },
+  { id: 'blowout_artist', label: 'Blowout Artist', icon: 'Zap', description: 'Won a game by 8+ points' },
+  { id: 'nail_biter_veteran', label: 'Nail-Biter Veteran', icon: 'Feather', description: '10+ games decided by 2 points or fewer' },
+  { id: 'shutout_king', label: 'Shutout King', icon: 'Ban', description: 'Won a game without the opponent scoring' },
+  { id: 'perfectionist', label: 'Perfectionist', icon: 'CheckCircle2', description: 'Went undefeated in a full session (3+ games)' },
+  { id: 'night_owl', label: 'Night Owl', icon: 'Moon', description: '10+ sessions started at 8pm or later' },
+  { id: 'rung_climber', label: 'Rung Climber', icon: 'ArrowUpDown', description: '10+ ladder challenge wins' },
+
+  // Ladder/leaderboard crowns — club-wide contestable, single current holder (see lib/badgeHolders.ts)
+  { id: 'ladder_champion', label: 'Ladder Champion', icon: 'Crown', description: 'Currently rung #1 on the ladder' },
+  { id: 'the_real_king', label: 'The Real King', icon: 'Sparkle', description: 'Currently #1 on the lifetime leaderboard' },
 ];
 
 function findBadge(id: string): Badge {
@@ -80,7 +95,21 @@ export interface PlayerBadgeInput {
   duoCount?: number;
   hasPowerDuo?: boolean; // any single partner: 10+ games together, 70%+ win rate
   isClubTopDuo?: boolean; // this player is in the club's #1 duo by win rate
+  // Optional — call sites without a fetchLifetimeGameStats() pass omit these.
+  maxRivalryGames?: number;
+  formatsPlayed?: number;
+  squadRivalryWins?: number;
+  maxWinMargin?: number;
+  nailBiterGames?: number;
+  hasShutout?: boolean;
+  perfectSessions?: number;
+  nightSessions?: number;
+  ladderWins?: number;
+  isLadderChampion?: boolean;
+  isTheRealKing?: boolean;
 }
+
+export const ALL_SESSION_FORMATS_COUNT = 5;
 
 export function computeBadges(input: PlayerBadgeInput): Badge[] {
   const earned: Badge[] = [];
@@ -113,6 +142,18 @@ export function computeBadges(input: PlayerBadgeInput): Badge[] {
   if (input.hasPowerDuo) earned.push(findBadge('power_duo'));
   if (input.isClubTopDuo) earned.push(findBadge('golden_pair'));
   if ((input.duoCount ?? 0) >= 10) earned.push(findBadge('chemistry_lab'));
+
+  if ((input.maxRivalryGames ?? 0) >= 15) earned.push(findBadge('arch_rivals'));
+  if ((input.formatsPlayed ?? 0) >= ALL_SESSION_FORMATS_COUNT) earned.push(findBadge('format_explorer'));
+  if ((input.squadRivalryWins ?? 0) >= 20) earned.push(findBadge('squad_legend'));
+  if ((input.maxWinMargin ?? 0) >= 8) earned.push(findBadge('blowout_artist'));
+  if ((input.nailBiterGames ?? 0) >= 10) earned.push(findBadge('nail_biter_veteran'));
+  if (input.hasShutout) earned.push(findBadge('shutout_king'));
+  if ((input.perfectSessions ?? 0) >= 1) earned.push(findBadge('perfectionist'));
+  if ((input.nightSessions ?? 0) >= 10) earned.push(findBadge('night_owl'));
+  if ((input.ladderWins ?? 0) >= 10) earned.push(findBadge('rung_climber'));
+  if (input.isLadderChampion) earned.push(findBadge('ladder_champion'));
+  if (input.isTheRealKing) earned.push(findBadge('the_real_king'));
 
   return earned;
 }

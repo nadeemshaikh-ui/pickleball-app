@@ -60,6 +60,29 @@ describe('computeBadges', () => {
     expect(computeBadges({ ...base, duoCount: 9 }).map(b => b.id)).not.toContain('chemistry_lab');
   });
 
+  it('awards lifetime game-log badges from the optional fetchLifetimeGameStats inputs', () => {
+    const base = { gamesPlayed: 0, currentStreak: 0, mvpCount: 0, flight: 'Bronze' };
+    expect(computeBadges({ ...base, maxRivalryGames: 15 }).map(b => b.id)).toContain('arch_rivals');
+    expect(computeBadges({ ...base, maxRivalryGames: 14 }).map(b => b.id)).not.toContain('arch_rivals');
+    expect(computeBadges({ ...base, formatsPlayed: 5 }).map(b => b.id)).toContain('format_explorer');
+    expect(computeBadges({ ...base, formatsPlayed: 4 }).map(b => b.id)).not.toContain('format_explorer');
+    expect(computeBadges({ ...base, squadRivalryWins: 20 }).map(b => b.id)).toContain('squad_legend');
+    expect(computeBadges({ ...base, maxWinMargin: 8 }).map(b => b.id)).toContain('blowout_artist');
+    expect(computeBadges({ ...base, nailBiterGames: 10 }).map(b => b.id)).toContain('nail_biter_veteran');
+    expect(computeBadges({ ...base, hasShutout: true }).map(b => b.id)).toContain('shutout_king');
+    expect(computeBadges({ ...base, perfectSessions: 1 }).map(b => b.id)).toContain('perfectionist');
+    expect(computeBadges({ ...base, nightSessions: 10 }).map(b => b.id)).toContain('night_owl');
+    expect(computeBadges({ ...base, ladderWins: 10 }).map(b => b.id)).toContain('rung_climber');
+  });
+
+  it('awards crown badges only to the current holder', () => {
+    const base = { gamesPlayed: 0, currentStreak: 0, mvpCount: 0, flight: 'Bronze' };
+    expect(computeBadges({ ...base, isLadderChampion: true }).map(b => b.id)).toContain('ladder_champion');
+    expect(computeBadges({ ...base, isTheRealKing: true }).map(b => b.id)).toContain('the_real_king');
+    expect(computeBadges(base).map(b => b.id)).not.toContain('ladder_champion');
+    expect(computeBadges(base).map(b => b.id)).not.toContain('the_real_king');
+  });
+
   it('stacks multiple badges at once', () => {
     const badges = computeBadges({
       gamesPlayed: 100,

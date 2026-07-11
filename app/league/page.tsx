@@ -8,6 +8,7 @@ import {
   fetchBestDuos,
   fetchClosestRivalries,
   refreshLeagueStats,
+  syncTheRealKing,
   MIN_GAMES_FOR_DUO_RANKING,
   MIN_GAMES_FOR_RIVALRY,
   type RankedPlayer,
@@ -70,6 +71,7 @@ export default function LeaguePage() {
     setRefreshError(null);
     try {
       await refreshLeagueStats();
+      await syncTheRealKing(currentClubId);
       await load(currentClubId);
     } catch (e) {
       setRefreshError(e instanceof Error ? e.message : 'Refresh failed.');

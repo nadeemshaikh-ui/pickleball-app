@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { applyLadderMovement, isValidLadderChallenge, sideRung, type LadderPlayer, type LadderRungChange } from './ladder';
+import { recordBadgeHolderChange } from './badgeHolders';
 
 export type { LadderRungChange };
 
@@ -49,6 +50,23 @@ export async function unenrollFromLadder(clubId: string, playerName: string): Pr
 export async function resetLadder(clubId: string): Promise<void> {
   const { error } = await supabase.rpc('reset_ladder', { target_club_id: clubId });
   if (error) throw error;
+  await syncLadderChampion(clubId);
+}
+
+// Crowns whoever currently sits on rung 1 as the "Ladder Champion" badge
+// holder — called after anything that can move rung 1 (a challenge upset,
+// or an admin reset). No-op if nobody is enrolled yet.
+async function syncLadderChampion(clubId: string): Promise<void> {
+  const { data, error } = await supabase
+    .from('ladder_standings')
+    .select('player_name')
+    .eq('club_id', clubId)
+    .eq('enrolled', true)
+    .eq('rung', 1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return;
+  await recordBadgeHolderChange(clubId, 'ladder_champion', data.player_name);
 }
 
 // Called after a doubles score is saved in a session flagged `is_ladder`.
@@ -104,6 +122,8 @@ export async function resolveLadderChallenge(clubId: string, teamA: string[], te
         .eq('player_name', name);
     })
   );
+
+  if (rungChanges.some(c => c.rung === 1)) await syncLadderChampion(clubId);
 
   return rungChanges;
 }

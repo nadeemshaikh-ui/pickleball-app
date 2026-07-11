@@ -9,6 +9,7 @@ import {
   fetchStreaks,
   fetchBestDuos,
   fetchRivalriesForPlayer,
+  fetchClosestRivalries,
   MIN_GAMES_FOR_RANKING,
   type LifetimePlayerStats,
   type RankedDuo,
@@ -21,7 +22,10 @@ import ShareableBadgeCard from '@/components/ShareableBadgeCard';
 import { fetchPersonalBests, fetchClubStreakBests, type PersonalBests, type StreakBest } from '@/lib/personalBests';
 import { computeChemistryScore } from '@/lib/chemistry';
 import { flightForRating } from '@/lib/flights';
-import { computeBadges, BADGE_CATALOG, type Badge } from '@/lib/badges';
+import { computeBadges, BADGE_CATALOG, type Badge, type PlayerBadgeInput } from '@/lib/badges';
+import { fetchLifetimeGameStats, type LifetimeGameStats } from '@/lib/lifetimeGameStats';
+import { fetchLadderStandings } from '@/lib/ladderStandings';
+import { fetchCurrentBadgeHolders, type BadgeHolder } from '@/lib/badgeHolders';
 import { preloadPlayerPhotos } from '@/lib/playerPhotos';
 import { getCurrentUser, isCurrentUserAdmin } from '@/lib/auth';
 import { listPlayers, getOwnPlayer, setEquippedBadge } from '@/lib/players';
@@ -45,6 +49,10 @@ export default function LeagueStatsPage() {
   const [streakRecords, setStreakRecords] = useState<StreakRecord[]>([]);
   const [streakBests, setStreakBests] = useState<Map<string, StreakBest>>(new Map());
   const [equippedByName, setEquippedByName] = useState<Map<string, string | null>>(new Map());
+  const [gameStatsByName, setGameStatsByName] = useState<Map<string, LifetimeGameStats>>(new Map());
+  const [maxRivalryByName, setMaxRivalryByName] = useState<Map<string, number>>(new Map());
+  const [ladderWinsByName, setLadderWinsByName] = useState<Map<string, number>>(new Map());
+  const [badgeHolders, setBadgeHolders] = useState<Map<string, BadgeHolder>>(new Map());
   const [ownPlayerId, setOwnPlayerId] = useState<string | null>(null);
   const [ownPlayerName, setOwnPlayerName] = useState<string | null>(null);
   const [equipping, setEquipping] = useState(false);
@@ -76,7 +84,7 @@ export default function LeagueStatsPage() {
     }
     async function init() {
       try {
-        const [lb, mvp, streakMap, players, duoList, records, bests, , user] = await Promise.all([
+        const [lb, mvp, streakMap, players, duoList, records, bests, gameStats, rivalries, ladderStandings, holders, , user] = await Promise.all([
           fetchLifetimeLeaderboard(currentClubId!),
           fetchMvpCounts(currentClubId!),
           fetchStreaks(currentClubId!),
@@ -84,6 +92,10 @@ export default function LeagueStatsPage() {
           fetchBestDuos(currentClubId!),
           fetchStreakRecords(currentClubId!),
           fetchClubStreakBests(currentClubId!),
+          fetchLifetimeGameStats(currentClubId!),
+          fetchClosestRivalries(currentClubId!),
+          fetchLadderStandings(currentClubId!),
+          fetchCurrentBadgeHolders(currentClubId!),
           preloadPlayerPhotos(),
           getCurrentUser(),
         ]);
@@ -95,6 +107,33 @@ export default function LeagueStatsPage() {
         setDuos(duoList);
         setStreakRecords(records);
         setEquippedByName(new Map(players.map(p => [p.name, p.equipped_badge_id])));
+        setGameStatsByName(gameStats);
+        setLadderWinsByName(new Map(ladderStandings.map(s => [s.player_name, s.wins])));
+        setBadgeHolders(holders);
+
+        const maxRivalry = new Map<string, number>();
+        for (const r of rivalries) {
+          maxRivalry.set(r.players[0], Math.max(maxRivalry.get(r.players[0]) ?? 0, r.gamesTogether));
+          maxRivalry.set(r.players[1], Math.max(maxRivalry.get(r.players[1]) ?? 0, r.gamesTogether));
+        }
+        setMaxRivalryByName(maxRivalry);
+
+        function extraBadgeInputs(name: string): Partial<PlayerBadgeInput> {
+          const gs = gameStats.get(name);
+          return {
+            maxRivalryGames: maxRivalry.get(name) ?? 0,
+            formatsPlayed: gs?.formats.size ?? 0,
+            squadRivalryWins: gs?.squadRivalryWins ?? 0,
+            maxWinMargin: gs?.maxMargin ?? 0,
+            nailBiterGames: gs?.nailBiters ?? 0,
+            hasShutout: (gs?.shutouts ?? 0) > 0,
+            perfectSessions: gs?.perfectSessions ?? 0,
+            nightSessions: gs?.nightSessions ?? 0,
+            ladderWins: ladderStandings.find(s => s.player_name === name)?.wins ?? 0,
+            isLadderChampion: holders.get('ladder_champion')?.holderName === name,
+            isTheRealKing: holders.get('the_real_king')?.holderName === name,
+          };
+        }
         if (user) setIsAdmin(await isCurrentUserAdmin(currentClubId!));
 
         if (user) {
@@ -122,6 +161,7 @@ export default function LeagueStatsPage() {
                 duoCount: ownDuos.length,
                 hasPowerDuo: ownDuos.some(d => d.gamesPlayed >= POWER_DUO_MIN_GAMES && d.winPct >= POWER_DUO_MIN_WIN_RATE),
                 isClubTopDuo: top !== null && top.players.includes(own.name),
+                ...extraBadgeInputs(own.name),
               });
               const newIds = await recordNewlyEarnedBadges(currentClubId!, own.name, ownBadges.map(b => b.id));
               if (newIds.length > 0) setNewlyEarned(ownBadges.filter(b => newIds.includes(b.id)));
@@ -311,6 +351,17 @@ export default function LeagueStatsPage() {
                 duoCount: playerDuos.length,
                 hasPowerDuo: playerDuos.some(d => d.gamesPlayed >= POWER_DUO_MIN_GAMES && d.winPct >= POWER_DUO_MIN_WIN_RATE),
                 isClubTopDuo: topDuo !== null && topDuo.players.includes(p.name),
+                maxRivalryGames: maxRivalryByName.get(p.name) ?? 0,
+                formatsPlayed: gameStatsByName.get(p.name)?.formats.size ?? 0,
+                squadRivalryWins: gameStatsByName.get(p.name)?.squadRivalryWins ?? 0,
+                maxWinMargin: gameStatsByName.get(p.name)?.maxMargin ?? 0,
+                nailBiterGames: gameStatsByName.get(p.name)?.nailBiters ?? 0,
+                hasShutout: (gameStatsByName.get(p.name)?.shutouts ?? 0) > 0,
+                perfectSessions: gameStatsByName.get(p.name)?.perfectSessions ?? 0,
+                nightSessions: gameStatsByName.get(p.name)?.nightSessions ?? 0,
+                ladderWins: ladderWinsByName.get(p.name) ?? 0,
+                isLadderChampion: badgeHolders.get('ladder_champion')?.holderName === p.name,
+                isTheRealKing: badgeHolders.get('the_real_king')?.holderName === p.name,
               });
               const isExpanded = expandedName === p.name;
               const explicitEquipped = equippedByName.get(p.name);

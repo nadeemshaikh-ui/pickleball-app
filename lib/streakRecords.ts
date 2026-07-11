@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { recordBadgeHolderChange } from './badgeHolders';
 
 export interface StreakRecord {
   streakType: 'win' | 'loss';
@@ -96,6 +97,9 @@ export async function maybeSetStreakRecord(
     { onConflict: 'club_id,streak_type' }
   );
   if (upsertError) throw upsertError;
+
+  const badgeId = streakType === 'win' ? 'streak_king' : 'wooden_spoon';
+  await recordBadgeHolderChange(clubId, badgeId, playerName, currentStreakLength);
 
   return { streakType, recordLength: currentStreakLength, holderName: playerName, achievedAt };
 }

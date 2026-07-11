@@ -18,6 +18,16 @@ import {
   Handshake,
   Gem,
   FlaskConical,
+  Swords,
+  Compass,
+  Layers,
+  Zap,
+  Feather,
+  Ban,
+  CheckCircle2,
+  Moon,
+  ArrowUpDown,
+  Sparkle,
   type LucideIcon,
 } from 'lucide-react';
 import type { Badge } from '@/lib/badges';
@@ -41,6 +51,16 @@ const ICONS: Record<string, LucideIcon> = {
   Handshake,
   Gem,
   FlaskConical,
+  Swords,
+  Compass,
+  Layers,
+  Zap,
+  Feather,
+  Ban,
+  CheckCircle2,
+  Moon,
+  ArrowUpDown,
+  Sparkle,
 };
 
 // Enamel-medallion art rendered as SVG — no external art asset needed.

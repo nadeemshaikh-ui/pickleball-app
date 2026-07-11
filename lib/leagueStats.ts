@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { wilsonLowerBound } from './wilsonScore';
+import { recordBadgeHolderChange } from './badgeHolders';
 
 export const MIN_GAMES_FOR_RANKING = 10;
 export const MIN_GAMES_FOR_DUO_RANKING = 5;
@@ -209,4 +210,16 @@ export async function fetchRivalriesForPlayer(clubId: string, name: string): Pro
 export async function refreshLeagueStats(): Promise<void> {
   const { error } = await supabase.rpc('refresh_league_stats');
   if (error) throw error;
+}
+
+// Crowns whoever is now #1 (ranked, non-provisional) on the lifetime
+// leaderboard as "The Real King" badge holder. refresh_league_stats() is
+// club-agnostic (refreshes every club's matviews in one call, see above), so
+// this is a separate club-scoped step the caller runs right after — not
+// folded into refreshLeagueStats() itself.
+export async function syncTheRealKing(clubId: string): Promise<void> {
+  const leaderboard = await fetchLifetimeLeaderboard(clubId);
+  const leader = leaderboard.find(p => !p.provisional);
+  if (!leader) return;
+  await recordBadgeHolderChange(clubId, 'the_real_king', leader.name);
 }
