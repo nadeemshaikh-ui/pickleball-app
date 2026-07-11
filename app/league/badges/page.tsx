@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { Award } from 'lucide-react';
 import { fetchMvpCounts, fetchStreaks, fetchBestDuos } from '@/lib/leagueStats';
 import { fetchStreakRecords } from '@/lib/streakRecords';
 import { flightForRating } from '@/lib/flights';
@@ -74,7 +75,7 @@ export default function BadgesGalleryPage() {
   return (
     <main className="page">
       <Link href="/league/stats" className="text-link-btn">← Stats</Link>
-      <h1>🏅 Badge Gallery</h1>
+      <h1 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Award size={22} /> Badge Gallery</h1>
       <p style={{ fontSize: 12, color: 'var(--muted)', padding: '0 8px', marginTop: 4, marginBottom: 16 }}>
         {earnedIds.size} of {BADGE_CATALOG.length} earned. Greyed out badges show what's still locked.
       </p>

@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { Share2, PartyPopper, Zap, Trophy, Swords, FlaskConical } from 'lucide-react';
 import {
   fetchLifetimeLeaderboard,
   fetchMvpCounts,
@@ -224,7 +225,7 @@ export default function LeagueStatsPage() {
         <Link href="/league" className="text-link-btn">← League</Link>
         {isAdmin && (
           <button className="icon-btn" aria-label="Share lifetime stats image on WhatsApp" onClick={handleShareStats}>
-            📤
+            <Share2 size={16} />
           </button>
         )}
       </div>
@@ -234,7 +235,7 @@ export default function LeagueStatsPage() {
           className="card"
           style={{ background: 'var(--surface-2, var(--card-bg))', border: '2px solid var(--text-accent, gold)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}
         >
-          <span style={{ fontSize: 20 }}>🎉</span>
+          <PartyPopper size={20} />
           <div style={{ flex: 1 }}>
             <strong>New badge{newlyEarned.length > 1 ? 's' : ''} unlocked!</strong>
             <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
@@ -251,7 +252,7 @@ export default function LeagueStatsPage() {
 
       {pendingChallenges.length > 0 && (
         <div className="card" style={{ marginBottom: 12, fontSize: 13 }}>
-          <strong>🥊 Pending challenges</strong>
+          <strong style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Zap size={14} /> Pending challenges</strong>
           {pendingChallenges.map(c => (
             <p key={c.id} style={{ margin: '4px 0 0', color: 'var(--muted)' }}>
               {c.challengerName === ownPlayerName ? `You challenged ${c.opponentName}` : `${c.challengerName} challenged you`} — resolves next time you're on opposite teams
@@ -429,7 +430,7 @@ export default function LeagueStatsPage() {
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
                             {expandedBests && expandedBests.biggestMargin !== null && (
                               <div>
-                                <strong>🏆 Personal Bests</strong>
+                                <strong style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Trophy size={14} /> Personal Bests</strong>
                                 <p style={{ margin: '4px 0 0' }}>
                                   Biggest win: {expandedBests.biggestMarginOwnScore}-{expandedBests.biggestMarginOppScore} vs{' '}
                                   {expandedBests.biggestMarginOpponents} (margin of {expandedBests.biggestMargin})
@@ -439,7 +440,7 @@ export default function LeagueStatsPage() {
                             )}
 
                             <div>
-                              <strong>⚔️ Head-to-Head</strong>
+                              <strong style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Swords size={14} /> Head-to-Head</strong>
                               {expandedRivalries.length === 0 && <p style={{ margin: '4px 0 0', color: 'var(--muted)' }}>No games logged against anyone yet.</p>}
                               {expandedRivalries.slice(0, 10).map(r => (
                                 <p key={r.players.join('|')} style={{ margin: '2px 0 0', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -456,7 +457,7 @@ export default function LeagueStatsPage() {
                                     >
                                       {pendingChallenges.some(c => c.opponentName === r.players[1] || c.challengerName === r.players[1])
                                         ? 'Challenge pending'
-                                        : '🥊 Challenge'}
+                                        : <><Zap size={11} /> Challenge</>}
                                     </button>
                                   )}
                                 </p>
@@ -464,7 +465,7 @@ export default function LeagueStatsPage() {
                             </div>
 
                             <div>
-                              <strong>🧪 Team Chemistry</strong>
+                              <strong style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FlaskConical size={14} /> Team Chemistry</strong>
                               {chemistryFor(p.name).length === 0 && <p style={{ margin: '4px 0 0', color: 'var(--muted)' }}>Not enough games with any one partner yet.</p>}
                               {chemistryFor(p.name).slice(0, 5).map(c => (
                                 <p key={c.partner} style={{ margin: '2px 0 0' }}>
@@ -507,7 +508,7 @@ export default function LeagueStatsPage() {
                   }
                 }}
               >
-                {sharingBadge ? 'Preparing…' : '📤 Share'}
+                {sharingBadge ? 'Preparing…' : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Share2 size={14} /> Share</span>}
               </button>
               <button className="btn-secondary" onClick={() => setShareCardBadge(null)}>Close</button>
             </div>

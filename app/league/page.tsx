@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { Share2, RefreshCw, Sparkles, Swords, BarChart3, ListOrdered, Gift, Award, ScrollText, CalendarDays } from 'lucide-react';
 import {
   fetchPlayerOfTheMonthBoard,
   fetchBestDuos,
@@ -104,7 +105,7 @@ export default function LeaguePage() {
         <Link href="/setup" className="text-link-btn">+ New Session</Link>
         {isAdmin && (
           <button className="icon-btn" aria-label="Share league standings image on WhatsApp" onClick={() => handleShareSnapshot('league-standings.png')}>
-            📤
+            <Share2 size={16} />
           </button>
         )}
       </div>
@@ -114,7 +115,7 @@ export default function LeaguePage() {
       {isAdmin && (
         <div style={{ marginBottom: 16 }}>
           <button className="btn-secondary" onClick={handleRefresh} disabled={refreshing}>
-            {refreshing ? 'Refreshing…' : '🔄 Refresh Stats Now'}
+            {refreshing ? 'Refreshing…' : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><RefreshCw size={14} /> Refresh Stats Now</span>}
           </button>
           {refreshError && <p style={{ color: 'var(--danger)', fontSize: 13, marginTop: 6 }}>{refreshError}</p>}
         </div>
@@ -125,7 +126,7 @@ export default function LeaguePage() {
       <div ref={snapshotCaptureRef}>
         {monthLeader && (
           <>
-            <h2>🌟 Player of the Month</h2>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Sparkles size={17} /> Player of the Month</h2>
             <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <Avatar name={monthLeader.name} size={44} />
               <div>
@@ -156,7 +157,7 @@ export default function LeaguePage() {
           ))}
         </div>
 
-        <h2>⚔️ Closest Rivalries</h2>
+        <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Swords size={17} /> Closest Rivalries</h2>
         <p style={{ fontSize: 11, color: 'var(--muted)', padding: '0 8px', marginBottom: 4 }}>
           Head-to-head record across every session played against each other. Min {MIN_GAMES_FOR_RIVALRY} games.
         </p>
@@ -175,33 +176,33 @@ export default function LeaguePage() {
         </div>
       </div>
 
-      <Link href="/league/stats" className="btn-secondary" style={{ display: 'block', textAlign: 'center', marginBottom: 12, marginTop: 16 }}>
-        📊 View Full Lifetime Stats
+      <Link href="/league/stats" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, textAlign: 'center', marginBottom: 12, marginTop: 16 }}>
+        <BarChart3 size={15} /> View Full Lifetime Stats
       </Link>
 
-      <Link href="/league/ladder" className="btn-secondary" style={{ display: 'block', textAlign: 'center', marginBottom: 12 }}>
-        🪜 View Ladder League
+      <Link href="/league/ladder" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, textAlign: 'center', marginBottom: 12 }}>
+        <ListOrdered size={15} /> View Ladder League
       </Link>
 
-      <Link href="/league/wrapped" className="btn-secondary" style={{ display: 'block', textAlign: 'center', marginBottom: 12 }}>
-        🎁 Your Pickleball Wrapped
+      <Link href="/league/wrapped" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, textAlign: 'center', marginBottom: 12 }}>
+        <Gift size={15} /> Your Pickleball Wrapped
       </Link>
 
-      <Link href="/league/badges" className="btn-secondary" style={{ display: 'block', textAlign: 'center', marginBottom: 12 }}>
-        🏅 Badge Gallery
+      <Link href="/league/badges" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, textAlign: 'center', marginBottom: 12 }}>
+        <Award size={15} /> Badge Gallery
       </Link>
 
-      <Link href="/league/sessions" className="btn-secondary" style={{ display: 'block', textAlign: 'center', marginBottom: 12 }}>
-        📜 Session History
+      <Link href="/league/sessions" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, textAlign: 'center', marginBottom: 12 }}>
+        <ScrollText size={15} /> Session History
       </Link>
 
       {isAdmin && (
         <button
           className="btn-secondary"
-          style={{ display: 'block', width: '100%', textAlign: 'center', marginBottom: 20 }}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', textAlign: 'center', marginBottom: 20 }}
           onClick={() => handleShareSnapshot('league-monthly-recap.png')}
         >
-          📅 Share Monthly Recap
+          <CalendarDays size={15} /> Share Monthly Recap
         </button>
       )}
     </main>

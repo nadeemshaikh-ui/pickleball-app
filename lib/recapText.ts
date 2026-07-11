@@ -3,7 +3,7 @@ import type { PlayerStats } from './analytics';
 import { findBiggestBlowout } from './gameStats';
 
 export function formatRecapAsText(leaderboard: PlayerStats[], rounds: RoundRow[]): string {
-  const lines: string[] = ['🏓 Session Recap', ''];
+  const lines: string[] = ['Session Recap', ''];
 
   const top3 = leaderboard.slice(0, 3);
   top3.forEach((p, i) => {

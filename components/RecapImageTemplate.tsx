@@ -1,3 +1,4 @@
+import { Trophy, Zap } from 'lucide-react';
 import type { RoundRow, SessionRow } from '@/lib/db';
 import type { PlayerStats } from '@/lib/analytics';
 import { findBiggestBlowout } from '@/lib/gameStats';
@@ -35,8 +36,8 @@ export default function RecapImageTemplate({
       </div>
 
       <div style={{ background: '#ffffff', border: '3px solid #121a2f', borderTop: 'none', padding: 32 }}>
-        <div style={{ fontFamily: 'var(--font-display), sans-serif', fontSize: 30, color: '#121a2f', marginBottom: 16 }}>
-          🏆 PODIUM
+        <div style={{ fontFamily: 'var(--font-display), sans-serif', fontSize: 30, color: '#121a2f', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Trophy size={28} /> PODIUM
         </div>
         {top3.map((p, i) => (
           <div
@@ -73,8 +74,8 @@ export default function RecapImageTemplate({
         ))}
 
         {blowout && blowoutWinner && (
-          <div style={{ marginTop: 24, fontSize: 22, color: '#121a2f' }}>
-            ⚡ Biggest win margin: <strong>{blowoutWinner.join(' & ')}</strong> by {blowoutMargin} points
+          <div style={{ marginTop: 24, fontSize: 22, color: '#121a2f', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Zap size={20} /> Biggest win margin: <strong>{blowoutWinner.join(' & ')}</strong> by {blowoutMargin} points
           </div>
         )}
       </div>

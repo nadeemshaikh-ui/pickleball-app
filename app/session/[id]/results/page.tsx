@@ -1,6 +1,7 @@
 'use client';
 
 import { use, useEffect, useRef, useState } from 'react';
+import { Ban, CheckCircle2, IndianRupee } from 'lucide-react';
 import { getSession, getRounds, type SessionRow, type RoundRow } from '@/lib/db';
 import { computeLeaderboard, computeSquadTotals, type PlayerStats } from '@/lib/analytics';
 import { renderElementToImage, shareCachedImage } from '@/lib/shareImage';
@@ -204,15 +205,15 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
         )}
 
         {session && session.status === 'voided' && (
-          <p className="card" style={{ color: 'var(--danger)', fontWeight: 700 }}>
-            🚫 This session was voided — its matches don't count toward league stats, badges, or streaks.
+          <p className="card" style={{ color: 'var(--danger)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Ban size={16} /> This session was voided — its matches don't count toward league stats, badges, or streaks.
           </p>
         )}
 
         {session && session.status !== 'voided' && (
           <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 13, color: 'var(--muted)' }}>
-              ✅ {confirmations.length}/{session.players.length} players confirmed they played
+            <span style={{ fontSize: 13, color: 'var(--muted)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <CheckCircle2 size={14} /> {confirmations.length}/{session.players.length} players confirmed they played
             </span>
             <div style={{ display: 'flex', gap: 8 }}>
               {ownPlayerName && !confirmations.some(c => c.playerName === ownPlayerName) && (
@@ -221,8 +222,8 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
                 </button>
               )}
               {isAdmin && (
-                <button className="btn-secondary" style={{ minHeight: 32, padding: '4px 12px', fontSize: 13 }} onClick={handleVoid} disabled={voiding}>
-                  {voiding ? 'Voiding…' : '🚫 Void Session'}
+                <button className="btn-secondary" style={{ minHeight: 32, padding: '4px 12px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={handleVoid} disabled={voiding}>
+                  {voiding ? 'Voiding…' : <><Ban size={13} /> Void Session</>}
                 </button>
               )}
             </div>
@@ -295,9 +296,9 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
                     <a
                       href={`upi://pay?pa=${encodeURIComponent(upiVpa)}&pn=${encodeURIComponent('Pickleball Session')}&am=${d.amount_owed}&cu=INR`}
                       className="text-link-btn"
-                      style={{ fontSize: 12, marginLeft: 8 }}
+                      style={{ fontSize: 12, marginLeft: 8, display: 'inline-flex', alignItems: 'center', gap: 4 }}
                     >
-                      💸 Pay
+                      <IndianRupee size={12} /> Pay
                     </a>
                   )}
                   {isAdmin ? (

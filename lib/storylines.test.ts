@@ -5,7 +5,7 @@ describe('buildStorylines', () => {
   it('surfaces the hottest streak in the roster', () => {
     const streaks = new Map([['Alice', 5], ['Bob', 1]]);
     const lines = buildStorylines(['Alice', 'Bob'], streaks, []);
-    expect(lines).toContain('🔥 Alice is on a 5-game win streak');
+    expect(lines).toContain('Alice is on a 5-game win streak');
   });
 
   it('omits the streak line when nobody clears the threshold', () => {
@@ -20,7 +20,7 @@ describe('buildStorylines', () => {
       { players: ['Alice', 'Carl'] as [string, string], record: [5, 0] as [number, number], gamesTogether: 5 },
     ];
     const lines = buildStorylines(['Alice', 'Bob', 'Carl'], new Map(), rivalries);
-    expect(lines).toContain('⚔️ Closest rivalry tonight: Alice vs Bob — 3-3');
+    expect(lines).toContain('Closest rivalry tonight: Alice vs Bob — 3-3');
   });
 
   it('excludes rivalries below the games threshold', () => {

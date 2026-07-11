@@ -27,7 +27,7 @@ export function buildStorylines(
     }
   }
   if (hottestName) {
-    lines.push(`🔥 ${hottestName} is on a ${hottestStreak}-game win streak`);
+    lines.push(`${hottestName} is on a ${hottestStreak}-game win streak`);
   }
 
   const eligible = rosterRivalries.filter(r => r.gamesTogether >= MIN_GAMES_FOR_STORYLINE_RIVALRY);
@@ -38,7 +38,7 @@ export function buildStorylines(
     return b.gamesTogether - a.gamesTogether;
   })[0];
   if (closest) {
-    lines.push(`⚔️ Closest rivalry tonight: ${closest.players[0]} vs ${closest.players[1]} — ${closest.record[0]}-${closest.record[1]}`);
+    lines.push(`Closest rivalry tonight: ${closest.players[0]} vs ${closest.players[1]} — ${closest.record[0]}-${closest.record[1]}`);
   }
 
   return lines;

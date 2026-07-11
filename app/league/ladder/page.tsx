@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { Share2, ListOrdered, RefreshCw } from 'lucide-react';
 import { fetchLadderStandings, enrollInLadder, unenrollFromLadder, resetLadder, type LadderStandingRow } from '@/lib/ladderStandings';
 import { listPlayers, type PlayerRow } from '@/lib/players';
 import { getCurrentUser, isCurrentUserAdmin } from '@/lib/auth';
@@ -115,12 +116,12 @@ export default function LadderPage() {
         <Link href="/league" className="text-link-btn">← League</Link>
         {isAdmin && standings.length > 0 && (
           <button className="icon-btn" aria-label="Share ladder standings image on WhatsApp" onClick={handleShareStandings}>
-            📤
+            <Share2 size={16} />
           </button>
         )}
       </div>
 
-      <h1>🪜 Ladder League</h1>
+      <h1 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><ListOrdered size={22} /> Ladder League</h1>
       <p style={{ fontSize: 12, color: 'var(--muted)', padding: '0 8px', marginBottom: 12 }}>
         Rungs move when a session is flagged as Ladder League at Setup and the lower-ranked doubles side pulls off an
         upset — the two sides swap rungs. Matches more than 3 rungs apart don't count as challenges.
@@ -131,7 +132,7 @@ export default function LadderPage() {
 
       {isAdmin && (
         <button className="btn-secondary" onClick={handleReset} disabled={resetting} style={{ marginBottom: 16 }}>
-          {resetting ? 'Resetting…' : '🔄 Reset Ladder (reseed by ELO)'}
+          {resetting ? 'Resetting…' : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><RefreshCw size={14} /> Reset Ladder (reseed by ELO)</span>}
         </button>
       )}
 

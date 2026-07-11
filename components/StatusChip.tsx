@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { Flame } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth';
 import { getOwnPlayer } from '@/lib/players';
 import { fetchLifetimeLeaderboard, fetchStreaks } from '@/lib/leagueStats';
@@ -11,7 +12,8 @@ import { useCurrentClub } from '@/lib/useCurrentClub';
 // MIN_GAMES_FOR_RANKING) — a chip with no real data would just be noise.
 export default function StatusChip() {
   const { currentClubId } = useCurrentClub();
-  const [text, setText] = useState<string | null>(null);
+  const [rankText, setRankText] = useState<string | null>(null);
+  const [streak, setStreak] = useState(0);
 
   useEffect(() => {
     if (!currentClubId) return;
@@ -25,24 +27,25 @@ export default function StatusChip() {
       const rank = leaderboard.findIndex(p => p.name === player.name);
       const entry = rank >= 0 ? leaderboard[rank] : null;
       if (cancelled || !entry || entry.provisional) return;
-      const streak = streaks.get(player.name) ?? 0;
-      const parts = [`#${rank + 1} lifetime`];
-      if (streak >= 2) parts.push(`🔥 ${streak}-streak`);
-      setText(parts.join(' · '));
+      const playerStreak = streaks.get(player.name) ?? 0;
+      setRankText(`#${rank + 1} lifetime`);
+      setStreak(playerStreak);
     }
-    load().catch(() => setText(null));
+    load().catch(() => setRankText(null));
     return () => {
       cancelled = true;
     };
   }, [currentClubId]);
 
-  if (!text) return null;
+  if (!rankText) return null;
 
   return (
     <Link
       href="/league"
       style={{
-        display: 'inline-block',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
         padding: '4px 10px',
         borderRadius: 999,
         border: '1px solid var(--border)',
@@ -54,7 +57,13 @@ export default function StatusChip() {
         color: 'inherit',
       }}
     >
-      {text}
+      {rankText}
+      {streak >= 2 && (
+        <>
+          {' · '}
+          <Flame size={12} /> {streak}-streak
+        </>
+      )}
     </Link>
   );
 }

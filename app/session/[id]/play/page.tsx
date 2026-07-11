@@ -1,6 +1,7 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
+import { PartyPopper, TrendingDown, Crown, Frown, Egg } from 'lucide-react';
 import { getSession, getRounds, updateRoundScore, insertRounds, markSessionCompleted, type RoundRow, type SessionRow } from '@/lib/db';
 import { resolveChallengesForRound } from '@/lib/challenges';
 import { computeCurrentStreaks, maybeSetStreakRecord } from '@/lib/streakRecords';
@@ -21,7 +22,7 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
   const [savingCourtId, setSavingCourtId] = useState<string | null>(null);
   const [eloByName, setEloByName] = useState<Map<string, number>>(new Map());
   const [nicknameByName, setNicknameByName] = useState<Map<string, string>>(new Map());
-  const [flightChanges, setFlightChanges] = useState<Record<string, string[]>>({});
+  const [flightChanges, setFlightChanges] = useState<Record<string, RoundMessage[]>>({});
   const [kotcMovement, setKotcMovement] = useState<Record<number, string[]>>({});
 
   function firstIncompleteRound(r: RoundRow[]): number | undefined {
@@ -58,6 +59,9 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
   function displayName(fullName: string): string {
     return nicknameByName.get(fullName) ?? fullName.split(' ')[0];
   }
+
+  type RoundMessage = { kind: 'promoted' | 'relegated' | 'record-win' | 'record-loss'; text: string };
+  const MESSAGE_ICONS = { promoted: PartyPopper, relegated: TrendingDown, 'record-win': Crown, 'record-loss': Frown } as const;
 
   // Flight-mismatch upset badge — only shown when all 4 players are
   // registered (unrated players would make the flight comparison meaningless).
@@ -97,7 +101,7 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
     setEloByName(freshElo);
 
     const participants = [...court.team_a, ...court.team_b];
-    const messages: string[] = [];
+    const messages: RoundMessage[] = [];
     for (const name of participants) {
       const before = beforeElo.get(name);
       const after = freshElo.get(name);
@@ -105,7 +109,9 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
       const change = detectFlightChange(before, after);
       if (change) {
         messages.push(
-          change.direction === 'promoted' ? `🎉 ${name} promoted to ${change.flight}!` : `📉 ${name} relegated to ${change.flight}`
+          change.direction === 'promoted'
+            ? { kind: 'promoted', text: `${name} promoted to ${change.flight}!` }
+            : { kind: 'relegated', text: `${name} relegated to ${change.flight}` }
         );
       }
     }
@@ -118,8 +124,8 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
         if (broken) {
           messages.push(
             broken.streakType === 'win'
-              ? `👑 NEW CLUB RECORD! ${name} just set a ${broken.recordLength}-game win streak.`
-              : `🥄 ${name} just set the club's longest losing streak (${broken.recordLength}).`
+              ? { kind: 'record-win', text: `NEW CLUB RECORD! ${name} just set a ${broken.recordLength}-game win streak.` }
+              : { kind: 'record-loss', text: `${name} just set the club's longest losing streak (${broken.recordLength}).` }
           );
         }
       }
@@ -256,14 +262,17 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                     </div>
                     {upsetLabel(court) && (
                       <div className="resting-badge">
-                        🐣 {upsetLabel(court)}
+                        <Egg size={14} /> {upsetLabel(court)}
                       </div>
                     )}
-                    {(flightChanges[court.id] ?? []).map(msg => (
-                      <div key={msg} className="resting-badge">
-                        {msg}
-                      </div>
-                    ))}
+                    {(flightChanges[court.id] ?? []).map(msg => {
+                      const MsgIcon = MESSAGE_ICONS[msg.kind];
+                      return (
+                        <div key={msg.text} className="resting-badge">
+                          <MsgIcon size={14} /> {msg.text}
+                        </div>
+                      );
+                    })}
                     {!sameSitOut && court.sitting_out.length > 0 && (
                       <div className="resting-badge">
                         <span className="stat-icon"><ChairIcon size={20} /></span>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { X } from 'lucide-react';
+import { X, RotateCcw, Camera, Flame, ListOrdered, Scale, Lock } from 'lucide-react';
 import {
   generateScrambleSchedule,
   generateSquadRivalrySchedule,
@@ -637,8 +637,8 @@ export default function SetupPage() {
             Use Saved Roster ({savedRoster.length} players)
           </button>
         )}
-        <button className="btn-secondary" onClick={handleRepeatLastSession} style={{ width: '100%', marginTop: 10 }}>
-          🔁 Repeat Last Session
+        <button className="btn-secondary" onClick={handleRepeatLastSession} style={{ width: '100%', marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <RotateCcw size={16} /> Repeat Last Session
         </button>
       </main>
     );
@@ -719,7 +719,7 @@ export default function SetupPage() {
                 {photoSrc ? (
                   <img src={photoSrc} alt="" width={36} height={36} style={{ objectFit: 'cover' }} />
                 ) : (
-                  '📷'
+                  <Camera size={16} />
                 )}
                 <input
                   type="file"
@@ -756,8 +756,8 @@ export default function SetupPage() {
       </button>
 
       {nemesis && (
-        <div className="card" style={{ marginBottom: 16, background: 'var(--background)' }}>
-          🔥 <strong>Nemesis Alert:</strong> You vs {nemesis.players[1]} tonight — {nemesis.record[0]}-{nemesis.record[1]} all-time.
+        <div className="card" style={{ marginBottom: 16, background: 'var(--background)', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Flame size={16} /> <strong>Nemesis Alert:</strong> You vs {nemesis.players[1]} tonight — {nemesis.record[0]}-{nemesis.record[1]} all-time.
         </div>
       )}
 
@@ -805,7 +805,7 @@ export default function SetupPage() {
         <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
           <input type="checkbox" checked={isLadder} onChange={e => setIsLadder(e.target.checked)} />
           <span>
-            <strong>🪜 Count this as a Ladder League session</strong>
+            <strong style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><ListOrdered size={15} /> Count this as a Ladder League session</strong>
             <p style={{ fontSize: 12, color: 'var(--muted)', margin: '4px 0 0' }}>
               Rounds where all 4 players are enrolled on the ladder (see /league/ladder) count toward rung movement.
               Everyone else still plays normally — this doesn't change matchmaking or the format above.
@@ -873,7 +873,7 @@ export default function SetupPage() {
                 }}
               />
               <span>
-                <strong>⚖️ Balance courts by skill</strong>
+                <strong style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Scale size={15} /> Balance courts by skill</strong>
                 <p style={{ fontSize: 12, color: 'var(--muted)', margin: '4px 0 0' }}>
                   Pairs players so opposing teams are evenly matched, based on results from past sessions. Needs at
                   least 2 registered players with 20+ games logged — falls back to normal random pairing otherwise.
@@ -895,7 +895,7 @@ export default function SetupPage() {
                 }}
               />
               <span>
-                <strong>🔥 Seek out rivalries</strong>
+                <strong style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Flame size={15} /> Seek out rivalries</strong>
                 <p style={{ fontSize: 12, color: 'var(--muted)', margin: '4px 0 0' }}>
                   When forming courts, tries to put tonight's closest head-to-head rivalries (5+ games together,
                   tight record) against each other. Partner pairing and sit-out balancing are unaffected — only who
@@ -1046,7 +1046,7 @@ export default function SetupPage() {
               <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {lockedPairs.map(([a, b], i) => (
                   <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
-                    🔒 {a} & {b}
+                    <Lock size={14} /> {a} & {b}
                     <button type="button" className="text-link-btn" onClick={() => handleRemoveLock(i)}>Remove</button>
                   </li>
                 ))}

@@ -13,6 +13,7 @@ import { listPendingJoinRequests, type JoinRequestRow } from '@/lib/clubs';
 import { flightForRating } from '@/lib/flights';
 import { computeBadges, type Badge } from '@/lib/badges';
 import SignInGate from '@/components/SignInGate';
+import { Flame, Crown, Zap, Bell, Trophy, Gift, Award } from 'lucide-react';
 import BadgeMedallion from '@/components/BadgeMedallion';
 
 const POWER_DUO_MIN_GAMES = 10;
@@ -144,9 +145,9 @@ export default function HomePage() {
             <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Games</div><div style={{ fontWeight: 800 }}>{ownStats?.gamesPlayed ?? '—'}</div></div>
             <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>MVP</div><div style={{ fontWeight: 800 }}>{mvpCount}</div></div>
             <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Flight</div><div style={{ fontWeight: 800 }}>{flight}</div></div>
-            <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Streak</div><div style={{ fontWeight: 800 }}>{streak > 0 ? `🔥 ${streak}` : '—'}{isStreakKing && ' 👑'}</div></div>
+            <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Streak</div><div style={{ fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 3 }}>{streak > 0 ? <><Flame size={13} /> {streak}</> : '—'}{isStreakKing && <Crown size={13} />}</div></div>
             {pendingChallengeCount > 0 && (
-              <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Challenges</div><div style={{ fontWeight: 800 }}>🥊 {pendingChallengeCount}</div></div>
+              <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Challenges</div><div style={{ fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 3 }}><Zap size={13} /> {pendingChallengeCount}</div></div>
             )}
           </div>
 
@@ -164,8 +165,8 @@ export default function HomePage() {
       )}
 
       {isCurrentClubAdmin && pendingJoinRequests.length > 0 && currentClubId && (
-        <Link href={`/clubs/${currentClubId}/settings`} className="card" style={{ display: 'block', marginBottom: 12, color: 'var(--text-accent, inherit)' }}>
-          🔔 {pendingJoinRequests.length} pending join request{pendingJoinRequests.length === 1 ? '' : 's'} — review
+        <Link href={`/clubs/${currentClubId}/settings`} className="card" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, color: 'var(--text-accent, inherit)' }}>
+          <Bell size={15} /> {pendingJoinRequests.length} pending join request{pendingJoinRequests.length === 1 ? '' : 's'} — review
         </Link>
       )}
 
@@ -182,9 +183,9 @@ export default function HomePage() {
       )}
 
       <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-        <Link href="/league" className="btn-secondary" style={{ flex: 1, textAlign: 'center' }}>🏆 League</Link>
-        <Link href="/league/wrapped" className="btn-secondary" style={{ flex: 1, textAlign: 'center' }}>🎁 Wrapped</Link>
-        <Link href="/league/badges" className="btn-secondary" style={{ flex: 1, textAlign: 'center' }}>🏅 Badges</Link>
+        <Link href="/league" className="btn-secondary" style={{ flex: 1, textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><Trophy size={14} /> League</Link>
+        <Link href="/league/wrapped" className="btn-secondary" style={{ flex: 1, textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><Gift size={14} /> Wrapped</Link>
+        <Link href="/league/badges" className="btn-secondary" style={{ flex: 1, textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><Award size={14} /> Badges</Link>
       </div>
     </main>
   );

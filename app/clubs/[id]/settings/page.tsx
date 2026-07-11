@@ -2,6 +2,7 @@
 
 import { use, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { UserPlus, Share2 } from 'lucide-react';
 import {
   listMyClubs,
   listPendingJoinRequests,
@@ -158,7 +159,7 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
       <h2>Invite</h2>
       <div className="card">
         <div ref={inviteCaptureRef} style={{ padding: 8 }}>
-          <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>🏓 Join {club.name}!</div>
+          <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}><UserPlus size={16} /> Join {club.name}!</div>
           <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 6 }}>Share this code — joining is instant, no approval needed:</p>
           <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: 2 }}>{club.join_code}</div>
         </div>
@@ -168,7 +169,7 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
           style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: 12 }}
           onClick={handleShareInvite}
         >
-          📤 Share Invite on WhatsApp
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Share2 size={15} /> Share Invite on WhatsApp</span>
         </button>
       </div>
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { Share2, Gift, Swords } from 'lucide-react';
 import {
   fetchLifetimeLeaderboard,
   fetchPlayerOfTheMonthBoard,
@@ -160,10 +161,10 @@ export default function WrappedPage() {
     <main className="page">
       <div className="page-header-row">
         <Link href="/league" className="text-link-btn">← League</Link>
-        <button className="icon-btn" aria-label="Share Wrapped image on WhatsApp" onClick={handleShare}>📤</button>
+        <button className="icon-btn" aria-label="Share Wrapped image on WhatsApp" onClick={handleShare}><Share2 size={16} /></button>
       </div>
 
-      <h1>🎁 Your Pickleball Wrapped</h1>
+      <h1 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Gift size={22} /> Your Pickleball Wrapped</h1>
 
       <div style={{ display: 'flex', gap: 6, marginTop: 12, marginBottom: 16 }}>
         <button className={period === 'month' ? 'btn-primary' : 'btn-secondary'} style={{ minHeight: 32, padding: '4px 14px', fontSize: 13 }} onClick={() => setPeriod('month')}>Monthly</button>
@@ -197,7 +198,7 @@ export default function WrappedPage() {
 
         {data.nemesis && (
           <div className="card" style={{ textAlign: 'center', padding: 20 }}>
-            <div style={{ color: 'var(--muted)', fontSize: 13 }}>⚔️ Your Nemesis</div>
+            <div style={{ color: 'var(--muted)', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><Swords size={13} /> Your Nemesis</div>
             <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4 }}>{data.nemesis.players[1]}</div>
             <div style={{ color: 'var(--muted)' }}>
               {data.nemesis.record[0]}-{data.nemesis.record[1]} head-to-head
