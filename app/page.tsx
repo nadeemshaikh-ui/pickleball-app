@@ -6,12 +6,17 @@ import Link from 'next/link';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import { hasCompletedOnboarding } from '@/lib/onboarding';
 import { getOwnPlayer } from '@/lib/players';
-import { fetchStreaks } from '@/lib/leagueStats';
+import { fetchLifetimeLeaderboard, fetchStreaks, fetchMvpCounts, fetchBestDuos, type LifetimePlayerStats } from '@/lib/leagueStats';
 import { fetchStreakRecords } from '@/lib/streakRecords';
 import { fetchPendingChallenges } from '@/lib/challenges';
 import { listPendingJoinRequests, type JoinRequestRow } from '@/lib/clubs';
 import { flightForRating } from '@/lib/flights';
+import { computeBadges, type Badge } from '@/lib/badges';
 import SignInGate from '@/components/SignInGate';
+import BadgeMedallion from '@/components/BadgeMedallion';
+
+const POWER_DUO_MIN_GAMES = 10;
+const POWER_DUO_MIN_WIN_RATE = 0.7;
 
 export default function HomePage() {
   const router = useRouter();
@@ -23,6 +28,10 @@ export default function HomePage() {
   const [pendingChallengeCount, setPendingChallengeCount] = useState(0);
   const [pendingJoinRequests, setPendingJoinRequests] = useState<JoinRequestRow[]>([]);
   const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [ownStats, setOwnStats] = useState<LifetimePlayerStats | null>(null);
+  const [rank, setRank] = useState<number | null>(null);
+  const [mvpCount, setMvpCount] = useState(0);
+  const [badges, setBadges] = useState<Badge[]>([]);
 
   useEffect(() => {
     if (clubLoading) return;
@@ -48,15 +57,44 @@ export default function HomePage() {
       setDashboardLoading(true);
       try {
         const own = await getOwnPlayer(currentClubId!, user!.id);
-        const [streaks, records, challenges] = await Promise.all([
+        const [streaks, records, challenges, leaderboard, mvpCounts, duos] = await Promise.all([
           fetchStreaks(currentClubId!),
           fetchStreakRecords(currentClubId!),
           fetchPendingChallenges(currentClubId!, own?.name ?? ''),
+          fetchLifetimeLeaderboard(currentClubId!),
+          fetchMvpCounts(currentClubId!),
+          fetchBestDuos(currentClubId!),
         ]);
         if (own) {
-          setFlight(flightForRating(own.elo_rating));
+          const flightName = flightForRating(own.elo_rating);
+          setFlight(flightName);
           setStreak(streaks.get(own.name) ?? 0);
-          setIsStreakKing(records.find(r => r.streakType === 'win')?.holderName === own.name);
+          const winRecordHolder = records.find(r => r.streakType === 'win')?.holderName;
+          const lossRecordHolder = records.find(r => r.streakType === 'loss')?.holderName;
+          setIsStreakKing(winRecordHolder === own.name);
+
+          const statsRow = leaderboard.find(p => p.name === own.name) ?? null;
+          setOwnStats(statsRow);
+          const rankedIndex = leaderboard.filter(p => !p.provisional).findIndex(p => p.name === own.name);
+          setRank(rankedIndex >= 0 ? rankedIndex + 1 : null);
+          setMvpCount(mvpCounts.get(own.name) ?? 0);
+
+          const ownDuos = duos.filter(d => d.players.includes(own.name));
+          const eligibleDuos = duos.filter(d => d.gamesPlayed >= POWER_DUO_MIN_GAMES);
+          const topDuo = eligibleDuos.length > 0 ? [...eligibleDuos].sort((a, b) => b.winPct - a.winPct)[0] : null;
+          setBadges(
+            computeBadges({
+              gamesPlayed: own.games_played,
+              currentStreak: streaks.get(own.name) ?? 0,
+              mvpCount: mvpCounts.get(own.name) ?? 0,
+              flight: flightName,
+              isWinStreakRecordHolder: winRecordHolder === own.name,
+              isLossStreakRecordHolder: lossRecordHolder === own.name,
+              duoCount: ownDuos.length,
+              hasPowerDuo: ownDuos.some(d => d.gamesPlayed >= POWER_DUO_MIN_GAMES && d.winPct >= POWER_DUO_MIN_WIN_RATE),
+              isClubTopDuo: topDuo !== null && topDuo.players.includes(own.name),
+            })
+          );
         }
         setPendingChallengeCount(challenges.length);
         if (isCurrentClubAdmin) {
@@ -98,19 +136,28 @@ export default function HomePage() {
       </div>
 
       {!dashboardLoading && flight && (
-        <div className="card" style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 12 }}>
-          <div>
-            <div style={{ fontSize: 11, color: 'var(--muted)' }}>Flight</div>
-            <div style={{ fontWeight: 800 }}>{flight}</div>
+        <div className="card" style={{ marginBottom: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(64px, 1fr))', gap: 10 }}>
+            <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Rank</div><div style={{ fontWeight: 800 }}>{rank ? `#${rank}` : '—'}</div></div>
+            <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Record</div><div style={{ fontWeight: 800 }}>{ownStats ? `${ownStats.wins}-${ownStats.losses}` : '—'}</div></div>
+            <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Win%</div><div style={{ fontWeight: 800 }}>{ownStats ? `${(ownStats.winPct * 100).toFixed(0)}%` : '—'}</div></div>
+            <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Games</div><div style={{ fontWeight: 800 }}>{ownStats?.gamesPlayed ?? '—'}</div></div>
+            <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>MVP</div><div style={{ fontWeight: 800 }}>{mvpCount}</div></div>
+            <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Flight</div><div style={{ fontWeight: 800 }}>{flight}</div></div>
+            <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Streak</div><div style={{ fontWeight: 800 }}>{streak > 0 ? `🔥 ${streak}` : '—'}{isStreakKing && ' 👑'}</div></div>
+            {pendingChallengeCount > 0 && (
+              <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Challenges</div><div style={{ fontWeight: 800 }}>🥊 {pendingChallengeCount}</div></div>
+            )}
           </div>
-          <div>
-            <div style={{ fontSize: 11, color: 'var(--muted)' }}>Streak</div>
-            <div style={{ fontWeight: 800 }}>{streak > 0 ? `🔥 ${streak}` : '—'}{isStreakKing && ' 👑'}</div>
-          </div>
-          {pendingChallengeCount > 0 && (
-            <div>
-              <div style={{ fontSize: 11, color: 'var(--muted)' }}>Challenges</div>
-              <div style={{ fontWeight: 800 }}>🥊 {pendingChallengeCount}</div>
+
+          {badges.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+              {badges.slice(0, 5).map(b => (
+                <BadgeMedallion key={b.id} badge={b} size={32} />
+              ))}
+              {badges.length > 5 && (
+                <Link href="/league/badges" style={{ fontSize: 11, color: 'var(--muted)' }}>+{badges.length - 5} more</Link>
+              )}
             </div>
           )}
         </div>
