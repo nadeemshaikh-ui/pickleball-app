@@ -1,7 +1,9 @@
 'use client';
 
+import { Flame, Star } from 'lucide-react';
 import { TrophyIcon } from './icons';
 import type { Badge } from '@/lib/badges';
+import BadgeMedallion from './BadgeMedallion';
 
 const COLORS = ['#157a4c', '#ff7a1a', '#b8860b', '#2563eb', '#d64545'];
 
@@ -42,11 +44,21 @@ export default function Celebration({ winnerName, onDismiss, badges = [], streak
         <div className="celebration-name">{winnerName} wins the session!</div>
         {(badges.length > 0 || streak >= 3 || mvpCount > 0) && (
           <div style={{ marginTop: 12, fontSize: 14, color: 'white', textAlign: 'center' }}>
-            {streak >= 3 && <div>🔥 {streak}-game win streak</div>}
-            {mvpCount > 0 && <div>⭐ MVP {mvpCount}x this month</div>}
+            {streak >= 3 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                <Flame size={16} aria-hidden="true" /> {streak}-game win streak
+              </div>
+            )}
+            {mvpCount > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                <Star size={16} aria-hidden="true" /> MVP {mvpCount}x this month
+              </div>
+            )}
             {badges.length > 0 && (
-              <div style={{ marginTop: 4 }} title={badges.map(b => b.label).join(', ')}>
-                {badges.map(b => b.emoji).join(' ')}
+              <div style={{ marginTop: 4, display: 'flex', justifyContent: 'center', gap: 4 }}>
+                {badges.map(b => (
+                  <BadgeMedallion key={b.id} badge={b} size={28} />
+                ))}
               </div>
             )}
           </div>

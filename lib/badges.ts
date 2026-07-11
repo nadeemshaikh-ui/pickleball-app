@@ -9,55 +9,57 @@
 // badges from the design spec need data sources not wired into any call
 // site yet (session timestamps, ladder history, per-format aggregates) and
 // are deferred rather than faked.
+// `icon` is a lucide-react icon component name (see components/BadgeMedallion.tsx
+// for the name -> component map) — no emoji anywhere in the catalog.
 export interface Badge {
   id: string;
   label: string;
-  emoji: string;
+  icon: string;
   description: string;
   tier?: 1 | 2 | 3 | 4; // bronze/silver/gold/platinum, for medallion ring color
 }
 
 // Games-played tier ladder.
-const VOLUME_TIERS: { threshold: number; tier: 1 | 2 | 3 | 4; id: string; label: string; emoji: string }[] = [
-  { threshold: 10, tier: 1, id: 'kitchen_regular', label: 'Kitchen Regular', emoji: '🥒' },
-  { threshold: 25, tier: 2, id: 'dink_master', label: 'Dink Master', emoji: '🎯' },
-  { threshold: 50, tier: 3, id: 'rally_beast', label: 'Rally Beast', emoji: '💪' },
-  { threshold: 100, tier: 4, id: 'pickle_royalty', label: 'Pickle Royalty', emoji: '👑' },
+const VOLUME_TIERS: { threshold: number; tier: 1 | 2 | 3 | 4; id: string; label: string; icon: string }[] = [
+  { threshold: 10, tier: 1, id: 'kitchen_regular', label: 'Kitchen Regular', icon: 'Salad' },
+  { threshold: 25, tier: 2, id: 'dink_master', label: 'Dink Master', icon: 'Target' },
+  { threshold: 50, tier: 3, id: 'rally_beast', label: 'Rally Beast', icon: 'Dumbbell' },
+  { threshold: 100, tier: 4, id: 'pickle_royalty', label: 'Pickle Royalty', icon: 'Crown' },
 ];
 
 // MVP-count tier ladder.
-const MVP_TIERS: { threshold: number; tier: 1 | 2 | 3 | 4; id: string; label: string; emoji: string }[] = [
-  { threshold: 1, tier: 1, id: 'fan_favorite', label: 'Fan Favorite', emoji: '⭐' },
-  { threshold: 3, tier: 2, id: 'crowd_pleaser', label: 'Crowd Pleaser', emoji: '🌟' },
-  { threshold: 7, tier: 3, id: 'mvp_regular', label: 'MVP Regular', emoji: '🏅' },
-  { threshold: 15, tier: 4, id: 'hall_of_famer', label: 'Hall of Famer', emoji: '🏛️' },
+const MVP_TIERS: { threshold: number; tier: 1 | 2 | 3 | 4; id: string; label: string; icon: string }[] = [
+  { threshold: 1, tier: 1, id: 'fan_favorite', label: 'Fan Favorite', icon: 'Star' },
+  { threshold: 3, tier: 2, id: 'crowd_pleaser', label: 'Crowd Pleaser', icon: 'Sparkles' },
+  { threshold: 7, tier: 3, id: 'mvp_regular', label: 'MVP Regular', icon: 'Award' },
+  { threshold: 15, tier: 4, id: 'hall_of_famer', label: 'Hall of Famer', icon: 'Landmark' },
 ];
 
 export const BADGE_CATALOG: Badge[] = [
   // Volume tiers
-  ...VOLUME_TIERS.map(t => ({ id: t.id, label: t.label, emoji: t.emoji, tier: t.tier, description: `${t.threshold}+ lifetime games` })),
-  { id: 'paddle_legend', label: 'Paddle Legend', emoji: '🪵', description: '200+ lifetime games' },
-  { id: 'ironwood', label: 'Ironwood', emoji: '🌳', description: '500+ lifetime games' },
+  ...VOLUME_TIERS.map(t => ({ id: t.id, label: t.label, icon: t.icon, tier: t.tier, description: `${t.threshold}+ lifetime games` })),
+  { id: 'paddle_legend', label: 'Paddle Legend', icon: 'TreePine', description: '200+ lifetime games' },
+  { id: 'ironwood', label: 'Ironwood', icon: 'Trees', description: '500+ lifetime games' },
 
   // Win-streak flavor
-  { id: 'hot_streak_5', label: 'Hot Streak', emoji: '🔥', description: '5-game win streak' },
-  { id: 'unstoppable', label: 'Unstoppable', emoji: '🚀', description: '10-game win streak' },
+  { id: 'hot_streak_5', label: 'Hot Streak', icon: 'Flame', description: '5-game win streak' },
+  { id: 'unstoppable', label: 'Unstoppable', icon: 'Rocket', description: '10-game win streak' },
 
   // Streak crown — club-wide contestable record, not a personal quota
-  { id: 'streak_king', label: 'The Streak King', emoji: '👑', description: 'Holds the club’s all-time win-streak record' },
-  { id: 'wooden_spoon', label: 'Wooden Spoon', emoji: '🥄', description: 'Holds the club’s all-time losing-streak record' },
+  { id: 'streak_king', label: 'The Streak King', icon: 'Crown', description: 'Holds the club’s all-time win-streak record' },
+  { id: 'wooden_spoon', label: 'Wooden Spoon', icon: 'UtensilsCrossed', description: 'Holds the club’s all-time losing-streak record' },
 
   // MVP tiers
-  ...MVP_TIERS.map(t => ({ id: t.id, label: t.label, emoji: t.emoji, tier: t.tier, description: `${t.threshold}+ session MVP awards` })),
+  ...MVP_TIERS.map(t => ({ id: t.id, label: t.label, icon: t.icon, tier: t.tier, description: `${t.threshold}+ session MVP awards` })),
 
   // Flight
-  { id: 'gold_flight', label: 'Gold Flight', emoji: '🥇', description: 'Reached Gold flight' },
-  { id: 'platinum_flight', label: 'Platinum Flight', emoji: '🏆', description: 'Reached Platinum flight' },
+  { id: 'gold_flight', label: 'Gold Flight', icon: 'Medal', description: 'Reached Gold flight' },
+  { id: 'platinum_flight', label: 'Platinum Flight', icon: 'Trophy', description: 'Reached Platinum flight' },
 
   // Partnership (uses duo stats already computed for the stats page)
-  { id: 'power_duo', label: 'Power Duo', emoji: '🤝', description: '10+ games with one partner at a 70%+ win rate' },
-  { id: 'golden_pair', label: 'Golden Pair', emoji: '💫', description: 'Club’s #1 duo by win rate' },
-  { id: 'chemistry_lab', label: 'Chemistry Lab', emoji: '🧪', description: 'Played with 10+ different partners' },
+  { id: 'power_duo', label: 'Power Duo', icon: 'Handshake', description: '10+ games with one partner at a 70%+ win rate' },
+  { id: 'golden_pair', label: 'Golden Pair', icon: 'Gem', description: 'Club’s #1 duo by win rate' },
+  { id: 'chemistry_lab', label: 'Chemistry Lab', icon: 'FlaskConical', description: 'Played with 10+ different partners' },
 ];
 
 function findBadge(id: string): Badge {

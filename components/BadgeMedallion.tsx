@@ -1,5 +1,47 @@
 import { useId } from 'react';
+import {
+  Salad,
+  Target,
+  Dumbbell,
+  Crown,
+  TreePine,
+  Trees,
+  Flame,
+  Rocket,
+  UtensilsCrossed,
+  Star,
+  Sparkles,
+  Award,
+  Landmark,
+  Medal,
+  Trophy,
+  Handshake,
+  Gem,
+  FlaskConical,
+  type LucideIcon,
+} from 'lucide-react';
 import type { Badge } from '@/lib/badges';
+
+const ICONS: Record<string, LucideIcon> = {
+  Salad,
+  Target,
+  Dumbbell,
+  Crown,
+  TreePine,
+  Trees,
+  Flame,
+  Rocket,
+  UtensilsCrossed,
+  Star,
+  Sparkles,
+  Award,
+  Landmark,
+  Medal,
+  Trophy,
+  Handshake,
+  Gem,
+  FlaskConical,
+};
 
 // Enamel-medallion art rendered as SVG — no external art asset needed.
 // Vector, so it's crisp at any size, and the radial gradient + bevel rim +
@@ -17,15 +59,17 @@ const DEFAULT_GRADIENT: [string, string, string] = ['#dbe1f0', '#9aa5bd', '#454e
 export default function BadgeMedallion({ badge, size = 40 }: { badge: Badge; size?: number }) {
   const uid = useId().replace(/:/g, '');
   const [light, mid, dark] = badge.tier ? TIER_GRADIENTS[badge.tier] : DEFAULT_GRADIENT;
+  const Icon = ICONS[badge.icon] ?? Star;
   const r = 48;
   const c = 50;
+  const iconSize = size * 0.42;
 
   return (
     <span
       title={`${badge.label} — ${badge.description}`}
-      style={{ display: 'inline-block', width: size, height: size, lineHeight: 0 }}
+      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: size, height: size, position: 'relative', lineHeight: 0 }}
     >
-      <svg viewBox="0 0 100 100" width={size} height={size} role="img" aria-label={badge.label}>
+      <svg viewBox="0 0 100 100" width={size} height={size} role="img" aria-label={badge.label} style={{ position: 'absolute', inset: 0 }}>
         <defs>
           <radialGradient id={`face-${uid}`} cx="35%" cy="30%" r="75%">
             <stop offset="0%" stopColor={light} />
@@ -56,11 +100,8 @@ export default function BadgeMedallion({ badge, size = 40 }: { badge: Badge; siz
             opacity="0.45"
           />
         </g>
-
-        <text x={c} y={c + 8} textAnchor="middle" fontSize="42" style={{ filter: `url(#shadow-${uid})` }}>
-          {badge.emoji}
-        </text>
       </svg>
+      <Icon size={iconSize} color={dark} strokeWidth={2.5} style={{ position: 'relative', filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.3))' }} />
     </span>
   );
 }

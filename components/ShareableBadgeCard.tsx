@@ -1,4 +1,5 @@
 import type { Badge } from '@/lib/badges';
+import BadgeMedallion from './BadgeMedallion';
 
 // Branded share card for a single badge — rendered off-screen or in a modal,
 // then captured with renderElementToImage/shareCachedImage. Sized 4:5
@@ -46,20 +47,7 @@ export default function ShareableBadgeCard({ badge, playerName, photoUrl }: { ba
         </div>
       )}
 
-      <div
-        style={{
-          width: 120,
-          height: 120,
-          borderRadius: '50%',
-          background: '#0b1220',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: 56,
-        }}
-      >
-        {badge.emoji}
-      </div>
+      <BadgeMedallion badge={badge} size={120} />
 
       <div style={{ fontSize: 26, fontWeight: 900, textAlign: 'center', lineHeight: 1.15 }}>{badge.label}</div>
       <div style={{ fontSize: 14, textAlign: 'center', opacity: 0.75, maxWidth: 280 }}>{badge.description}</div>
