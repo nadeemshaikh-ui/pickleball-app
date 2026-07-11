@@ -16,6 +16,10 @@ export default function RegisterPage() {
   const [nickname, setNickname] = useState('');
   const [bio, setBio] = useState('');
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [dominantHand, setDominantHand] = useState<'right' | 'left' | 'ambidextrous' | ''>('');
+  const [paddle, setPaddle] = useState('');
+  const [playingSinceYear, setPlayingSinceYear] = useState('');
+  const [signatureShot, setSignatureShot] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -38,6 +42,10 @@ export default function RegisterPage() {
           setNickname(own.nickname ?? '');
           setBio(own.bio ?? '');
           setPhotoUrl(own.photo_url);
+          setDominantHand(own.dominant_hand ?? '');
+          setPaddle(own.paddle ?? '');
+          setPlayingSinceYear(own.playing_since_year?.toString() ?? '');
+          setSignatureShot(own.signature_shot ?? '');
         } else {
           setName(u.user_metadata?.full_name ?? '');
         }
@@ -74,6 +82,10 @@ export default function RegisterPage() {
         nickname: nickname.trim() || null,
         photoUrl,
         bio: bio.trim() || null,
+        dominantHand: dominantHand || null,
+        paddle: paddle.trim() || null,
+        playingSinceYear: playingSinceYear ? Number(playingSinceYear) : null,
+        signatureShot: signatureShot.trim() || null,
       });
       setSaved(true);
       setDirectory(await listPlayers(currentClubId));
@@ -98,6 +110,8 @@ export default function RegisterPage() {
     );
   }
 
+  const inputStyle = { width: '100%', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 };
+
   return (
     <main className="page">
       <h1>Register</h1>
@@ -111,30 +125,42 @@ export default function RegisterPage() {
         </div>
         <div>
           <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>Name</label>
-          <input
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder="Full name"
-            style={{ width: '100%', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
-          />
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="Full name" style={inputStyle} />
         </div>
         <div>
           <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>Nickname (optional)</label>
-          <input
-            value={nickname}
-            onChange={e => setNickname(e.target.value)}
-            placeholder="What people call you on court"
-            style={{ width: '100%', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
-          />
+          <input value={nickname} onChange={e => setNickname(e.target.value)} placeholder="What people call you on court" style={inputStyle} />
         </div>
         <div>
           <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>Bio (optional)</label>
-          <textarea
-            value={bio}
-            onChange={e => setBio(e.target.value)}
-            rows={3}
-            style={{ width: '100%', padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+          <textarea value={bio} onChange={e => setBio(e.target.value)} rows={3} style={{ ...inputStyle, minHeight: 'unset' }} />
+        </div>
+        <div>
+          <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>Dominant hand (optional)</label>
+          <select value={dominantHand} onChange={e => setDominantHand(e.target.value as typeof dominantHand)} style={inputStyle}>
+            <option value="">Not set</option>
+            <option value="right">Right</option>
+            <option value="left">Left</option>
+            <option value="ambidextrous">Ambidextrous</option>
+          </select>
+        </div>
+        <div>
+          <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>Paddle (optional)</label>
+          <input value={paddle} onChange={e => setPaddle(e.target.value)} placeholder="e.g. Selkirk Vanguard" style={inputStyle} />
+        </div>
+        <div>
+          <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>Playing since (optional)</label>
+          <input
+            value={playingSinceYear}
+            onChange={e => setPlayingSinceYear(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            placeholder="Year, e.g. 2023"
+            inputMode="numeric"
+            style={inputStyle}
           />
+        </div>
+        <div>
+          <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>Signature shot (optional)</label>
+          <input value={signatureShot} onChange={e => setSignatureShot(e.target.value)} placeholder="Dink, smash, lob…" style={inputStyle} />
         </div>
         {error && <p style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 14 }}>{error}</p>}
         {saved && <p style={{ color: 'var(--dark)', fontWeight: 700, fontSize: 14 }}>✓ Saved.</p>}
@@ -153,7 +179,10 @@ export default function RegisterPage() {
             ) : (
               <span style={{ width: 32, height: 32, borderRadius: '50%', background: '#eee', display: 'inline-block' }} />
             )}
-            <span>{p.name}{p.nickname && ` (${p.nickname})`}</span>
+            <span>
+              {p.name}{p.nickname && ` (${p.nickname})`}
+              {p.paddle && <span style={{ color: 'var(--muted)', fontSize: 12 }}> · {p.paddle}</span>}
+            </span>
           </div>
         ))}
       </div>

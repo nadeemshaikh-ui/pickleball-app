@@ -12,6 +12,10 @@ export interface PlayerRow {
   games_played: number;
   created_at: string;
   equipped_badge_id: string | null;
+  dominant_hand: 'right' | 'left' | 'ambidextrous' | null;
+  paddle: string | null;
+  playing_since_year: number | null;
+  signature_shot: string | null;
 }
 
 export const MIN_GAMES_FOR_SKILL_RATING = 20;
@@ -61,6 +65,10 @@ export interface UpsertPlayerOptions {
   nickname: string | null;
   photoUrl: string | null;
   bio: string | null;
+  dominantHand?: 'right' | 'left' | 'ambidextrous' | null;
+  paddle?: string | null;
+  playingSinceYear?: number | null;
+  signatureShot?: string | null;
 }
 
 export async function setEquippedBadge(playerId: string, badgeId: string | null): Promise<void> {
@@ -77,6 +85,10 @@ export async function upsertOwnPlayer(options: UpsertPlayerOptions): Promise<voi
       nickname: options.nickname,
       photo_url: options.photoUrl,
       bio: options.bio,
+      dominant_hand: options.dominantHand ?? null,
+      paddle: options.paddle ?? null,
+      playing_since_year: options.playingSinceYear ?? null,
+      signature_shot: options.signatureShot ?? null,
     },
     { onConflict: 'club_id,user_id' }
   );

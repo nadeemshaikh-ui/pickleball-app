@@ -16,6 +16,7 @@ import {
 import { fetchStreakRecords, type StreakRecord } from '@/lib/streakRecords';
 import { recordNewlyEarnedBadges } from '@/lib/badgeEvents';
 import { fetchPendingChallenges, createChallenge, type Challenge } from '@/lib/challenges';
+import ShareableBadgeCard from '@/components/ShareableBadgeCard';
 import { fetchPersonalBests, type PersonalBests } from '@/lib/personalBests';
 import { computeChemistryScore } from '@/lib/chemistry';
 import { flightForRating } from '@/lib/flights';
@@ -48,6 +49,10 @@ export default function LeagueStatsPage() {
   const [newlyEarned, setNewlyEarned] = useState<Badge[]>([]);
   const [pendingChallenges, setPendingChallenges] = useState<Challenge[]>([]);
   const [challenging, setChallenging] = useState<string | null>(null);
+  const [ownPhotoUrl, setOwnPhotoUrl] = useState<string | null>(null);
+  const [shareCardBadge, setShareCardBadge] = useState<Badge | null>(null);
+  const [sharingBadge, setSharingBadge] = useState(false);
+  const shareCardRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -92,6 +97,7 @@ export default function LeagueStatsPage() {
           if (own) {
             setOwnPlayerId(own.id);
             setOwnPlayerName(own.name);
+            setOwnPhotoUrl(own.photo_url);
             fetchPendingChallenges(currentClubId!, own.name).then(setPendingChallenges).catch(() => setPendingChallenges([]));
 
             const ownStats = lb.find(p => p.name === own.name);
@@ -387,9 +393,23 @@ export default function LeagueStatsPage() {
                         '—'
                       ) : (
                         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                          {badges.map(b => (
-                            <BadgeMedallion key={b.id} badge={b} />
-                          ))}
+                          {badges.map(b =>
+                            isSelf ? (
+                              <button
+                                key={b.id}
+                                aria-label={`Share ${b.label} badge`}
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  setShareCardBadge(b);
+                                }}
+                                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                              >
+                                <BadgeMedallion badge={b} />
+                              </button>
+                            ) : (
+                              <BadgeMedallion key={b.id} badge={b} />
+                            )
+                          )}
                         </div>
                       )}
                     </td>
@@ -458,6 +478,39 @@ export default function LeagueStatsPage() {
         </table>
       </div>
 
+      {shareCardBadge && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }}
+          onClick={() => setShareCardBadge(null)}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }} onClick={e => e.stopPropagation()}>
+            <div ref={shareCardRef}>
+              <ShareableBadgeCard badge={shareCardBadge} playerName={ownPlayerName ?? ''} photoUrl={ownPhotoUrl} />
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                className="btn-primary"
+                disabled={sharingBadge}
+                onClick={async () => {
+                  if (!shareCardRef.current) return;
+                  setSharingBadge(true);
+                  try {
+                    const result = await shareElementAsImage(shareCardRef.current, `badge-${shareCardBadge.id}.png`);
+                    if (result === 'shared') setShareCardBadge(null);
+                  } catch {
+                    // user cancelled the share sheet — leave the card open
+                  } finally {
+                    setSharingBadge(false);
+                  }
+                }}
+              >
+                {sharingBadge ? 'Preparing…' : '📤 Share'}
+              </button>
+              <button className="btn-secondary" onClick={() => setShareCardBadge(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
