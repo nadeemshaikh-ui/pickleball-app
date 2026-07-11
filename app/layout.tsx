@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Bebas_Neue, Oswald } from "next/font/google";
 import "./globals.css";
 import DecorativeBackground from "@/components/DecorativeBackground";
+import AuthGate from "@/components/AuthGate";
 import ClubSwitcher from "@/components/ClubSwitcher";
 
 const bebas = Bebas_Neue({
@@ -30,6 +31,7 @@ export default function RootLayout({
     <html lang="en" className={`${bebas.variable} ${oswald.variable}`}>
       <body>
         <DecorativeBackground />
+        <AuthGate />
         <ClubSwitcher />
         {children}
       </body>
