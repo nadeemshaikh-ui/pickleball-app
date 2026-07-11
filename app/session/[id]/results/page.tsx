@@ -19,7 +19,8 @@ import { getCurrentUser, isCurrentUserAdmin } from '@/lib/auth';
 import { fetchStreaks, fetchMvpCounts } from '@/lib/leagueStats';
 import { flightForRating } from '@/lib/flights';
 import { computeBadges, type Badge } from '@/lib/badges';
-import { listPlayers } from '@/lib/players';
+import { listPlayers, getOwnPlayer } from '@/lib/players';
+import { fetchConfirmations, confirmParticipation, voidSession, type Confirmation } from '@/lib/sessionConfirmations';
 
 export default function ResultsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -32,6 +33,11 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
   const [imageShareError, setImageShareError] = useState<string | null>(null);
   const [dues, setDues] = useState<DueRow[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [confirmations, setConfirmations] = useState<Confirmation[]>([]);
+  const [ownUserId, setOwnUserId] = useState<string | null>(null);
+  const [ownPlayerName, setOwnPlayerName] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [voiding, setVoiding] = useState(false);
   const [winnerBadges, setWinnerBadges] = useState<Badge[]>([]);
   const [winnerStreak, setWinnerStreak] = useState(0);
   const [winnerMvpCount, setWinnerMvpCount] = useState(0);
@@ -48,7 +54,15 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
         setSquadTotals(computeSquadTotals(r, s.squads));
       }
       setDues(await fetchSessionDues(id));
-      if (user) setIsAdmin(await isCurrentUserAdmin(s.club_id));
+      setConfirmations(await fetchConfirmations(id));
+      if (user) {
+        setIsAdmin(await isCurrentUserAdmin(s.club_id));
+        const own = await getOwnPlayer(s.club_id, user.id);
+        if (own) {
+          setOwnUserId(user.id);
+          setOwnPlayerName(own.name);
+        }
+      }
       const celebratedKey = `celebrated-${id}`;
       if (s.status === 'completed' && board.length > 0 && !sessionStorage.getItem(celebratedKey)) {
         setShowCelebration(true);
@@ -78,6 +92,28 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
     }
     load();
   }, [id]);
+
+  async function handleConfirm() {
+    if (!session || !ownUserId || !ownPlayerName) return;
+    setConfirming(true);
+    try {
+      await confirmParticipation(id, session.club_id, ownPlayerName, ownUserId);
+      setConfirmations(await fetchConfirmations(id));
+    } finally {
+      setConfirming(false);
+    }
+  }
+
+  async function handleVoid() {
+    if (!window.confirm('Void this session? Its matches will stop counting toward league stats, badges, and streaks.')) return;
+    setVoiding(true);
+    try {
+      await voidSession(id);
+      setSession(await getSession(id));
+    } finally {
+      setVoiding(false);
+    }
+  }
 
   async function handleTogglePaid(due: DueRow) {
     await markDuePaid(due.id, !due.paid);
@@ -156,6 +192,32 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>BLACK</div>
               <div style={{ fontSize: 28, fontWeight: 800 }}>{squadTotals.black}</div>
+            </div>
+          </div>
+        )}
+
+        {session && session.status === 'voided' && (
+          <p className="card" style={{ color: 'var(--danger)', fontWeight: 700 }}>
+            🚫 This session was voided — its matches don't count toward league stats, badges, or streaks.
+          </p>
+        )}
+
+        {session && session.status !== 'voided' && (
+          <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 13, color: 'var(--muted)' }}>
+              ✅ {confirmations.length}/{session.players.length} players confirmed they played
+            </span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {ownPlayerName && !confirmations.some(c => c.playerName === ownPlayerName) && (
+                <button className="btn-primary" style={{ minHeight: 32, padding: '4px 12px', fontSize: 13 }} onClick={handleConfirm} disabled={confirming}>
+                  {confirming ? 'Confirming…' : 'Yes, I played this'}
+                </button>
+              )}
+              {isAdmin && (
+                <button className="btn-secondary" style={{ minHeight: 32, padding: '4px 12px', fontSize: 13 }} onClick={handleVoid} disabled={voiding}>
+                  {voiding ? 'Voiding…' : '🚫 Void Session'}
+                </button>
+              )}
             </div>
           </div>
         )}

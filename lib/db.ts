@@ -11,7 +11,7 @@ export interface SessionRow {
   players: string[];
   squads: Squads | null;
   round_count: number;
-  status: 'setup' | 'in_progress' | 'completed';
+  status: 'setup' | 'in_progress' | 'completed' | 'voided';
   court_labels: string[];
   round_duration_minutes: number | null;
   rounds_per_block: number | null;
