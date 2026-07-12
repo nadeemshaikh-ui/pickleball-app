@@ -27,6 +27,11 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
   const [nicknameByName, setNicknameByName] = useState<Map<string, string>>(new Map());
   const [flightChanges, setFlightChanges] = useState<Record<string, RoundMessage[]>>({});
   const [kotcMovement, setKotcMovement] = useState<Record<number, string[]>>({});
+  const [scoreErrors, setScoreErrors] = useState<Record<string, string>>({});
+
+  function setScoreError(courtId: string, message: string) {
+    setScoreErrors(prev => ({ ...prev, [courtId]: message }));
+  }
 
   function firstIncompleteRound(r: RoundRow[]): number | undefined {
     return [...new Set(r.map(x => x.round_number))]
@@ -97,6 +102,10 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
 
   async function saveScore(court: RoundRow, a: string, b: string) {
     if (a === '' || b === '' || !session) return;
+    if (Number(a) === Number(b)) {
+      setScoreError(court.id, "Pickleball games can't end in a tie — check the score.");
+      return;
+    }
     setSavingCourtId(court.id);
     const beforeElo = eloByName;
     await updateRoundScore(court.id, Number(a), Number(b));
@@ -264,7 +273,10 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                           max={99}
                           aria-label={`${court.team_a.join(' & ')} score, court ${court.court}, round ${roundNumber}`}
                           value={scoreA}
-                          onChange={e => setDrafts(prev => ({ ...prev, [court.id]: [clampScore(e.target.value), draftFor(court)[1]] }))}
+                          onChange={e => {
+                            setDrafts(prev => ({ ...prev, [court.id]: [clampScore(e.target.value), draftFor(court)[1]] }));
+                            setScoreErrors(prev => ({ ...prev, [court.id]: '' }));
+                          }}
                           onBlur={() => handleSaveCourt(court)}
                         />
                       </div>
@@ -278,12 +290,18 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                           max={99}
                           aria-label={`${court.team_b.join(' & ')} score, court ${court.court}, round ${roundNumber}`}
                           value={scoreB}
-                          onChange={e => setDrafts(prev => ({ ...prev, [court.id]: [draftFor(court)[0], clampScore(e.target.value)] }))}
+                          onChange={e => {
+                            setDrafts(prev => ({ ...prev, [court.id]: [draftFor(court)[0], clampScore(e.target.value)] }));
+                            setScoreErrors(prev => ({ ...prev, [court.id]: '' }));
+                          }}
                           onBlur={() => handleSaveCourt(court)}
                         />
                       </div>
                       {savingCourtId === court.id && <span style={{ fontSize: 12, color: 'var(--muted)' }}>Saving…</span>}
                     </div>
+                    {scoreErrors[court.id] && (
+                      <p style={{ color: 'var(--danger)', fontSize: 12, fontWeight: 600, marginTop: 4 }}>{scoreErrors[court.id]}</p>
+                    )}
                     {upsetLabel(court) && (
                       <div className="resting-badge">
                         <Egg size={14} /> {upsetLabel(court)}
