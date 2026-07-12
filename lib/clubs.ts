@@ -68,10 +68,24 @@ async function uploadClubLogo(file: File): Promise<string> {
 }
 
 // Every club the signed-in user belongs to, plus their role in each.
+// SECURITY: must filter by the caller's own user_id. club_members' SELECT
+// RLS policy is is_club_member(club_id) — any member of a club can see
+// EVERY membership row for that club (needed elsewhere for the member-count
+// feature), not just their own. Without this filter, a plain member's own
+// admin-or-not status here depends on which row Postgres happens to return
+// first among the club's members — real, previously-shipped bug: a member
+// could non-deterministically be treated as admin (full Club Settings
+// access, including editing branding) depending on row ordering luck. Found
+// via this session's E2E permission-boundary spec, not by inspection.
 export async function listMyClubs(): Promise<ClubMembership[]> {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError) throw userError;
+  if (!userData.user) return [];
+
   const { data, error } = await supabase
     .from('club_members')
-    .select('club_id, role, club:clubs(id, name, logo_url, logo_url_2, join_code, created_by, created_at, upi_vpa)');
+    .select('club_id, role, club:clubs(id, name, logo_url, logo_url_2, join_code, created_by, created_at, upi_vpa)')
+    .eq('user_id', userData.user.id);
   if (error) throw error;
   return (data as unknown as { club_id: string; role: 'admin' | 'member'; club: ClubRow }[]).map(r => ({
     club_id: r.club_id,

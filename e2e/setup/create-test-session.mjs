@@ -118,6 +118,11 @@ async function ensureLadderFixture() {
       if (error) throw error;
     }
   }
+  // Two-phase reset (same reasoning as the trigger fix this session found)
+  // — a prior run may have already swapped these rungs, so reassigning the
+  // original 1-4 order directly can collide with whoever currently holds
+  // that rung.
+  await Promise.all(LADDER_PLAYERS.map((name, i) => admin.from('ladder_standings').update({ rung: -(i + 1) }).eq('club_id', TEST_CLUB_ID).eq('player_name', name)));
   for (let i = 0; i < LADDER_PLAYERS.length; i++) {
     const { error } = await admin
       .from('ladder_standings')
@@ -153,36 +158,134 @@ async function ensureLadderFixture() {
   return LADDER_SESSION_ID;
 }
 
+const MEMBER_EMAIL = 'e2e-member@pickleball.test';
+const MEMBER_PASSWORD = 'E2E-member-password-' + SUPABASE_URL.split('.')[0].slice(-8);
+
+async function ensureMemberUser() {
+  const { data: existing } = await admin.auth.admin.listUsers();
+  const found = existing?.users?.find(u => u.email === MEMBER_EMAIL);
+  if (found) return found;
+  const { data, error } = await admin.auth.admin.createUser({ email: MEMBER_EMAIL, password: MEMBER_PASSWORD, email_confirm: true });
+  if (error) throw error;
+  return data.user;
+}
+
+// A non-admin member of the same test club, for permission-boundary specs
+// (does a member see admin-only buttons/routes? should not).
+async function ensureMemberInClub(userId) {
+  const { error } = await admin
+    .from('club_members')
+    .upsert({ club_id: TEST_CLUB_ID, user_id: userId, role: 'member' }, { onConflict: 'club_id,user_id' });
+  if (error) throw error;
+  const { data: existingPlayer } = await admin.from('players').select('id').eq('club_id', TEST_CLUB_ID).eq('user_id', userId).maybeSingle();
+  if (!existingPlayer) {
+    const { error: playerError } = await admin.from('players').insert({ club_id: TEST_CLUB_ID, user_id: userId, name: 'E2E Member', elo_rating: 1500, games_played: 0 });
+    if (playerError) throw playerError;
+  }
+}
+
+const STREAK_SESSION_ID = 'e2e-streak-fixture-session';
+
+// 5 straight wins for "E2E Tester" — real rounds, real matview refresh
+// (via the authenticated admin session, matching the real "Refresh Stats
+// Now" button) — gives the badge gallery a real hot_streak_5 to display.
+async function ensureBadgeStreakFixture() {
+  const { data: existing } = await admin.from('sessions').select('id').eq('id', STREAK_SESSION_ID).maybeSingle();
+  if (!existing) {
+    const { error } = await admin.from('sessions').insert({
+      id: STREAK_SESSION_ID,
+      club_id: TEST_CLUB_ID,
+      format: 'scramble',
+      players: ['E2E Tester', 'E2E Bot A', 'E2E Bot B', 'E2E Bot C'],
+      round_count: 5,
+      status: 'completed',
+    });
+    if (error) throw error;
+  }
+  await admin.from('rounds').delete().eq('session_id', STREAK_SESSION_ID);
+  const rows = Array.from({ length: 5 }, (_, i) => ({
+    session_id: STREAK_SESSION_ID,
+    round_number: i + 1,
+    court: 1,
+    team_a: ['E2E Tester', 'E2E Bot A'],
+    team_b: ['E2E Bot B', 'E2E Bot C'],
+    sitting_out: [],
+    score_a: 11,
+    score_b: 5,
+  }));
+  const { error } = await admin.from('rounds').insert(rows);
+  if (error) throw error;
+}
+
+const RESET_TEST_CLUB_ID = '00000000-0000-0000-0000-0000000000e3';
+const RESET_SESSION_ID = 'e2e-reset-fixture-session';
+
+// Isolated from TEST_CLUB_ID on purpose — the reset-button spec deletes
+// everything in whichever club it targets, and must not wipe the fixtures
+// every other spec in this suite depends on.
+async function ensureResetTestClub(userId) {
+  const { data: existing } = await admin.from('clubs').select('id').eq('id', RESET_TEST_CLUB_ID).maybeSingle();
+  if (!existing) {
+    const { error } = await admin.from('clubs').insert({ id: RESET_TEST_CLUB_ID, name: 'E2E Reset Test Club', join_code: 'E2ERST', created_by: userId });
+    if (error) throw error;
+  }
+  await admin.from('club_members').upsert({ club_id: RESET_TEST_CLUB_ID, user_id: userId, role: 'admin' }, { onConflict: 'club_id,user_id' });
+
+  const { data: existingSession } = await admin.from('sessions').select('id').eq('id', RESET_SESSION_ID).maybeSingle();
+  if (!existingSession) {
+    const { error } = await admin.from('sessions').insert({
+      id: RESET_SESSION_ID,
+      club_id: RESET_TEST_CLUB_ID,
+      format: 'scramble',
+      players: ['E2E Reset A', 'E2E Reset B', 'E2E Reset C', 'E2E Reset D'],
+      round_count: 1,
+      status: 'completed',
+    });
+    if (error) throw error;
+  }
+}
+
+function buildStorageState(session, clubId, baseURL, storageKey) {
+  return {
+    cookies: [],
+    origins: [{ origin: baseURL, localStorage: [{ name: storageKey, value: JSON.stringify(session) }, { name: 'currentClubId', value: clubId }] }],
+  };
+}
+
 async function main() {
   const user = await ensureTestUser();
   await ensureTestClub(user.id);
   await ensureTestSession();
   await ensureLadderFixture();
+  await ensureBadgeStreakFixture();
+  await ensureResetTestClub(user.id);
+
+  const member = await ensureMemberUser();
+  await ensureMemberInClub(member.id);
 
   const anonClient = createClient(SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-  const { data: signInData, error: signInError } = await anonClient.auth.signInWithPassword({ email: TEST_EMAIL, password: TEST_PASSWORD });
-  if (signInError) throw signInError;
+  const { data: adminSignIn, error: adminSignInError } = await anonClient.auth.signInWithPassword({ email: TEST_EMAIL, password: TEST_PASSWORD });
+  if (adminSignInError) throw adminSignInError;
+
+  // Real admin-triggered stats refresh — same RPC the "Refresh Stats Now"
+  // button calls — so the badge streak fixture's matview data is queryable.
+  const authedClient = createClient(SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: `Bearer ${adminSignIn.session.access_token}` } },
+  });
+  await authedClient.rpc('refresh_league_stats');
+
+  const memberAnonClient = createClient(SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const { data: memberSignIn, error: memberSignInError } = await memberAnonClient.auth.signInWithPassword({ email: MEMBER_EMAIL, password: MEMBER_PASSWORD });
+  if (memberSignInError) throw memberSignInError;
 
   const projectRef = new URL(SUPABASE_URL).hostname.split('.')[0];
   const storageKey = `sb-${projectRef}-auth-token`;
   const baseURL = process.env.E2E_BASE_URL ?? 'https://pickleball-app-two.vercel.app';
 
-  const storageState = {
-    cookies: [],
-    origins: [
-      {
-        origin: baseURL,
-        localStorage: [
-          { name: storageKey, value: JSON.stringify(signInData.session) },
-          { name: 'currentClubId', value: TEST_CLUB_ID },
-        ],
-      },
-    ],
-  };
-
   mkdirSync(path.join(root, 'e2e', '.auth'), { recursive: true });
-  writeFileSync(path.join(root, 'e2e', '.auth', 'user.json'), JSON.stringify(storageState, null, 2));
-  console.log('e2e/.auth/user.json written — test account:', TEST_EMAIL, 'club:', TEST_CLUB_ID);
+  writeFileSync(path.join(root, 'e2e', '.auth', 'user.json'), JSON.stringify(buildStorageState(adminSignIn.session, TEST_CLUB_ID, baseURL, storageKey), null, 2));
+  writeFileSync(path.join(root, 'e2e', '.auth', 'member.json'), JSON.stringify(buildStorageState(memberSignIn.session, TEST_CLUB_ID, baseURL, storageKey), null, 2));
+  console.log('e2e/.auth/user.json + member.json written —', TEST_EMAIL, '(admin) /', MEMBER_EMAIL, '(member), club:', TEST_CLUB_ID);
 }
 
 main().catch(err => {
