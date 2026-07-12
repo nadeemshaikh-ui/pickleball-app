@@ -7,7 +7,7 @@ import { test, expect } from '@playwright/test';
 test('dashboard loads with nav intact', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible();
-  await expect(page.getByRole('link', { name: /league/i })).toBeVisible();
+  await expect(page.getByLabel('Main navigation').getByRole('link', { name: 'League' })).toBeVisible();
 });
 
 test('league stats page loads and a player row expands to show head-to-head', async ({ page }) => {
@@ -24,7 +24,7 @@ test('league stats page loads and a player row expands to show head-to-head', as
 test('badge gallery renders sectioned catalog', async ({ page }) => {
   await page.goto('/league/badges');
   await expect(page.getByRole('heading', { name: 'Badge Gallery' })).toBeVisible();
-  await expect(page.getByText('Crowns')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Crowns' })).toBeVisible();
 });
 
 test('ladder page loads standings', async ({ page }) => {

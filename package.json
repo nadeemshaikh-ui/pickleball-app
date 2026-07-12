@@ -10,7 +10,7 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "e2e:report": "playwright show-report",
-    "e2e:login": "playwright codegen --save-storage=e2e/.auth/user.json https://pickleball-app-two.vercel.app"
+    "e2e:login": "node e2e/setup/create-test-session.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
