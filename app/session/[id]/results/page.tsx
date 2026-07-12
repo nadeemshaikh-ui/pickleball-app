@@ -23,6 +23,7 @@ import { computeBadges, type Badge } from '@/lib/badges';
 import { listPlayers, getOwnPlayer } from '@/lib/players';
 import { fetchConfirmations, confirmParticipation, voidSession, type Confirmation } from '@/lib/sessionConfirmations';
 import { getClubUpiVpa } from '@/lib/clubs';
+import { shareToWhatsApp } from '@/lib/whatsapp';
 
 export default function ResultsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -308,6 +309,21 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
                     >
                       <IndianRupee size={12} /> Pay
                     </a>
+                  )}
+                  {!d.paid && isAdmin && (session?.booker_upi_vpa ?? upiVpa) && (
+                    <button
+                      className="text-link-btn"
+                      style={{ fontSize: 12, marginLeft: 8, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                      title="Remind via WhatsApp"
+                      aria-label={`Remind ${d.player_name} via WhatsApp`}
+                      onClick={() =>
+                        shareToWhatsApp(
+                          `Hey ${d.player_name}, you owe ₹${d.amount_owed} for the session. Pay via UPI to ${session?.booker_upi_vpa ?? upiVpa}`
+                        )
+                      }
+                    >
+                      <WhatsAppIcon size={12} />
+                    </button>
                   )}
                   {isAdmin ? (
                     <button
