@@ -2,7 +2,7 @@
 
 import { use, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { UserPlus, Share2, AlertTriangle } from 'lucide-react';
+import { UserPlus, Share2, AlertTriangle, Code2 } from 'lucide-react';
 import {
   listMyClubs,
   listPendingJoinRequests,
@@ -15,6 +15,7 @@ import {
   type JoinRequestRow,
 } from '@/lib/clubs';
 import { shareElementAsImage } from '@/lib/shareImage';
+import { isDevModeEnabled, setDevModeEnabled } from '@/lib/devMode';
 
 export default function ClubSettingsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -36,6 +37,7 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
   const [imageShareError, setImageShareError] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
   const [resetMsg, setResetMsg] = useState<string | null>(null);
+  const [devMode, setDevMode] = useState(false);
   const inviteCaptureRef = useRef<HTMLDivElement>(null);
 
   async function load() {
@@ -57,6 +59,7 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
 
   useEffect(() => {
     load();
+    setDevMode(isDevModeEnabled());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -229,6 +232,23 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
       <h2>Members</h2>
       <div className="card">
         <p style={{ fontSize: 14 }}>{memberCount} member{memberCount === 1 ? '' : 's'}</p>
+      </div>
+
+      <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Code2 size={18} /> Developer Mode</h2>
+      <div className="card">
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={devMode}
+            onChange={e => {
+              setDevMode(e.target.checked);
+              setDevModeEnabled(e.target.checked);
+            }}
+          />
+          <span style={{ fontSize: 13 }}>
+            Show a floating debug panel (your user/club id, role, current route, recent errors) — this browser only.
+          </span>
+        </label>
       </div>
 
       <h2 style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: 6 }}><AlertTriangle size={18} /> Danger Zone</h2>
