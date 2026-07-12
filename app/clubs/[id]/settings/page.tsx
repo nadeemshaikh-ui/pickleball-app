@@ -10,10 +10,14 @@ import {
   updateClubBranding,
   updateClubUpiVpa,
   listClubMembers,
+  setDangerZoneAccess,
   resetClubData,
   type ClubRow,
   type JoinRequestRow,
+  type ClubMemberRow,
 } from '@/lib/clubs';
+import { listPlayers } from '@/lib/players';
+import { getCurrentUser } from '@/lib/auth';
 import { shareElementAsImage } from '@/lib/shareImage';
 import { isDevModeEnabled, setDevModeEnabled } from '@/lib/devMode';
 
@@ -24,6 +28,10 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<JoinRequestRow[]>([]);
   const [memberCount, setMemberCount] = useState(0);
+  const [members, setMembers] = useState<ClubMemberRow[]>([]);
+  const [memberNames, setMemberNames] = useState<Map<string, string>>(new Map());
+  const [ownDangerZoneAccess, setOwnDangerZoneAccess] = useState(false);
+  const [ownUserId, setOwnUserId] = useState<string | null>(null);
 
   const [name, setName] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -50,11 +58,30 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
       setUpiVpa(mine.club.upi_vpa ?? '');
     }
     if (mine?.role === 'admin') {
-      const [req, members] = await Promise.all([listPendingJoinRequests(id), listClubMembers(id)]);
+      const [req, memberRows, playerRows, user] = await Promise.all([
+        listPendingJoinRequests(id),
+        listClubMembers(id),
+        listPlayers(id),
+        getCurrentUser(),
+      ]);
       setPending(req);
-      setMemberCount(members.length);
+      setMemberCount(memberRows.length);
+      setMembers(memberRows);
+      setMemberNames(new Map(playerRows.filter(p => p.user_id).map(p => [p.user_id as string, p.name])));
+      setOwnUserId(user?.id ?? null);
+      setOwnDangerZoneAccess(memberRows.find(m => m.user_id === user?.id)?.danger_zone_access ?? false);
     }
     setLoading(false);
+  }
+
+  async function handleToggleDangerZone(userId: string, current: boolean) {
+    try {
+      await setDangerZoneAccess(id, userId, !current);
+      setMembers(prev => prev.map(m => (m.user_id === userId ? { ...m, danger_zone_access: !current } : m)));
+      if (userId === ownUserId) setOwnDangerZoneAccess(!current);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update access.');
+    }
   }
 
   useEffect(() => {
@@ -231,7 +258,20 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
 
       <h2>Members</h2>
       <div className="card">
-        <p style={{ fontSize: 14 }}>{memberCount} member{memberCount === 1 ? '' : 's'}</p>
+        <p style={{ fontSize: 14, marginBottom: 10 }}>{memberCount} member{memberCount === 1 ? '' : 's'}</p>
+        {members.filter(m => m.role === 'admin').map(m => (
+          <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
+            <span style={{ flex: 1, fontSize: 13 }}>{memberNames.get(m.user_id) ?? 'Unknown'}</span>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={m.danger_zone_access}
+                onChange={() => handleToggleDangerZone(m.user_id, m.danger_zone_access)}
+              />
+              Danger Zone access
+            </label>
+          </div>
+        ))}
       </div>
 
       <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Code2 size={18} /> Developer Mode</h2>
@@ -258,14 +298,20 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
           Player roster (names, photos) is kept; their stats reset to zero. Cannot be undone.
         </p>
         {resetMsg && <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{resetMsg}</p>}
-        <button
-          className="btn-secondary"
-          style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}
-          onClick={handleResetClub}
-          disabled={resetting}
-        >
-          {resetting ? 'Resetting…' : 'Reset All Club Data'}
-        </button>
+        {ownDangerZoneAccess ? (
+          <button
+            className="btn-secondary"
+            style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}
+            onClick={handleResetClub}
+            disabled={resetting}
+          >
+            {resetting ? 'Resetting…' : 'Reset All Club Data'}
+          </button>
+        ) : (
+          <p style={{ fontSize: 13, color: 'var(--muted)' }}>
+            You don&apos;t have Danger Zone access. Ask another admin to grant it above.
+          </p>
+        )}
       </div>
     </main>
   );

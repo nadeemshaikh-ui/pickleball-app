@@ -112,7 +112,7 @@ export async function createClub(name: string, logoFile: File | null): Promise<C
 
   const { error: memberError } = await supabase
     .from('club_members')
-    .insert({ club_id: club.id, user_id: user.id, role: 'admin' });
+    .insert({ club_id: club.id, user_id: user.id, role: 'admin', danger_zone_access: true });
   if (memberError) throw memberError;
 
   return club as ClubRow;
@@ -189,8 +189,52 @@ export async function updateClubBranding(clubId: string, name: string, logoFile:
   if (error) throw error;
 }
 
-export async function listClubMembers(clubId: string): Promise<{ user_id: string; role: 'admin' | 'member'; joined_at: string }[]> {
-  const { data, error } = await supabase.from('club_members').select('user_id, role, joined_at').eq('club_id', clubId).order('joined_at');
+export interface ClubMemberRow {
+  user_id: string;
+  role: 'admin' | 'member';
+  joined_at: string;
+  danger_zone_access: boolean;
+}
+
+export async function listClubMembers(clubId: string): Promise<ClubMemberRow[]> {
+  const { data, error } = await supabase
+    .from('club_members')
+    .select('user_id, role, joined_at, danger_zone_access')
+    .eq('club_id', clubId)
+    .order('joined_at');
   if (error) throw error;
   return data;
+}
+
+export async function setDangerZoneAccess(clubId: string, userId: string, access: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('club_members')
+    .update({ danger_zone_access: access })
+    .eq('club_id', clubId)
+    .eq('user_id', userId);
+  if (error) throw error;
+}
+
+export async function isSuperAdmin(): Promise<boolean> {
+  const { data, error } = await supabase.rpc('is_super_admin');
+  if (error) throw error;
+  return data === true;
+}
+
+export interface SuperAdminClubRow extends ClubRow {
+  member_count: number;
+}
+
+// Relies on the super-admin RLS carve-out on `clubs`/`club_members` — a
+// normal member would only see their own club_members rows here.
+export async function listAllClubsForSuperAdmin(): Promise<SuperAdminClubRow[]> {
+  const [{ data: clubs, error: clubsError }, { data: members, error: membersError }] = await Promise.all([
+    supabase.from('clubs').select('*').order('created_at'),
+    supabase.from('club_members').select('club_id'),
+  ]);
+  if (clubsError) throw clubsError;
+  if (membersError) throw membersError;
+  const counts = new Map<string, number>();
+  for (const m of members ?? []) counts.set(m.club_id, (counts.get(m.club_id) ?? 0) + 1);
+  return (clubs as ClubRow[]).map(c => ({ ...c, member_count: counts.get(c.id) ?? 0 }));
 }
