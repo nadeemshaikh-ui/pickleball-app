@@ -65,9 +65,46 @@ async function ensureTestClub(userId) {
   }
 }
 
+const TEST_SESSION_ID = 'e2e-fixture-session';
+
+// One completed scramble session with a scored round — gives route-smoke
+// specs a real session id to hit (/session/[id]/results etc.) without
+// scripting the Setup wizard's multi-step UI, which has no stable
+// selectors to script against yet.
+async function ensureTestSession() {
+  const { data: existing } = await admin.from('sessions').select('id').eq('id', TEST_SESSION_ID).maybeSingle();
+  if (!existing) {
+    const { error } = await admin.from('sessions').insert({
+      id: TEST_SESSION_ID,
+      club_id: TEST_CLUB_ID,
+      format: 'scramble',
+      players: ['E2E Tester', 'E2E Bot A', 'E2E Bot B', 'E2E Bot C'],
+      round_count: 1,
+      status: 'completed',
+    });
+    if (error) throw error;
+  }
+  const { data: existingRound } = await admin.from('rounds').select('id').eq('session_id', TEST_SESSION_ID).maybeSingle();
+  if (!existingRound) {
+    const { error } = await admin.from('rounds').insert({
+      session_id: TEST_SESSION_ID,
+      round_number: 1,
+      court: 1,
+      team_a: ['E2E Tester', 'E2E Bot A'],
+      team_b: ['E2E Bot B', 'E2E Bot C'],
+      sitting_out: [],
+      score_a: 11,
+      score_b: 7,
+    });
+    if (error) throw error;
+  }
+  return TEST_SESSION_ID;
+}
+
 async function main() {
   const user = await ensureTestUser();
   await ensureTestClub(user.id);
+  await ensureTestSession();
 
   const anonClient = createClient(SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   const { data: signInData, error: signInError } = await anonClient.auth.signInWithPassword({ email: TEST_EMAIL, password: TEST_PASSWORD });
