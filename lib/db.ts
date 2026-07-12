@@ -24,6 +24,8 @@ export interface SessionRow {
   is_ladder: boolean;
   king_of_court_fixed_pairs: boolean | null;
   venue: string | null;
+  squad_gold_label: string | null;
+  squad_black_label: string | null;
 }
 
 export interface RoundRow {
@@ -60,6 +62,8 @@ export interface CreateSessionOptions {
   isLadder: boolean;
   kingOfCourtFixedPairs: boolean | null;
   venue: string | null;
+  squadGoldLabel: string | null;
+  squadBlackLabel: string | null;
 }
 
 export async function createSession(options: CreateSessionOptions): Promise<string> {
@@ -83,6 +87,8 @@ export async function createSession(options: CreateSessionOptions): Promise<stri
     is_ladder: options.isLadder,
     king_of_court_fixed_pairs: options.kingOfCourtFixedPairs,
     venue: options.venue,
+    squad_gold_label: options.squadGoldLabel,
+    squad_black_label: options.squadBlackLabel,
     status: 'in_progress',
   });
   if (error) throw error;

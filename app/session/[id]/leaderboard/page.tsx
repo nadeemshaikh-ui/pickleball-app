@@ -90,11 +90,11 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
         {squadTotals && (
           <div className="card" style={{ marginTop: 16, display: 'flex', justifyContent: 'space-around' }}>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>GOLD</div>
+              <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>{(session?.squad_gold_label || 'Gold').toUpperCase()}</div>
               <div style={{ fontSize: 28, fontWeight: 800 }}>{squadTotals.gold}</div>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>BLACK</div>
+              <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>{(session?.squad_black_label || 'Black').toUpperCase()}</div>
               <div style={{ fontSize: 28, fontWeight: 800 }}>{squadTotals.black}</div>
             </div>
           </div>

@@ -123,6 +123,8 @@ export default function SetupPage() {
   const [manualBlocks, setManualBlocks] = useState<(number | null)[][]>([]);
 
   const [squadMode, setSquadMode] = useState<'auto' | 'manual'>('auto');
+  const [squadGoldLabel, setSquadGoldLabel] = useState('');
+  const [squadBlackLabel, setSquadBlackLabel] = useState('');
   // 0 = gold, 1 = black, null = unassigned, indexed by player.
   const [manualSquadAssignment, setManualSquadAssignment] = useState<(0 | 1 | null)[]>([]);
 
@@ -514,6 +516,8 @@ export default function SetupPage() {
         isLadder,
         kingOfCourtFixedPairs: format === 'king_of_court' ? kingOfCourtFixedPairs : null,
         venue: venue.trim() || null,
+        squadGoldLabel: format === 'squad_rivalry' ? squadGoldLabel.trim() || null : null,
+        squadBlackLabel: format === 'squad_rivalry' ? squadBlackLabel.trim() || null : null,
       };
 
       let sessionId: string;
@@ -910,6 +914,30 @@ export default function SetupPage() {
 
       {format === 'squad_rivalry' && (
         <>
+          <h2>Name Your Squads (optional)</h2>
+          <div className="card" style={{ display: 'flex', gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>Squad 1</label>
+              <input
+                value={squadGoldLabel}
+                onChange={e => setSquadGoldLabel(e.target.value)}
+                placeholder="Gold"
+                aria-label="Squad 1 name"
+                style={{ width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>Squad 2</label>
+              <input
+                value={squadBlackLabel}
+                onChange={e => setSquadBlackLabel(e.target.value)}
+                placeholder="Black"
+                aria-label="Squad 2 name"
+                style={{ width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+              />
+            </div>
+          </div>
+
           <h2>Who Picks the Squads?</h2>
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -924,7 +952,7 @@ export default function SetupPage() {
 
           {squadMode === 'manual' && (
             <div className="card" style={{ marginTop: 12 }}>
-              <strong>Tap a player to assign Gold / Black</strong>
+              <strong>Tap a player to assign {squadGoldLabel.trim() || 'Gold'} / {squadBlackLabel.trim() || 'Black'}</strong>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
                 {names.map(n => n.trim()).map((name, playerIndex) => {
                   if (!name) return null;
