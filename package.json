@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "e2e:report": "playwright show-report",
+    "e2e:login": "playwright codegen --save-storage=e2e/.auth/user.json https://pickleball-app-two.vercel.app"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
@@ -19,6 +22,7 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
