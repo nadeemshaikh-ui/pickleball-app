@@ -173,6 +173,12 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
           Start Scoring →
         </Link>
 
+        {session?.storylines && session.storylines.length > 0 && (
+          <Link href={`/session/${id}/storyline`} className="btn-secondary" style={{ width: '100%', display: 'block', textAlign: 'center', marginTop: 10 }}>
+            Tonight&apos;s Storyline
+          </Link>
+        )}
+
         <button className="text-link-btn" onClick={() => setShowEditPlayers(v => !v)}>
           {showEditPlayers ? 'Hide edit players' : 'Edit Players'}
         </button>

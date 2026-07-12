@@ -26,6 +26,7 @@ export interface SessionRow {
   venue: string | null;
   squad_gold_label: string | null;
   squad_black_label: string | null;
+  storylines: string[] | null;
 }
 
 export interface RoundRow {
@@ -64,6 +65,7 @@ export interface CreateSessionOptions {
   venue: string | null;
   squadGoldLabel: string | null;
   squadBlackLabel: string | null;
+  storylines: string[];
 }
 
 export async function createSession(options: CreateSessionOptions): Promise<string> {
@@ -89,6 +91,7 @@ export async function createSession(options: CreateSessionOptions): Promise<stri
     venue: options.venue,
     squad_gold_label: options.squadGoldLabel,
     squad_black_label: options.squadBlackLabel,
+    storylines: options.storylines,
     status: 'in_progress',
   });
   if (error) throw error;

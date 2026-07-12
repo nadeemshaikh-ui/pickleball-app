@@ -518,6 +518,7 @@ export default function SetupPage() {
         venue: venue.trim() || null,
         squadGoldLabel: format === 'squad_rivalry' ? squadGoldLabel.trim() || null : null,
         squadBlackLabel: format === 'squad_rivalry' ? squadBlackLabel.trim() || null : null,
+        storylines,
       };
 
       let sessionId: string;
