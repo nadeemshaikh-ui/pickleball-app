@@ -16,7 +16,7 @@ function scoreLine(r: RoundRow): string {
 }
 
 export function formatAnalyticsAsText(rounds: RoundRow[]): string {
-  const lines: string[] = ["Today's Analytics", ''];
+  const lines: string[] = ['Session Analytics', ''];
 
   const totals = computeSessionTotals(rounds);
   lines.push(`Total points scored: ${totals.totalPoints}`);

@@ -15,6 +15,7 @@ import {
   computeMostGamesPlayed,
 } from '@/lib/gameStats';
 import { shareElementAsImage } from '@/lib/shareImage';
+import { formatLabel } from '@/lib/formatLabel';
 import SessionNav from '@/components/SessionNav';
 import NewSessionLink from '@/components/NewSessionLink';
 import SessionDate from '@/components/SessionDate';
@@ -94,8 +95,13 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
 
         <div ref={analyticsCaptureRef}>
         {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
-        <h1>Today&apos;s Analytics</h1>
+        <h1>Session Analytics</h1>
         {session && <SessionDate createdAt={session.created_at} venue={session.venue} />}
+        {session && (
+          <p style={{ color: 'var(--muted)', marginTop: 4 }}>
+            {formatLabel(session.format)} · {session.players.length} players
+          </p>
+        )}
         <p style={{ color: 'var(--muted)', marginTop: 4 }}>
           {totals.totalGames} of {session?.round_count ? session.round_count * 2 : '…'} games played
         </p>
