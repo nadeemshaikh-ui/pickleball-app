@@ -300,9 +300,9 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
                   <Avatar name={d.player_name} size={22} />
                   <span className="leaderboard-name">{d.player_name}</span>
                   <span className="leaderboard-stats">₹{d.amount_owed}</span>
-                  {!d.paid && upiVpa && (
+                  {!d.paid && (session?.booker_upi_vpa ?? upiVpa) && (
                     <a
-                      href={`upi://pay?pa=${encodeURIComponent(upiVpa)}&pn=${encodeURIComponent('Pickleball Session')}&am=${d.amount_owed}&cu=INR`}
+                      href={`upi://pay?pa=${encodeURIComponent(session?.booker_upi_vpa ?? upiVpa!)}&pn=${encodeURIComponent('Pickleball Session')}&am=${d.amount_owed}&cu=INR`}
                       className="text-link-btn"
                       style={{ fontSize: 12, marginLeft: 8, display: 'inline-flex', alignItems: 'center', gap: 4 }}
                     >

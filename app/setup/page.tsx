@@ -156,6 +156,7 @@ export default function SetupPage() {
 
   const [courtCost, setCourtCost] = useState('');
   const [ballCost, setBallCost] = useState('200');
+  const [bookerUpiVpa, setBookerUpiVpa] = useState('');
   const [isLadder, setIsLadder] = useState(false);
   const [kingOfCourtFixedPairs, setKingOfCourtFixedPairs] = useState(true);
 
@@ -304,6 +305,7 @@ export default function SetupPage() {
     }
     setCourtCost(last.court_cost !== null ? String(last.court_cost) : '');
     setBallCost(String(last.ball_cost));
+    setBookerUpiVpa(last.booker_upi_vpa ?? '');
     setIsLadder(last.is_ladder);
     if (last.king_of_court_fixed_pairs !== null) setKingOfCourtFixedPairs(last.king_of_court_fixed_pairs);
     setStartTime(last.start_time ?? '');
@@ -501,6 +503,11 @@ export default function SetupPage() {
 
       const parsedCourtCost = courtCost.trim() === '' ? null : Number(courtCost);
       const parsedBallCost = ballCost.trim() === '' ? 200 : Number(ballCost);
+      if (parsedCourtCost !== null && bookerUpiVpa.trim() === '') {
+        setError('Enter your UPI ID so others can pay you, or leave court cost blank to skip dues.');
+        setSubmitting(false);
+        return;
+      }
 
       const baseOptions = {
         clubId: currentClubId,
@@ -519,6 +526,7 @@ export default function SetupPage() {
         squadGoldLabel: format === 'squad_rivalry' ? squadGoldLabel.trim() || null : null,
         squadBlackLabel: format === 'squad_rivalry' ? squadBlackLabel.trim() || null : null,
         storylines,
+        bookerUpiVpa: bookerUpiVpa.trim() || null,
       };
 
       let sessionId: string;
@@ -804,6 +812,24 @@ export default function SetupPage() {
       <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: -6, marginBottom: 16 }}>
         Leave court cost blank to skip dues tracking for this session. Split evenly across everyone playing.
       </p>
+
+      {courtCost.trim() !== '' && (
+        <>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>
+              Your UPI ID (others pay you here)
+            </label>
+            <input
+              type="text"
+              value={bookerUpiVpa}
+              onChange={e => setBookerUpiVpa(e.target.value)}
+              placeholder="e.g. yourname@okhdfcbank"
+              aria-label="Your UPI ID"
+              style={{ width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+            />
+          </div>
+        </>
+      )}
 
       <h2>Ladder League (optional)</h2>
       <div className="card">

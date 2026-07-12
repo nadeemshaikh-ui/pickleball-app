@@ -27,6 +27,7 @@ export interface SessionRow {
   squad_gold_label: string | null;
   squad_black_label: string | null;
   storylines: string[] | null;
+  booker_upi_vpa: string | null;
 }
 
 export interface RoundRow {
@@ -66,6 +67,7 @@ export interface CreateSessionOptions {
   squadGoldLabel: string | null;
   squadBlackLabel: string | null;
   storylines: string[];
+  bookerUpiVpa: string | null;
 }
 
 export async function createSession(options: CreateSessionOptions): Promise<string> {
@@ -92,6 +94,7 @@ export async function createSession(options: CreateSessionOptions): Promise<stri
     squad_gold_label: options.squadGoldLabel,
     squad_black_label: options.squadBlackLabel,
     storylines: options.storylines,
+    booker_upi_vpa: options.bookerUpiVpa,
     status: 'in_progress',
   });
   if (error) throw error;
