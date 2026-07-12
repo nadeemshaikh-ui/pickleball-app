@@ -17,6 +17,9 @@ test('create a scramble session end-to-end and score it', async ({ page }) => {
     await page.getByPlaceholder(`Player ${i + 1}`).fill(names[i]);
   }
 
+  // Setup is now a 3-screen wizard: Players -> Format & Options -> Cost & Details.
+  await page.getByRole('button', { name: 'Next: Format & Options' }).click();
+  await page.getByRole('button', { name: 'Next: Cost & Details' }).click();
   await page.getByRole('button', { name: 'Generate Schedule' }).click();
 
   // Setup redirects to /session/[id]/schedule on success.

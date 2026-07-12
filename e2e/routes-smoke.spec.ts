@@ -54,3 +54,14 @@ test('session analytics page renders', async ({ page }) => {
   await page.goto(`/session/${TEST_SESSION_ID}/analytics`);
   await expect(page.locator('body')).not.toContainText('Application error');
 });
+
+test('my dues page loads and shows a net total', async ({ page }) => {
+  await page.goto('/league/dues');
+  await expect(page.locator('body')).not.toContainText('Application error');
+  await expect(page.getByText('Total you owe')).toBeVisible();
+});
+
+test('admin page correctly denies a non-super-admin test user', async ({ page }) => {
+  await page.goto('/admin');
+  await expect(page.getByText('Not authorized.')).toBeVisible();
+});

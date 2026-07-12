@@ -11,8 +11,11 @@ test('reset button clears the isolated test club\'s session data', async ({ page
   await page.goto(`/clubs/${RESET_CLUB_ID}/settings`);
   await expect(page.getByRole('heading', { name: /Settings/ })).toBeVisible();
 
-  page.once('dialog', dialog => dialog.accept('E2E Reset Test Club'));
+  // Reset now opens an in-app ConfirmModal with a type-to-confirm text
+  // field instead of a native window.prompt.
   await page.getByRole('button', { name: /Reset All Club Data/i }).click();
+  await page.getByLabel('Confirmation text').fill('E2E Reset Test Club');
+  await page.getByRole('button', { name: 'Reset Club Data' }).click();
 
   await expect(page.getByText(/Club data reset/i)).toBeVisible({ timeout: 10000 });
   // DB-level confirmation that data actually deleted (not just a success

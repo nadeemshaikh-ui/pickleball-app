@@ -26,6 +26,7 @@ import { polishStorylines } from '@/lib/storylinesLLM';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import StatusChip from '@/components/StatusChip';
 import SignInGate from '@/components/SignInGate';
+import InfoModal from '@/components/InfoModal';
 
 const MIN_GAMES_FOR_NEMESIS_ALERT = 3;
 
@@ -818,28 +819,26 @@ export default function SetupPage() {
       <h2>Format</h2>
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {(Object.keys(FORMAT_INFO) as Format[]).map(f => (
-          <div key={f}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <input type="radio" checked={format === f} onChange={() => setFormat(f)} />
-              <span style={{ flex: 1 }}>{FORMAT_INFO[f].label}</span>
-              <button
-                type="button"
-                onClick={() => setOpenFormatInfo(openFormatInfo === f ? null : f)}
-                className="btn-secondary"
-                style={{ minHeight: 32, padding: '4px 10px', fontSize: 12 }}
-              >
-                {openFormatInfo === f ? 'Hide' : 'What is this?'}
-              </button>
-            </label>
-            {openFormatInfo === f && (
-              <div style={{ marginTop: 8, padding: 12, background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, lineHeight: 1.5 }}>
-                <p>{FORMAT_INFO[f].summary}</p>
-                <p style={{ marginTop: 8, fontStyle: 'italic', color: 'var(--muted)' }}>{FORMAT_INFO[f].example}</p>
-              </div>
-            )}
-          </div>
+          <label key={f} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <input type="radio" checked={format === f} onChange={() => setFormat(f)} />
+            <span style={{ flex: 1 }}>{FORMAT_INFO[f].label}</span>
+            <button
+              type="button"
+              onClick={() => setOpenFormatInfo(f)}
+              className="btn-secondary"
+              style={{ minHeight: 32, padding: '4px 10px', fontSize: 12 }}
+            >
+              What is this?
+            </button>
+          </label>
         ))}
       </div>
+      {openFormatInfo && (
+        <InfoModal title={FORMAT_INFO[openFormatInfo].label} onClose={() => setOpenFormatInfo(null)}>
+          <p>{FORMAT_INFO[openFormatInfo].summary}</p>
+          <p style={{ marginTop: 8, fontStyle: 'italic', color: 'var(--muted)' }}>{FORMAT_INFO[openFormatInfo].example}</p>
+        </InfoModal>
+      )}
 
       {format === 'king_of_court' && (
         <>
