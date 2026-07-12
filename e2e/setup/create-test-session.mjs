@@ -396,6 +396,71 @@ async function ensurePendingOnlyUser() {
   return pendingUser;
 }
 
+const TIE_SESSION_ID = 'e2e-tie-fixture-session';
+
+// Dedicated unscored round for the tie-rejection spec — separate from the
+// ladder fixture's unscored round, which the concurrent-scoring spec needs
+// undisturbed (both specs run in parallel by default).
+async function ensureTieFixture() {
+  const { data: existing } = await admin.from('sessions').select('id').eq('id', TIE_SESSION_ID).maybeSingle();
+  if (!existing) {
+    const { error } = await admin.from('sessions').insert({
+      id: TIE_SESSION_ID,
+      club_id: TEST_CLUB_ID,
+      format: 'scramble',
+      players: ['E2E Tie A', 'E2E Tie B', 'E2E Tie C', 'E2E Tie D'],
+      round_count: 1,
+      status: 'in_progress',
+    });
+    if (error) throw error;
+  }
+  await admin.from('rounds').delete().eq('session_id', TIE_SESSION_ID); // reset for re-run
+  const { error: roundError } = await admin.from('rounds').insert({
+    session_id: TIE_SESSION_ID,
+    round_number: 1,
+    court: 1,
+    team_a: ['E2E Tie A', 'E2E Tie B'],
+    team_b: ['E2E Tie C', 'E2E Tie D'],
+    sitting_out: [],
+    score_a: null,
+    score_b: null,
+  });
+  if (roundError) throw roundError;
+}
+
+const CONCURRENT_SESSION_ID = 'e2e-concurrent-fixture-session';
+
+// Dedicated unscored round for the concurrent-scoring spec — separate from
+// both the ladder-upset fixture (already written to by ladder-upset.spec.ts)
+// and the tie fixture above, so all three unscored-round specs can run in
+// parallel without racing each other's writes.
+async function ensureConcurrentFixture() {
+  const { data: existing } = await admin.from('sessions').select('id').eq('id', CONCURRENT_SESSION_ID).maybeSingle();
+  if (!existing) {
+    const { error } = await admin.from('sessions').insert({
+      id: CONCURRENT_SESSION_ID,
+      club_id: TEST_CLUB_ID,
+      format: 'scramble',
+      players: ['E2E Concurrent A', 'E2E Concurrent B', 'E2E Concurrent C', 'E2E Concurrent D'],
+      round_count: 1,
+      status: 'in_progress',
+    });
+    if (error) throw error;
+  }
+  await admin.from('rounds').delete().eq('session_id', CONCURRENT_SESSION_ID); // reset for re-run
+  const { error: roundError } = await admin.from('rounds').insert({
+    session_id: CONCURRENT_SESSION_ID,
+    round_number: 1,
+    court: 1,
+    team_a: ['E2E Concurrent A', 'E2E Concurrent B'],
+    team_b: ['E2E Concurrent C', 'E2E Concurrent D'],
+    sitting_out: [],
+    score_a: null,
+    score_b: null,
+  });
+  if (roundError) throw roundError;
+}
+
 const NO_DZ_CLUB_ID = '00000000-0000-0000-0000-0000000000e6';
 
 // Tiny throwaway club where TEST_EMAIL is admin but explicitly lacks
@@ -462,6 +527,8 @@ async function main() {
   await ensureConfirmFixture();
   await ensureNoDangerZoneClub(user.id);
   await ensureDuesFixture();
+  await ensureTieFixture();
+  await ensureConcurrentFixture();
   await ensureSuperAdminGrant(requester.id);
 
   const member = await ensureMemberUser();
