@@ -245,6 +245,81 @@ async function ensureResetTestClub(userId) {
   }
 }
 
+const MULTI_CLUB_ID = '00000000-0000-0000-0000-0000000000e4';
+const MULTI_SESSION_ID = 'e2e-multiclub-fixture-session';
+
+// A second real club the admin also belongs to, each with a session
+// containing a uniquely-named player — directly tests the area
+// listMyClubs() had its privilege bug in: does switching clubs actually
+// scope visible data, or can one club's session leak into another's view.
+async function ensureMultiClubFixture(userId) {
+  const { data: existing } = await admin.from('clubs').select('id').eq('id', MULTI_CLUB_ID).maybeSingle();
+  if (!existing) {
+    const { error } = await admin.from('clubs').insert({ id: MULTI_CLUB_ID, name: 'E2E Second Club', join_code: 'E2EMC2', created_by: userId });
+    if (error) throw error;
+  }
+  await admin.from('club_members').upsert({ club_id: MULTI_CLUB_ID, user_id: userId, role: 'admin' }, { onConflict: 'club_id,user_id' });
+
+  const { data: existingSession } = await admin.from('sessions').select('id').eq('id', MULTI_SESSION_ID).maybeSingle();
+  if (!existingSession) {
+    const { error } = await admin.from('sessions').insert({
+      id: MULTI_SESSION_ID,
+      club_id: MULTI_CLUB_ID,
+      format: 'scramble',
+      players: ['E2E SecondClub Alpha', 'E2E SecondClub Beta', 'E2E SecondClub Gamma', 'E2E SecondClub Delta'],
+      round_count: 1,
+      status: 'completed',
+    });
+    if (error) throw error;
+  }
+  const { data: existingRound } = await admin.from('rounds').select('id').eq('session_id', MULTI_SESSION_ID).maybeSingle();
+  if (!existingRound) {
+    const { error } = await admin.from('rounds').insert({
+      session_id: MULTI_SESSION_ID,
+      round_number: 1,
+      court: 1,
+      team_a: ['E2E SecondClub Alpha', 'E2E SecondClub Beta'],
+      team_b: ['E2E SecondClub Gamma', 'E2E SecondClub Delta'],
+      sitting_out: [],
+      score_a: 11,
+      score_b: 6,
+    });
+    if (error) throw error;
+  }
+}
+
+const VOID_SESSION_ID = 'e2e-void-fixture-session';
+
+// Dedicated session for the void-session admin-action spec — separate from
+// TEST_SESSION_ID (which route-smoke specs assert is a normal completed
+// session) so voiding it doesn't change what those specs expect to see.
+async function ensureVoidFixture() {
+  const { data: existing } = await admin.from('sessions').select('id, status').eq('id', VOID_SESSION_ID).maybeSingle();
+  if (existing?.status === 'voided') {
+    await admin.from('sessions').update({ status: 'completed' }).eq('id', VOID_SESSION_ID); // reset for re-run
+  } else if (!existing) {
+    const { error } = await admin.from('sessions').insert({
+      id: VOID_SESSION_ID,
+      club_id: TEST_CLUB_ID,
+      format: 'scramble',
+      players: ['E2E Tester', 'E2E Bot A', 'E2E Bot B', 'E2E Bot C'],
+      round_count: 1,
+      status: 'completed',
+    });
+    if (error) throw error;
+    await admin.from('rounds').insert({
+      session_id: VOID_SESSION_ID,
+      round_number: 1,
+      court: 1,
+      team_a: ['E2E Tester', 'E2E Bot A'],
+      team_b: ['E2E Bot B', 'E2E Bot C'],
+      sitting_out: [],
+      score_a: 11,
+      score_b: 9,
+    });
+  }
+}
+
 function buildStorageState(session, clubId, baseURL, storageKey) {
   return {
     cookies: [],
@@ -259,6 +334,8 @@ async function main() {
   await ensureLadderFixture();
   await ensureBadgeStreakFixture();
   await ensureResetTestClub(user.id);
+  await ensureMultiClubFixture(user.id);
+  await ensureVoidFixture();
 
   const member = await ensureMemberUser();
   await ensureMemberInClub(member.id);
