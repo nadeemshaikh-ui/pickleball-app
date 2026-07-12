@@ -130,7 +130,9 @@ export default function BadgesGalleryPage() {
       >
         <BadgeMedallion badge={b} size={48} />
         <div style={{ fontSize: 13, fontWeight: 700, textAlign: 'center' }}>{b.label}</div>
-        <div style={{ fontSize: 11, color: 'var(--muted)', textAlign: 'center' }}>{b.description}</div>
+        <div style={{ fontSize: 12, fontWeight: earned || isContestable ? 400 : 700, color: earned || isContestable ? 'var(--muted)' : 'var(--text-accent, inherit)', textAlign: 'center' }}>
+          {earned || isContestable ? b.description : `Goal: ${b.description}`}
+        </div>
         {isContestable && (
           <div style={{ fontSize: 11, textAlign: 'center', color: holder ? 'var(--text-accent, inherit)' : 'var(--muted)', fontWeight: 700 }}>
             {holder ? `Held by ${holder.holderName} (${holdCount}x)` : 'Unclaimed'}
