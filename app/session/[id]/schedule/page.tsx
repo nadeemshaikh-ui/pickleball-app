@@ -4,19 +4,27 @@ import { use, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { getSession, getRounds, renamePlayerEverywhere, type RoundRow, type SessionRow } from '@/lib/db';
 import { shareElementAsImage } from '@/lib/shareImage';
+import { listPlayers, type PlayerRow } from '@/lib/players';
+import { flightForRating } from '@/lib/flights';
+import { preloadPlayerPhotos } from '@/lib/playerPhotos';
 import SessionNav from '@/components/SessionNav';
 import NewSessionLink from '@/components/NewSessionLink';
 import SessionDate from '@/components/SessionDate';
 import GroupHeader from '@/components/GroupHeader';
+import Avatar from '@/components/Avatar';
 import { ChairIcon, WhatsAppIcon } from '@/components/icons';
 import { formatLabel } from '@/lib/formatLabel';
 import { computeRoundTimeRange } from '@/lib/roundTiming';
 import ScheduleImageTemplate from '@/components/ScheduleImageTemplate';
 
+const FLIGHT_RANK: Record<string, number> = { Platinum: 4, Gold: 3, Silver: 2, Bronze: 1 };
+
 export default function SchedulePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [session, setSession] = useState<SessionRow | null>(null);
   const [rounds, setRounds] = useState<RoundRow[]>([]);
+  const [playersByName, setPlayersByName] = useState<Map<string, PlayerRow>>(new Map());
+  const [showRoster, setShowRoster] = useState(true);
   const [showEditPlayers, setShowEditPlayers] = useState(false);
   const [nameDrafts, setNameDrafts] = useState<string[]>([]);
   const [savingNames, setSavingNames] = useState(false);
@@ -31,6 +39,10 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
     setSession(s);
     setRounds(r);
     setNameDrafts(s.players);
+    listPlayers(s.club_id)
+      .then(players => setPlayersByName(new Map(players.map(p => [p.name, p]))))
+      .catch(() => setPlayersByName(new Map()));
+    preloadPlayerPhotos().catch(() => {});
   }
 
   useEffect(() => {
@@ -117,6 +129,44 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
             {Math.round((session.round_count * session.round_duration_minutes) / 60 * 10) / 10} hr total
             {session.start_time && ` — starting ${session.start_time}`}
           </p>
+        )}
+
+        {session && session.players.length > 0 && (
+          <div style={{ marginTop: 16 }}>
+            <button
+              className="text-link-btn"
+              onClick={() => setShowRoster(v => !v)}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
+            >
+              <span>Who's Playing ({session.players.length})</span>
+              <span>{showRoster ? 'Hide' : 'Show'}</span>
+            </button>
+            {showRoster && (
+              <div className="card" style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {[...session.players]
+                  .sort((x, y) => {
+                    const px = playersByName.get(x);
+                    const py = playersByName.get(y);
+                    const rankX = FLIGHT_RANK[flightForRating(px?.elo_rating ?? 1500)];
+                    const rankY = FLIGHT_RANK[flightForRating(py?.elo_rating ?? 1500)];
+                    if (rankX !== rankY) return rankY - rankX;
+                    return (py?.elo_rating ?? 1500) - (px?.elo_rating ?? 1500);
+                  })
+                  .map(name => {
+                    const p = playersByName.get(name);
+                    const flight = flightForRating(p?.elo_rating ?? 1500);
+                    return (
+                      <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <Avatar name={name} size={32} />
+                        <span style={{ flex: 1, fontWeight: 700, fontSize: 14 }}>{name}</span>
+                        <span style={{ fontSize: 12, color: 'var(--muted)' }}>{flight}</span>
+                        {p && <span style={{ fontSize: 11, color: 'var(--muted)' }}>{p.elo_rating}</span>}
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
         )}
 
         <Link href={`/session/${id}/play`} className="btn-primary" style={{ width: '100%', marginTop: 16 }}>
