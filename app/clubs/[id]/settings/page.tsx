@@ -2,7 +2,7 @@
 
 import { use, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { UserPlus, Share2 } from 'lucide-react';
+import { UserPlus, Share2, AlertTriangle } from 'lucide-react';
 import {
   listMyClubs,
   listPendingJoinRequests,
@@ -10,6 +10,7 @@ import {
   updateClubBranding,
   updateClubUpiVpa,
   listClubMembers,
+  resetClubData,
   type ClubRow,
   type JoinRequestRow,
 } from '@/lib/clubs';
@@ -33,6 +34,8 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
   const [upiSavedMsg, setUpiSavedMsg] = useState<string | null>(null);
   const [imageShareError, setImageShareError] = useState<string | null>(null);
+  const [resetting, setResetting] = useState(false);
+  const [resetMsg, setResetMsg] = useState<string | null>(null);
   const inviteCaptureRef = useRef<HTMLDivElement>(null);
 
   async function load() {
@@ -91,6 +94,27 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
     await resolveJoinRequest(request, decision);
     setPending(prev => prev.filter(r => r.id !== request.id));
     if (decision === 'approved') setMemberCount(c => c + 1);
+  }
+
+  async function handleResetClub() {
+    if (!club) return;
+    const typed = window.prompt(
+      `This permanently deletes every session, match, badge, and streak record for "${club.name}". Player names/photos are kept, stats reset to zero. This cannot be undone.\n\nType the club's name to confirm:`
+    );
+    if (typed !== club.name) {
+      if (typed !== null) setResetMsg('Name didn\'t match — nothing was deleted.');
+      return;
+    }
+    setResetting(true);
+    setResetMsg(null);
+    try {
+      await resetClubData(id);
+      setResetMsg('Club data reset. All sessions and stats cleared.');
+    } catch (e) {
+      setResetMsg(e instanceof Error ? e.message : 'Reset failed.');
+    } finally {
+      setResetting(false);
+    }
   }
 
   async function handleShareInvite() {
@@ -205,6 +229,23 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
       <h2>Members</h2>
       <div className="card">
         <p style={{ fontSize: 14 }}>{memberCount} member{memberCount === 1 ? '' : 's'}</p>
+      </div>
+
+      <h2 style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: 6 }}><AlertTriangle size={18} /> Danger Zone</h2>
+      <div className="card" style={{ borderColor: 'var(--danger)' }}>
+        <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>
+          Permanently deletes every session, match, badge, and streak record for this club — e.g. to start a new season.
+          Player roster (names, photos) is kept; their stats reset to zero. Cannot be undone.
+        </p>
+        {resetMsg && <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{resetMsg}</p>}
+        <button
+          className="btn-secondary"
+          style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}
+          onClick={handleResetClub}
+          disabled={resetting}
+        >
+          {resetting ? 'Resetting…' : 'Reset All Club Data'}
+        </button>
       </div>
     </main>
   );

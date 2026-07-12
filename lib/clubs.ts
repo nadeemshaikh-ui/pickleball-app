@@ -11,6 +11,17 @@ export interface ClubRow {
   upi_vpa: string | null;
 }
 
+// Admin-only at the DB level (RLS + a raise inside the function itself).
+// Deletes every session/round/dues/confirmation/challenge/streak-record/
+// badge-holder-history row for this club and resets each player's elo/games
+// back to default — the roster itself (names, photos) survives. Does not
+// touch the ladder (the separate "Reset Ladder" button owns that) or other
+// clubs' data.
+export async function resetClubData(clubId: string): Promise<void> {
+  const { error } = await supabase.rpc('reset_club_data', { target_club_id: clubId });
+  if (error) throw error;
+}
+
 export async function updateClubUpiVpa(clubId: string, upiVpa: string | null): Promise<void> {
   const { error } = await supabase.from('clubs').update({ upi_vpa: upiVpa }).eq('id', clubId);
   if (error) throw error;
