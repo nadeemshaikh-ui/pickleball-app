@@ -129,15 +129,16 @@ export default function LeaguePage() {
         {monthLeader && (
           <>
             <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Sparkles size={17} /> Player of the Month</h2>
-            <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Link href="/league/potm" className="card" style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'inherit', textDecoration: 'none' }}>
               <Avatar name={monthLeader.name} size={44} />
-              <div>
+              <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 800, fontSize: 18 }}>{monthLeader.name}</div>
                 <div style={{ color: 'var(--muted)', fontSize: 14 }}>
                   {monthLeader.wins}W {monthLeader.losses}L this month ({(monthLeader.winPct * 100).toFixed(0)}%)
                 </div>
               </div>
-            </div>
+              <span style={{ fontSize: 12, color: 'var(--muted)' }}>View Full Board →</span>
+            </Link>
           </>
         )}
 
