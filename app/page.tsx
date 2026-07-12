@@ -13,7 +13,7 @@ import { listPendingJoinRequests, type JoinRequestRow } from '@/lib/clubs';
 import { flightForRating } from '@/lib/flights';
 import { computeBadges, type Badge } from '@/lib/badges';
 import SignInGate from '@/components/SignInGate';
-import { Flame, Crown, Zap, Bell, Trophy, Gift, Award } from 'lucide-react';
+import { Flame, Crown, Zap, Bell, Trophy, Gift, Award, Swords } from 'lucide-react';
 import BadgeMedallion from '@/components/BadgeMedallion';
 
 const POWER_DUO_MIN_GAMES = 10;
@@ -187,6 +187,7 @@ export default function HomePage() {
         <Link href="/league/wrapped" className="btn-secondary" style={{ flex: 1, textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><Gift size={14} /> Wrapped</Link>
         <Link href="/league/badges" className="btn-secondary" style={{ flex: 1, textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><Award size={14} /> Badges</Link>
       </div>
+      <Link href="/league/h2h" className="btn-secondary" style={{ display: 'flex', textAlign: 'center', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 8 }}><Swords size={14} /> Head-to-Head</Link>
     </main>
   );
 }

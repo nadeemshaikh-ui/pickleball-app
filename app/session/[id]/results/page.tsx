@@ -1,7 +1,7 @@
 'use client';
 
 import { use, useEffect, useRef, useState } from 'react';
-import { Ban, CheckCircle2, IndianRupee } from 'lucide-react';
+import { Ban, CheckCircle2, IndianRupee, Swords as SwordsIcon } from 'lucide-react';
 import { getSession, getRounds, type SessionRow, type RoundRow } from '@/lib/db';
 import { computeLeaderboard, computeSquadTotals, type PlayerStats } from '@/lib/analytics';
 import { renderElementToImage, shareCachedImage } from '@/lib/shareImage';
@@ -255,6 +255,14 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
                 <Avatar name={p.name} size={22} />
                 {p.name}
+                <Link
+                  href={`/league/h2h?vs=${encodeURIComponent(p.name)}`}
+                  aria-label={`Head-to-head vs ${p.name}`}
+                  title="Head-to-head match history"
+                  style={{ display: 'inline-flex', color: 'var(--muted)', fontWeight: 400 }}
+                >
+                  <SwordsIcon size={13} />
+                </Link>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: 8, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)', fontSize: 13 }}>
                 <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>Wins</div>{p.wins}</div>

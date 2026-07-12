@@ -381,6 +381,15 @@ export default function LeagueStatsPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: 1 }}>
                         <Avatar name={p.name} size={22} />
                         {p.name}
+                        <Link
+                          href={`/league/h2h?vs=${encodeURIComponent(p.name)}`}
+                          onClick={e => e.stopPropagation()}
+                          aria-label={`Head-to-head vs ${p.name}`}
+                          title="Head-to-head match history"
+                          style={{ display: 'inline-flex', color: 'var(--muted)' }}
+                        >
+                          <Swords size={13} />
+                        </Link>
                         {equippedBadge && (
                           <span
                             title={equippedBadge.description}
@@ -445,6 +454,7 @@ export default function LeagueStatsPage() {
                       <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>For/Ag</div>{p.pointsFor}/{p.pointsAgainst}</div>
                       <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>MVP</div>{mvpCounts.get(p.name) ?? 0}</div>
                       <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>Flight</div>{flightByName.get(p.name) ?? '—'}</div>
+                      <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>Current streak</div>{streaks.get(p.name) ?? 0}</div>
                       <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>Best streak</div>{streakBests.get(p.name)?.longestWinStreak ?? 0}</div>
                       <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>Worst streak</div>{streakBests.get(p.name)?.longestLossStreak ?? 0}</div>
                     </div>
