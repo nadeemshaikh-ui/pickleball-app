@@ -780,7 +780,7 @@ export default function SetupPage() {
             onChange={e => setCourtCost(e.target.value)}
             placeholder="e.g. 800"
             aria-label="Court cost"
-            style={{ width: '100%', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+            style={{ width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '10px 28px 10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
           />
         </div>
         <div style={{ flex: 1 }}>
@@ -792,7 +792,7 @@ export default function SetupPage() {
             value={ballCost}
             onChange={e => setBallCost(e.target.value)}
             aria-label="Ball cost"
-            style={{ width: '100%', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+            style={{ width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '10px 28px 10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
           />
         </div>
       </div>

@@ -85,6 +85,14 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
     return drafts[court.id] ?? [court.score_a?.toString() ?? '', court.score_b?.toString() ?? ''];
   }
 
+  // Scores cap at 99 — 3+ digits is always a mis-tap, not a real pickleball score.
+  function clampScore(raw: string): string {
+    if (raw === '') return raw;
+    const n = Number(raw);
+    if (Number.isNaN(n)) return raw;
+    return String(Math.min(99, Math.max(0, n)));
+  }
+
   async function saveScore(court: RoundRow, a: string, b: string) {
     if (a === '' || b === '' || !session) return;
     setSavingCourtId(court.id);
@@ -249,9 +257,10 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                           className="score-input"
                           type="number"
                           inputMode="numeric"
+                          max={99}
                           aria-label={`${court.team_a.join(' & ')} score, court ${court.court}, round ${roundNumber}`}
                           value={scoreA}
-                          onChange={e => setDrafts(prev => ({ ...prev, [court.id]: [e.target.value, draftFor(court)[1]] }))}
+                          onChange={e => setDrafts(prev => ({ ...prev, [court.id]: [clampScore(e.target.value), draftFor(court)[1]] }))}
                           onBlur={() => handleSaveCourt(court)}
                         />
                       </div>
@@ -262,9 +271,10 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                           className="score-input"
                           type="number"
                           inputMode="numeric"
+                          max={99}
                           aria-label={`${court.team_b.join(' & ')} score, court ${court.court}, round ${roundNumber}`}
                           value={scoreB}
-                          onChange={e => setDrafts(prev => ({ ...prev, [court.id]: [draftFor(court)[0], e.target.value] }))}
+                          onChange={e => setDrafts(prev => ({ ...prev, [court.id]: [draftFor(court)[0], clampScore(e.target.value)] }))}
                           onBlur={() => handleSaveCourt(court)}
                         />
                       </div>

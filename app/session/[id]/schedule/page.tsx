@@ -160,7 +160,7 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
                         <Avatar name={name} size={32} />
                         <span style={{ flex: 1, fontWeight: 700, fontSize: 14 }}>{name}</span>
                         <span style={{ fontSize: 12, color: 'var(--muted)' }}>{flight}</span>
-                        {p && <span style={{ fontSize: 11, color: 'var(--muted)' }}>{p.elo_rating}</span>}
+                        {p && <span style={{ fontSize: 11, color: 'var(--muted)' }} title="Skill rating — used to balance courts and flights">Rating {p.elo_rating}</span>}
                       </div>
                     );
                   })}

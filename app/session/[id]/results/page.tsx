@@ -247,7 +247,7 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
 
         <h2>Full Leaderboard</h2>
         <p style={{ fontSize: 11, color: 'var(--muted)', padding: '0 8px', marginBottom: 4 }}>
-          W = Wins · L = Losses · For/Ag = Points For/Against · Diff = Point Differential
+          For/Ag = Points For/Against
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {leaderboard.map(p => (
@@ -257,10 +257,10 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
                 {p.name}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: 8, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)', fontSize: 13 }}>
-                <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>W-L</div>{p.wins}-{p.losses}</div>
+                <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>Wins</div>{p.wins}</div>
+                <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>Losses</div>{p.losses}</div>
                 <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>For</div>{p.pointsFor}</div>
                 <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>Ag</div>{p.pointsAgainst}</div>
-                <div><div style={{ color: 'var(--muted)', fontSize: 10 }}>Diff</div>{p.pointsFor - p.pointsAgainst}</div>
               </div>
             </div>
           ))}

@@ -15,7 +15,9 @@ export default function ClubSwitcher() {
         value={currentClubId ?? ''}
         onChange={e => {
           setCurrentClubId(e.target.value);
-          window.location.href = '/setup';
+          // Reload in place instead of forcing a jump to /setup — faster,
+          // keeps whatever page the user was actually on.
+          window.location.reload();
         }}
         aria-label="Switch club"
         style={{ minHeight: 36, padding: '4px 10px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 8, background: 'white' }}
