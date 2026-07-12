@@ -306,6 +306,9 @@ export default function LeagueStatsPage() {
         Min {MIN_GAMES_FOR_RANKING} games to be ranked. Default order is confidence-adjusted (Wilson score) — accounts
         for sample size, not just raw win%.
       </p>
+      <Link href="/league/h2h" className="text-link-btn" style={{ display: 'inline-block', marginBottom: 8 }}>
+        View Head-to-Head →
+      </Link>
       {imageShareError && <p style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 13, marginTop: 8 }}>{imageShareError}</p>}
 
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12, marginBottom: 12 }}>
