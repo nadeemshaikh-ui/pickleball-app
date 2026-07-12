@@ -42,7 +42,10 @@ test('admin edits and reverts club branding name', async ({ page }) => {
 test('admin can reset the ladder', async ({ page }) => {
   await page.goto('/league/ladder');
   await expect(page.getByRole('heading', { name: 'Ladder League' })).toBeVisible();
+  // Reset Ladder now opens a ConfirmModal — the trigger and its Confirm
+  // button both match /Reset Ladder/i, so scope to the modal's exact match.
   await page.getByRole('button', { name: /Reset Ladder/i }).click();
+  await page.getByRole('button', { name: 'Reset Ladder', exact: true }).click();
   await expect(page.getByText(/Resetting…/i)).toBeVisible().catch(() => {}); // may resolve too fast to catch, non-fatal
-  await expect(page.getByRole('button', { name: /Reset Ladder/i })).toBeEnabled({ timeout: 10000 });
+  await expect(page.getByRole('button', { name: /Reset Ladder \(reseed by ELO\)/i })).toBeEnabled({ timeout: 10000 });
 });

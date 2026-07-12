@@ -342,6 +342,7 @@ async function ensureJoinRequestFixture() {
   await admin.from('club_join_requests').delete().eq('club_id', TEST_CLUB_ID).eq('user_id', requester.id);
   const { error } = await admin.from('club_join_requests').insert({ club_id: TEST_CLUB_ID, user_id: requester.id, status: 'pending' });
   if (error) throw error;
+  return requester;
 }
 
 const CONFIRM_SESSION_ID = 'e2e-confirm-fixture-session';
@@ -374,6 +375,72 @@ async function ensureConfirmFixture() {
   await admin.from('session_confirmations').delete().eq('session_id', CONFIRM_SESSION_ID); // reset for re-run
 }
 
+const PENDING_EMAIL = 'e2e-pending@pickleball.test';
+const PENDING_PASSWORD = 'E2E-pending-password-' + SUPABASE_URL.split('.')[0].slice(-8);
+
+// A dedicated account that stays club-less forever — REQUESTER_EMAIL can't
+// be reused here because admin-actions.spec.ts legitimately approves that
+// account into real membership, which would make the "pending banner on a
+// club-less user" scenario unobservable regardless of run order.
+async function ensurePendingOnlyUser() {
+  const { data: existing } = await admin.auth.admin.listUsers();
+  let pendingUser = existing?.users?.find(u => u.email === PENDING_EMAIL);
+  if (!pendingUser) {
+    const { data, error } = await admin.auth.admin.createUser({ email: PENDING_EMAIL, password: PENDING_PASSWORD, email_confirm: true });
+    if (error) throw error;
+    pendingUser = data.user;
+  }
+  await admin.from('club_join_requests').delete().eq('club_id', RESET_TEST_CLUB_ID).eq('user_id', pendingUser.id);
+  const { error } = await admin.from('club_join_requests').insert({ club_id: RESET_TEST_CLUB_ID, user_id: pendingUser.id, status: 'pending' });
+  if (error) throw error;
+  return pendingUser;
+}
+
+const NO_DZ_CLUB_ID = '00000000-0000-0000-0000-0000000000e6';
+
+// Tiny throwaway club where TEST_EMAIL is admin but explicitly lacks
+// danger_zone_access — negative-case fixture for the Danger Zone toggle
+// (the positive/granted case is already covered by RESET_TEST_CLUB_ID,
+// whose admin got danger_zone_access=true from the backfill migration).
+async function ensureNoDangerZoneClub(userId) {
+  const { data: existing } = await admin.from('clubs').select('id').eq('id', NO_DZ_CLUB_ID).maybeSingle();
+  if (!existing) {
+    const { error } = await admin.from('clubs').insert({ id: NO_DZ_CLUB_ID, name: 'E2E No-DZ Club', join_code: 'E2ENDZ', created_by: userId });
+    if (error) throw error;
+  }
+  await admin.from('club_members').upsert(
+    { club_id: NO_DZ_CLUB_ID, user_id: userId, role: 'admin', danger_zone_access: false },
+    { onConflict: 'club_id,user_id' }
+  );
+}
+
+// Grants super_admin to the requester account (not MEMBER_EMAIL, to avoid
+// touching the permission-boundary fixture used by member-permissions.spec.ts)
+// — positive-case fixture for /admin.
+async function ensureSuperAdminGrant(userId) {
+  await admin.from('super_admins').upsert({ user_id: userId }, { onConflict: 'user_id' });
+}
+
+// One unpaid due for "E2E Tester" on the existing completed fixture session
+// — gives the My Dues page a real nonzero balance to render, instead of
+// only ever testing the empty state.
+async function ensureDuesFixture() {
+  const { data: existing } = await admin
+    .from('session_dues')
+    .select('id')
+    .eq('session_id', TEST_SESSION_ID)
+    .eq('player_name', 'E2E Tester')
+    .maybeSingle();
+  if (!existing) {
+    const { error } = await admin
+      .from('session_dues')
+      .insert({ session_id: TEST_SESSION_ID, player_name: 'E2E Tester', amount_owed: 150, paid: false });
+    if (error) throw error;
+  } else {
+    await admin.from('session_dues').update({ paid: false, amount_owed: 150 }).eq('id', existing.id); // reset for re-run
+  }
+}
+
 function buildStorageState(session, clubId, baseURL, storageKey) {
   return {
     cookies: [],
@@ -390,8 +457,12 @@ async function main() {
   await ensureResetTestClub(user.id);
   await ensureMultiClubFixture(user.id);
   await ensureVoidFixture();
-  await ensureJoinRequestFixture();
+  const requester = await ensureJoinRequestFixture();
+  const pendingUser = await ensurePendingOnlyUser();
   await ensureConfirmFixture();
+  await ensureNoDangerZoneClub(user.id);
+  await ensureDuesFixture();
+  await ensureSuperAdminGrant(requester.id);
 
   const member = await ensureMemberUser();
   await ensureMemberInClub(member.id);
@@ -411,6 +482,15 @@ async function main() {
   const { data: memberSignIn, error: memberSignInError } = await memberAnonClient.auth.signInWithPassword({ email: MEMBER_EMAIL, password: MEMBER_PASSWORD });
   if (memberSignInError) throw memberSignInError;
 
+  // Requester has no club yet (pending join request) — no currentClubId to seed.
+  const requesterAnonClient = createClient(SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const { data: requesterSignIn, error: requesterSignInError } = await requesterAnonClient.auth.signInWithPassword({ email: REQUESTER_EMAIL, password: REQUESTER_PASSWORD });
+  if (requesterSignInError) throw requesterSignInError;
+
+  const pendingAnonClient = createClient(SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const { data: pendingSignIn, error: pendingSignInError } = await pendingAnonClient.auth.signInWithPassword({ email: PENDING_EMAIL, password: PENDING_PASSWORD });
+  if (pendingSignInError) throw pendingSignInError;
+
   const projectRef = new URL(SUPABASE_URL).hostname.split('.')[0];
   const storageKey = `sb-${projectRef}-auth-token`;
   const baseURL = process.env.E2E_BASE_URL ?? 'https://pickleball-app-two.vercel.app';
@@ -418,7 +498,9 @@ async function main() {
   mkdirSync(path.join(root, 'e2e', '.auth'), { recursive: true });
   writeFileSync(path.join(root, 'e2e', '.auth', 'user.json'), JSON.stringify(buildStorageState(adminSignIn.session, TEST_CLUB_ID, baseURL, storageKey), null, 2));
   writeFileSync(path.join(root, 'e2e', '.auth', 'member.json'), JSON.stringify(buildStorageState(memberSignIn.session, TEST_CLUB_ID, baseURL, storageKey), null, 2));
-  console.log('e2e/.auth/user.json + member.json written —', TEST_EMAIL, '(admin) /', MEMBER_EMAIL, '(member), club:', TEST_CLUB_ID);
+  writeFileSync(path.join(root, 'e2e', '.auth', 'requester.json'), JSON.stringify(buildStorageState(requesterSignIn.session, '', baseURL, storageKey), null, 2));
+  writeFileSync(path.join(root, 'e2e', '.auth', 'pending.json'), JSON.stringify(buildStorageState(pendingSignIn.session, '', baseURL, storageKey), null, 2));
+  console.log('e2e/.auth/user.json + member.json + requester.json + pending.json written —', TEST_EMAIL, '(admin) /', MEMBER_EMAIL, '(member) /', REQUESTER_EMAIL, '(super admin) /', PENDING_EMAIL, '(club-less pending), club:', TEST_CLUB_ID);
 }
 
 main().catch(err => {

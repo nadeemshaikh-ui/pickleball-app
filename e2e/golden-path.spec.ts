@@ -36,3 +36,10 @@ test('setup page renders format options and roster entry', async ({ page }) => {
   await page.goto('/setup');
   await expect(page.locator('body')).not.toContainText('Application error');
 });
+
+test('SessionNav Home icon navigates out of a session', async ({ page }) => {
+  await page.goto('/session/e2e-fixture-session/results');
+  await page.getByRole('link', { name: 'Home' }).click();
+  await page.waitForURL('/');
+  await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible();
+});

@@ -55,10 +55,23 @@ test('session analytics page renders', async ({ page }) => {
   await expect(page.locator('body')).not.toContainText('Application error');
 });
 
-test('my dues page loads and shows a net total', async ({ page }) => {
+test('my dues page shows a real unpaid balance', async ({ page }) => {
   await page.goto('/league/dues');
   await expect(page.locator('body')).not.toContainText('Application error');
   await expect(page.getByText('Total you owe')).toBeVisible();
+  await expect(page.getByText('₹150').first()).toBeVisible();
+});
+
+test('clubs/new page loads', async ({ page }) => {
+  await page.goto('/clubs/new');
+  await expect(page.locator('body')).not.toContainText('Application error');
+  await expect(page.getByRole('heading', { name: 'Create a Club' })).toBeVisible();
+});
+
+test('clubs/join page loads', async ({ page }) => {
+  await page.goto('/clubs/join');
+  await expect(page.locator('body')).not.toContainText('Application error');
+  await expect(page.getByRole('heading', { name: 'Join a Club' })).toBeVisible();
 });
 
 test('admin page correctly denies a non-super-admin test user', async ({ page }) => {
