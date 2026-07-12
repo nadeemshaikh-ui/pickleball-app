@@ -320,6 +320,60 @@ async function ensureVoidFixture() {
   }
 }
 
+const REQUESTER_EMAIL = 'e2e-requester@pickleball.test';
+const REQUESTER_PASSWORD = 'E2E-requester-password-' + SUPABASE_URL.split('.')[0].slice(-8);
+
+// A third real user with a pending join request against TEST_CLUB_ID —
+// exercises the admin's Approve/Reject flow with real data, not a mock.
+async function ensureJoinRequestFixture() {
+  const { data: existingUsers } = await admin.auth.admin.listUsers();
+  let requester = existingUsers?.users?.find(u => u.email === REQUESTER_EMAIL);
+  if (!requester) {
+    const { data, error } = await admin.auth.admin.createUser({ email: REQUESTER_EMAIL, password: REQUESTER_PASSWORD, email_confirm: true });
+    if (error) throw error;
+    requester = data.user;
+  }
+  // Already a member (e.g. a prior run approved this request) — nothing to
+  // re-seed, the approve-flow spec only needs to run once meaningfully.
+  const { data: alreadyMember } = await admin.from('club_members').select('user_id').eq('club_id', TEST_CLUB_ID).eq('user_id', requester.id).maybeSingle();
+  if (alreadyMember) {
+    await admin.from('club_members').delete().eq('club_id', TEST_CLUB_ID).eq('user_id', requester.id); // reset for re-run
+  }
+  await admin.from('club_join_requests').delete().eq('club_id', TEST_CLUB_ID).eq('user_id', requester.id);
+  const { error } = await admin.from('club_join_requests').insert({ club_id: TEST_CLUB_ID, user_id: requester.id, status: 'pending' });
+  if (error) throw error;
+}
+
+const CONFIRM_SESSION_ID = 'e2e-confirm-fixture-session';
+
+// Dedicated session with E2E Tester as a participant, confirmations reset
+// each run — exercises the member's "Yes, I played this" confirm flow.
+async function ensureConfirmFixture() {
+  const { data: existing } = await admin.from('sessions').select('id').eq('id', CONFIRM_SESSION_ID).maybeSingle();
+  if (!existing) {
+    const { error } = await admin.from('sessions').insert({
+      id: CONFIRM_SESSION_ID,
+      club_id: TEST_CLUB_ID,
+      format: 'scramble',
+      players: ['E2E Tester', 'E2E Bot A', 'E2E Bot B', 'E2E Bot C'],
+      round_count: 1,
+      status: 'completed',
+    });
+    if (error) throw error;
+    await admin.from('rounds').insert({
+      session_id: CONFIRM_SESSION_ID,
+      round_number: 1,
+      court: 1,
+      team_a: ['E2E Tester', 'E2E Bot A'],
+      team_b: ['E2E Bot B', 'E2E Bot C'],
+      sitting_out: [],
+      score_a: 11,
+      score_b: 8,
+    });
+  }
+  await admin.from('session_confirmations').delete().eq('session_id', CONFIRM_SESSION_ID); // reset for re-run
+}
+
 function buildStorageState(session, clubId, baseURL, storageKey) {
   return {
     cookies: [],
@@ -336,6 +390,8 @@ async function main() {
   await ensureResetTestClub(user.id);
   await ensureMultiClubFixture(user.id);
   await ensureVoidFixture();
+  await ensureJoinRequestFixture();
+  await ensureConfirmFixture();
 
   const member = await ensureMemberUser();
   await ensureMemberInClub(member.id);
