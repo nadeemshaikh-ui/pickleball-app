@@ -1,29 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { signInWithGoogle, signOut, getCurrentUser } from '@/lib/auth';
+import { signOut, getCurrentUser } from '@/lib/auth';
 import type { User } from '@supabase/supabase-js';
+import GoogleSignInButton from '@/components/GoogleSignInButton';
 
 export default function LoginPage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
     getCurrentUser().then(u => {
       setUser(u);
       setLoading(false);
     });
   }, []);
-
-  async function handleSignIn() {
-    setError(null);
-    try {
-      await signInWithGoogle();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Sign-in failed.');
-    }
-  }
 
   async function handleSignOut() {
     await signOut();
@@ -47,10 +37,9 @@ export default function LoginPage() {
           <p style={{ color: 'var(--muted)', marginBottom: 12 }}>
             Sign in with Google to register as a player, edit your profile, or use admin tools.
           </p>
-          <button className="btn-primary" onClick={handleSignIn}>Sign in with Google</button>
+          <GoogleSignInButton />
         </div>
       )}
-      {error && <p style={{ color: 'var(--danger)', fontWeight: 600, marginTop: 12 }}>{error}</p>}
     </main>
   );
 }
