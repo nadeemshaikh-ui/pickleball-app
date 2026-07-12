@@ -162,6 +162,9 @@ export default function SetupPage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Splits the long form into 3 screens instead of one continuous scroll —
+  // pure display gating, no change to validation/generation logic below.
+  const [subStep, setSubStep] = useState<'players' | 'format' | 'cost'>('players');
 
   const minPlayers = courtCount * 4;
   const [savedRoster, setSavedRoster] = useState<string[] | null>(null);
@@ -276,6 +279,7 @@ export default function SetupPage() {
     setNames(prev => resizeKeepingExisting(prev, playerCount, ''));
     setCourtLabels(prev => resizeKeepingExisting(prev.length ? prev : ['1', '2'], courtCount, '').map((v, i) => v || `${i + 1}`));
     setNamesEntered(true);
+    setSubStep('players');
   }
 
   async function handleRepeatLastSession() {
@@ -311,6 +315,7 @@ export default function SetupPage() {
     setStartTime(last.start_time ?? '');
     setRoundDurationMinutes(last.round_duration_minutes !== null ? String(last.round_duration_minutes) : '');
     setNamesEntered(true);
+    setSubStep('players');
     setRosterNotice(
       "Loaded your last session's setup — edit anything below. Locked partners and skill-balancing don't carry over."
     );
@@ -327,6 +332,7 @@ export default function SetupPage() {
     setNames(savedRoster);
     setCourtLabels(prev => resizeKeepingExisting(prev.length ? prev : ['1', '2'], courtCount, '').map((v, i) => v || `${i + 1}`));
     setNamesEntered(true);
+    setSubStep('players');
     setRosterNotice('Loaded your saved roster — edit any name below, or add new players.');
   }
 
@@ -661,6 +667,8 @@ export default function SetupPage() {
     <main className="page">
       <h1>Session Setup</h1>
 
+      {subStep === 'players' && (
+      <>
       <h2>Players ({playerCount})</h2>
       {rosterNotice && (
         <p style={{ color: 'var(--dark)', fontSize: 13, fontWeight: 700, marginBottom: 8 }}>{rosterNotice}</p>
@@ -781,56 +789,18 @@ export default function SetupPage() {
         </div>
       )}
 
-      <h2>Court & Ball Cost (optional)</h2>
-      <div className="card" style={{ display: 'flex', gap: 12 }}>
-        <div style={{ flex: 1 }}>
-          <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>
-            Court cost (₹)
-          </label>
-          <input
-            type="number"
-            value={courtCost}
-            onChange={e => setCourtCost(e.target.value)}
-            placeholder="e.g. 800"
-            aria-label="Court cost"
-            style={{ width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '10px 28px 10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>
-            Ball cost (₹)
-          </label>
-          <input
-            type="number"
-            value={ballCost}
-            onChange={e => setBallCost(e.target.value)}
-            aria-label="Ball cost"
-            style={{ width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '10px 28px 10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
-          />
-        </div>
-      </div>
-      <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: -6, marginBottom: 16 }}>
-        Leave court cost blank to skip dues tracking for this session. Split evenly across everyone playing.
-      </p>
-
-      {courtCost.trim() !== '' && (
-        <>
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>
-              Your UPI ID (others pay you here)
-            </label>
-            <input
-              type="text"
-              value={bookerUpiVpa}
-              onChange={e => setBookerUpiVpa(e.target.value)}
-              placeholder="e.g. yourname@okhdfcbank"
-              aria-label="Your UPI ID"
-              style={{ width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
-            />
-          </div>
-        </>
+      <button
+        className="btn-primary"
+        onClick={() => setSubStep('format')}
+        style={{ width: '100%', marginTop: 8 }}
+      >
+        Next: Format & Options
+      </button>
+      </>
       )}
 
+      {subStep === 'format' && (
+      <>
       <h2>Ladder League (optional)</h2>
       <div className="card">
         <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
@@ -1256,11 +1226,82 @@ export default function SetupPage() {
         </>
       )}
 
+      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setSubStep('players')}>
+          ← Back
+        </button>
+        <button className="btn-primary" style={{ flex: 1 }} onClick={() => setSubStep('cost')}>
+          Next: Cost & Details
+        </button>
+      </div>
+      </>
+      )}
+
+      {subStep === 'cost' && (
+      <>
+      <h2>Court & Ball Cost (optional)</h2>
+      <div className="card" style={{ display: 'flex', gap: 12 }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>
+            Court cost (₹)
+          </label>
+          <input
+            type="number"
+            value={courtCost}
+            onChange={e => setCourtCost(e.target.value)}
+            placeholder="e.g. 800"
+            aria-label="Court cost"
+            style={{ width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '10px 28px 10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>
+            Ball cost (₹)
+          </label>
+          <input
+            type="number"
+            value={ballCost}
+            onChange={e => setBallCost(e.target.value)}
+            aria-label="Ball cost"
+            style={{ width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '10px 28px 10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+          />
+        </div>
+      </div>
+      <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: -6, marginBottom: 16 }}>
+        Leave court cost blank to skip dues tracking for this session. Split evenly across everyone playing.
+      </p>
+
+      {courtCost.trim() !== '' && (
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>
+            Your UPI ID (others pay you here)
+          </label>
+          <input
+            type="text"
+            value={bookerUpiVpa}
+            onChange={e => setBookerUpiVpa(e.target.value)}
+            placeholder="e.g. yourname@okhdfcbank"
+            aria-label="Your UPI ID"
+            style={{ width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+          />
+          {bookerUpiVpa.trim() === '' && (
+            <p style={{ fontSize: 12, color: 'var(--danger)', marginTop: 6 }}>Required since you set a court cost — or clear the cost above to skip dues.</p>
+          )}
+        </div>
+      )}
+
       {error && <p style={{ color: 'var(--danger)', marginTop: 12, fontWeight: 600 }}>{error}</p>}
 
-      <button className="btn-primary" onClick={handleGenerate} disabled={submitting} style={{ width: '100%', marginTop: 20 }}>
-        {submitting ? 'Generating…' : 'Generate Schedule'}
-      </button>
+      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setSubStep('format')}>
+          ← Back
+        </button>
+        <button className="btn-primary" style={{ flex: 1 }} onClick={handleGenerate} disabled={submitting}>
+          {submitting ? 'Generating…' : 'Generate Schedule'}
+        </button>
+      </div>
+      </>
+      )}
     </main>
   );
 }
