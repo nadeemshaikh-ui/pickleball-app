@@ -101,10 +101,63 @@ async function ensureTestSession() {
   return TEST_SESSION_ID;
 }
 
+const LADDER_SESSION_ID = 'e2e-ladder-fixture-session';
+const LADDER_PLAYERS = ['E2E Ladder A', 'E2E Ladder B', 'E2E Ladder C', 'E2E Ladder D']; // rungs 1-4
+
+// Deterministic ladder-upset fixture: rung 1+2 (better) vs rung 3+4 (worse),
+// score left unset so the E2E spec fills it in via the real Play page —
+// that's the step that actually exercises resolveLadderChallenge(), the
+// code this session's real bug fix (dead ladder-movement code) lives in.
+async function ensureLadderFixture() {
+  // ladder_standings.player_name has a FK to players(name, club_id) — bots
+  // need a real players row before they can be enrolled.
+  for (const name of LADDER_PLAYERS) {
+    const { data: existingBot } = await admin.from('players').select('id').eq('club_id', TEST_CLUB_ID).eq('name', name).maybeSingle();
+    if (!existingBot) {
+      const { error } = await admin.from('players').insert({ club_id: TEST_CLUB_ID, name, elo_rating: 1500, games_played: 0 });
+      if (error) throw error;
+    }
+  }
+  for (let i = 0; i < LADDER_PLAYERS.length; i++) {
+    const { error } = await admin
+      .from('ladder_standings')
+      .upsert({ club_id: TEST_CLUB_ID, player_name: LADDER_PLAYERS[i], rung: i + 1, enrolled: true, wins: 0, losses: 0 }, { onConflict: 'club_id,player_name' });
+    if (error) throw error;
+  }
+
+  const { data: existing } = await admin.from('sessions').select('id').eq('id', LADDER_SESSION_ID).maybeSingle();
+  if (!existing) {
+    const { error } = await admin.from('sessions').insert({
+      id: LADDER_SESSION_ID,
+      club_id: TEST_CLUB_ID,
+      format: 'scramble',
+      players: LADDER_PLAYERS,
+      round_count: 1,
+      status: 'in_progress',
+      is_ladder: true,
+    });
+    if (error) throw error;
+  }
+  await admin.from('rounds').delete().eq('session_id', LADDER_SESSION_ID); // reset each run so the upset can be re-scored
+  const { error: roundError } = await admin.from('rounds').insert({
+    session_id: LADDER_SESSION_ID,
+    round_number: 1,
+    court: 1,
+    team_a: [LADDER_PLAYERS[0], LADDER_PLAYERS[1]], // rung 1+2, currently better-ranked
+    team_b: [LADDER_PLAYERS[2], LADDER_PLAYERS[3]], // rung 3+4, currently worse-ranked
+    sitting_out: [],
+    score_a: null,
+    score_b: null,
+  });
+  if (roundError) throw roundError;
+  return LADDER_SESSION_ID;
+}
+
 async function main() {
   const user = await ensureTestUser();
   await ensureTestClub(user.id);
   await ensureTestSession();
+  await ensureLadderFixture();
 
   const anonClient = createClient(SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   const { data: signInData, error: signInError } = await anonClient.auth.signInWithPassword({ email: TEST_EMAIL, password: TEST_PASSWORD });

@@ -1,8 +1,5 @@
 import { supabase } from './supabase';
-import { applyLadderMovement, isValidLadderChallenge, sideRung, type LadderPlayer, type LadderRungChange } from './ladder';
 import { recordBadgeHolderChange } from './badgeHolders';
-
-export type { LadderRungChange };
 
 export interface LadderStandingRow {
   club_id: string;
@@ -54,9 +51,17 @@ export async function resetLadder(clubId: string): Promise<void> {
 }
 
 // Crowns whoever currently sits on rung 1 as the "Ladder Champion" badge
-// holder — called after anything that can move rung 1 (a challenge upset,
-// or an admin reset). No-op if nobody is enrolled yet.
-async function syncLadderChampion(clubId: string): Promise<void> {
+// holder — called after anything that can move rung 1: an admin reset here,
+// or a scored round in an is_ladder session (see play/page.tsx). The rung
+// movement itself is owned entirely by the `apply_ladder_after_score`
+// Postgres trigger, not this file — an earlier version of this function
+// duplicated that trigger's swap+win/loss logic client-side, which caused
+// double-counted wins/losses (both the trigger and this code incrementing
+// independently) and its own copy of the same race-condition bug the
+// trigger had. This is now just a read-after-write sync, safe to call
+// unconditionally after any is_ladder score save. No-op if nobody's on
+// rung 1 yet.
+export async function syncLadderChampion(clubId: string): Promise<void> {
   const { data, error } = await supabase
     .from('ladder_standings')
     .select('player_name')
@@ -69,61 +74,3 @@ async function syncLadderChampion(clubId: string): Promise<void> {
   await recordBadgeHolderChange(clubId, 'ladder_champion', data.player_name);
 }
 
-// Called after a doubles score is saved in a session flagged `is_ladder`.
-// No-op (returns []) unless all 4 players are currently enrolled on the
-// ladder and the two sides' average rungs are within LADDER_CHALLENGE_RANGE
-// — exactly the "counts toward rung movement" condition described at Setup.
-// A valid challenge always updates each side's ladder win/loss tally; rungs
-// only swap if the result was an upset (see applyLadderMovement). Plain
-// per-row updates, not an advisory-locked RPC like enroll/reset — scoring
-// happens one court at a time from a single scorer, so the concurrent-write
-// risk those two guard against doesn't apply here.
-export async function resolveLadderChallenge(clubId: string, teamA: string[], teamB: string[], aWon: boolean): Promise<LadderRungChange[]> {
-  const names = [...teamA, ...teamB];
-  const { data, error } = await supabase
-    .from('ladder_standings')
-    .select('player_name, rung, wins, losses')
-    .eq('club_id', clubId)
-    .eq('enrolled', true)
-    .in('player_name', names);
-  if (error) throw error;
-
-  type Row = { player_name: string; rung: number; wins: number; losses: number };
-  const rowByName = new Map((data as Row[]).map(r => [r.player_name, r]));
-  if (names.some(n => !rowByName.has(n))) return [];
-
-  const toLadderPlayers = (side: string[]): [LadderPlayer, LadderPlayer] => [
-    { name: side[0], rung: rowByName.get(side[0])!.rung },
-    { name: side[1], rung: rowByName.get(side[1])!.rung },
-  ];
-  const sideA = toLadderPlayers(teamA);
-  const sideB = toLadderPlayers(teamB);
-  if (!isValidLadderChallenge(sideRung([sideA[0].rung, sideA[1].rung]), sideRung([sideB[0].rung, sideB[1].rung]))) return [];
-
-  const winners = aWon ? sideA : sideB;
-  const losers = aWon ? sideB : sideA;
-  const rungChanges = applyLadderMovement(winners, losers);
-  const rungByName = new Map(rungChanges.map(c => [c.name, c.rung]));
-  const now = new Date().toISOString();
-
-  await Promise.all(
-    names.map(name => {
-      const row = rowByName.get(name)!;
-      const isWinner = winners.some(w => w.name === name);
-      return supabase
-        .from('ladder_standings')
-        .update({
-          rung: rungByName.get(name) ?? row.rung,
-          wins: row.wins + (isWinner ? 1 : 0),
-          losses: row.losses + (isWinner ? 0 : 1),
-          last_moved_at: now,
-        })
-        .eq('club_id', clubId)
-        .eq('player_name', name);
-    })
-  );
-
-  if (rungChanges.some(c => c.rung === 1)) await syncLadderChampion(clubId);
-
-  return rungChanges;
-}

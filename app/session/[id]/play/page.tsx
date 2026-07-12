@@ -1,11 +1,11 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
-import { PartyPopper, TrendingDown, Crown, Frown, Egg, ListOrdered } from 'lucide-react';
+import { PartyPopper, TrendingDown, Crown, Frown, Egg } from 'lucide-react';
 import { getSession, getRounds, updateRoundScore, insertRounds, markSessionCompleted, type RoundRow, type SessionRow } from '@/lib/db';
 import { resolveChallengesForRound } from '@/lib/challenges';
 import { computeCurrentStreaks, maybeSetStreakRecord } from '@/lib/streakRecords';
-import { resolveLadderChallenge } from '@/lib/ladderStandings';
+import { syncLadderChampion } from '@/lib/ladderStandings';
 import { computeNextKingOfCourtRound } from '@/lib/kingOfCourt';
 import SessionNav from '@/components/SessionNav';
 import GroupHeader from '@/components/GroupHeader';
@@ -61,8 +61,8 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
     return nicknameByName.get(fullName) ?? fullName.split(' ')[0];
   }
 
-  type RoundMessage = { kind: 'promoted' | 'relegated' | 'record-win' | 'record-loss' | 'ladder-swap'; text: string };
-  const MESSAGE_ICONS = { promoted: PartyPopper, relegated: TrendingDown, 'record-win': Crown, 'record-loss': Frown, 'ladder-swap': ListOrdered } as const;
+  type RoundMessage = { kind: 'promoted' | 'relegated' | 'record-win' | 'record-loss'; text: string };
+  const MESSAGE_ICONS = { promoted: PartyPopper, relegated: TrendingDown, 'record-win': Crown, 'record-loss': Frown } as const;
 
   // Flight-mismatch upset badge — only shown when all 4 players are
   // registered (unrated players would make the flight comparison meaningless).
@@ -134,16 +134,13 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
       console.error('Failed to check streak records:', err);
     }
 
-    if (session.is_ladder && court.team_a.length === 2 && court.team_b.length === 2) {
-      try {
-        const rungChanges = await resolveLadderChallenge(session.club_id, court.team_a, court.team_b, Number(a) > Number(b));
-        if (rungChanges.length > 0) {
-          const names = rungChanges.map(c => c.name).join(', ');
-          messages.push({ kind: 'ladder-swap', text: `Ladder upset! ${names} swapped rungs.` });
-        }
-      } catch (err) {
-        console.error('Failed to resolve ladder challenge:', err);
-      }
+    // Rung movement itself is owned by the apply_ladder_after_score Postgres
+    // trigger (fires on the updateRoundScore() UPDATE above, same
+    // transaction) — this just picks up whatever it did to crown the
+    // Ladder Champion badge holder. See lib/ladderStandings.ts for why this
+    // isn't duplicated client-side.
+    if (session.is_ladder) {
+      syncLadderChampion(session.club_id).catch(err => console.error('Failed to sync ladder champion badge:', err));
     }
 
     if (messages.length > 0) setFlightChanges(prev => ({ ...prev, [court.id]: messages }));

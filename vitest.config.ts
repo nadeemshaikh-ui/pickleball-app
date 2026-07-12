@@ -10,5 +10,8 @@ import { loadEnv } from 'vite';
 export default defineConfig({
   test: {
     env: loadEnv('', process.cwd(), ''),
+    // e2e/*.spec.ts are Playwright specs, not vitest — vitest's default
+    // glob would otherwise pick them up and fail (different test API).
+    exclude: ['**/node_modules/**', '**/e2e/**'],
   },
 });
