@@ -1,6 +1,7 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { PartyPopper, TrendingDown, Crown, Frown, Egg } from 'lucide-react';
 import { getSession, getRounds, updateRoundScore, insertRounds, markSessionCompleted, type RoundRow, type SessionRow } from '@/lib/db';
 import { resolveChallengesForRound } from '@/lib/challenges';
@@ -17,6 +18,7 @@ import { listPlayers } from '@/lib/players';
 
 export default function PlayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const [session, setSession] = useState<SessionRow | null>(null);
   const [rounds, setRounds] = useState<RoundRow[]>([]);
   const [drafts, setDrafts] = useState<Record<string, [string, string]>>({});
@@ -191,6 +193,7 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
           setRounds(await getRounds(id));
         } else {
           await markSessionCompleted(id);
+          setTimeout(() => router.push(`/session/${id}/results`), 1800);
         }
       }
       setSavingCourtId(null);
@@ -200,6 +203,7 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
     setSavingCourtId(null);
     if (firstIncompleteRound(updatedRounds) === undefined) {
       await markSessionCompleted(id);
+      setTimeout(() => router.push(`/session/${id}/results`), 1800);
     }
   }
 

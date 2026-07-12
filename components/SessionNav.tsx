@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { Home } from 'lucide-react';
 
 export default function SessionNav({ sessionId }: { sessionId: string }) {
   const pathname = usePathname();
@@ -16,6 +17,10 @@ export default function SessionNav({ sessionId }: { sessionId: string }) {
 
   return (
     <nav className="session-nav" aria-label="Session navigation">
+      {/* Only exit from inside a session — GlobalNav is hidden on /session/* routes */}
+      <Link href="/" aria-label="Home" title="Home">
+        <Home size={16} />
+      </Link>
       {tabs.map(tab => (
         <Link
           key={tab.href}

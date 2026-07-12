@@ -9,11 +9,11 @@ import { getOwnPlayer } from '@/lib/players';
 import { fetchLifetimeLeaderboard, fetchStreaks, fetchMvpCounts, fetchBestDuos, type LifetimePlayerStats } from '@/lib/leagueStats';
 import { fetchStreakRecords } from '@/lib/streakRecords';
 import { fetchPendingChallenges } from '@/lib/challenges';
-import { listPendingJoinRequests, type JoinRequestRow } from '@/lib/clubs';
+import { listPendingJoinRequests, listMyPendingJoinRequests, type JoinRequestRow, type ClubRow } from '@/lib/clubs';
 import { flightForRating } from '@/lib/flights';
 import { computeBadges, type Badge } from '@/lib/badges';
 import SignInGate from '@/components/SignInGate';
-import { Flame, Crown, Zap, Bell, Trophy, Gift, Award, Swords } from 'lucide-react';
+import { Flame, Crown, Zap, Bell, Trophy, Gift, Award, Swords, IndianRupee } from 'lucide-react';
 import BadgeMedallion from '@/components/BadgeMedallion';
 
 const POWER_DUO_MIN_GAMES = 10;
@@ -21,13 +21,14 @@ const POWER_DUO_MIN_WIN_RATE = 0.7;
 
 export default function HomePage() {
   const router = useRouter();
-  const { user, clubs, currentClub, currentClubId, isCurrentClubAdmin, setCurrentClubId, loading: clubLoading } = useCurrentClub();
+  const { user, currentClub, currentClubId, isCurrentClubAdmin, loading: clubLoading } = useCurrentClub();
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
   const [flight, setFlight] = useState<string | null>(null);
   const [streak, setStreak] = useState(0);
   const [isStreakKing, setIsStreakKing] = useState(false);
   const [pendingChallengeCount, setPendingChallengeCount] = useState(0);
   const [pendingJoinRequests, setPendingJoinRequests] = useState<JoinRequestRow[]>([]);
+  const [myPendingRequests, setMyPendingRequests] = useState<(JoinRequestRow & { club: ClubRow })[]>([]);
   const [dashboardLoading, setDashboardLoading] = useState(true);
   const [ownStats, setOwnStats] = useState<LifetimePlayerStats | null>(null);
   const [rank, setRank] = useState<number | null>(null);
@@ -48,6 +49,11 @@ export default function HomePage() {
       setCheckingOnboarding(false);
     });
   }, [user, clubLoading, router]);
+
+  useEffect(() => {
+    if (checkingOnboarding || !user || currentClubId) return;
+    listMyPendingJoinRequests().then(setMyPendingRequests).catch(() => setMyPendingRequests([]));
+  }, [checkingOnboarding, user, currentClubId]);
 
   useEffect(() => {
     if (checkingOnboarding || !user || !currentClubId) {
@@ -121,20 +127,25 @@ export default function HomePage() {
         )}
         <div>
           <h1 style={{ margin: 0 }}>{currentClub?.name ?? 'Pickleball Session'}</h1>
-          {clubs.length > 1 && (
-            <select
-              aria-label="Switch club"
-              value={currentClubId ?? ''}
-              onChange={e => setCurrentClubId(e.target.value)}
-              style={{ fontSize: 12, marginTop: 2 }}
-            >
-              {clubs.map(m => (
-                <option key={m.club_id} value={m.club_id}>{m.club.name}</option>
-              ))}
-            </select>
-          )}
         </div>
       </div>
+
+      {!currentClubId && (
+        <div className="card" style={{ marginBottom: 12 }}>
+          {myPendingRequests.length > 0 ? (
+            myPendingRequests.map(r => (
+              <p key={r.id} style={{ margin: 0 }}>
+                <Bell size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+                Your request to join <strong>{r.club.name}</strong> is pending — we&apos;ll let you in once the admin approves you.
+              </p>
+            ))
+          ) : (
+            <p style={{ margin: 0, color: 'var(--muted)' }}>
+              You&apos;re not in a club yet. <Link href="/clubs">Create or join one</Link> to start a session.
+            </p>
+          )}
+        </div>
+      )}
 
       {!dashboardLoading && flight && (
         <div className="card" style={{ marginBottom: 12 }}>
@@ -188,6 +199,7 @@ export default function HomePage() {
         <Link href="/league/badges" className="btn-secondary" style={{ flex: 1, textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><Award size={14} /> Badges</Link>
       </div>
       <Link href="/league/h2h" className="btn-secondary" style={{ display: 'flex', textAlign: 'center', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 8 }}><Swords size={14} /> Head-to-Head</Link>
+      <Link href="/league/dues" className="btn-secondary" style={{ display: 'flex', textAlign: 'center', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 8 }}><IndianRupee size={14} /> My Dues</Link>
     </main>
   );
 }

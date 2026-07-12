@@ -12,12 +12,19 @@ import ProfileStep from '@/components/onboarding/ProfileStep';
 import TourStep from '@/components/onboarding/TourStep';
 import DoneStep from '@/components/onboarding/DoneStep';
 
-const PROGRESS_STEPS: OnboardingStep[] = ['branch', 'profile', 'tour', 'done'];
-
-// create-club and join-club are sub-steps of the branch decision — they
-// light up the same progress dot as 'branch' rather than getting their own.
-function progressStepFor(step: OnboardingStep): OnboardingStep {
-  return step === 'create-club' || step === 'join-club' ? 'branch' : step;
+// 5 dots: branch, the create/join sub-step, profile, tour, done — so filling
+// in a club name or searching for one actually advances the bar instead of
+// looking stuck on step 1.
+const DOT_COUNT = 5;
+function dotIndexFor(step: OnboardingStep): number {
+  switch (step) {
+    case 'branch': return 0;
+    case 'create-club':
+    case 'join-club': return 1;
+    case 'profile': return 2;
+    case 'tour': return 3;
+    case 'done': return 4;
+  }
 }
 
 export default function OnboardingPage() {
@@ -41,6 +48,16 @@ export default function OnboardingPage() {
     router.push('/setup');
   }
 
+  // Requesting to join doesn't grant a club yet — landing on /setup would
+  // just dead-end them ("join or create a club"). Mark onboarding done and
+  // send them to Home instead, which shows a persistent "request pending"
+  // banner until an admin approves them.
+  async function finishPendingRequest() {
+    const user = await getCurrentUser();
+    if (user) await markOnboardingComplete(user.id);
+    router.push('/');
+  }
+
   if (step === null) {
     return (
       <main className="page">
@@ -49,14 +66,14 @@ export default function OnboardingPage() {
     );
   }
 
-  const currentDotIndex = PROGRESS_STEPS.indexOf(progressStepFor(step));
+  const currentDotIndex = dotIndexFor(step);
 
   return (
     <main className="page">
       <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
-        {PROGRESS_STEPS.map((s, i) => (
+        {Array.from({ length: DOT_COUNT }).map((_, i) => (
           <div
-            key={s}
+            key={i}
             style={{
               width: 24,
               height: 6,
@@ -86,7 +103,7 @@ export default function OnboardingPage() {
             setActiveClubId(clubId);
             setStep('profile');
           }}
-          onRequestSent={finish}
+          onRequestSent={finishPendingRequest}
         />
       )}
 

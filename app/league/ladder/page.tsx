@@ -10,6 +10,7 @@ import { preloadPlayerPhotos } from '@/lib/playerPhotos';
 import { shareElementAsImage } from '@/lib/shareImage';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import Avatar from '@/components/Avatar';
+import ConfirmModal from '@/components/ConfirmModal';
 
 export default function LadderPage() {
   const { currentClubId, loading: clubLoading } = useCurrentClub();
@@ -19,6 +20,7 @@ export default function LadderPage() {
   const [loading, setLoading] = useState(true);
   const [busyName, setBusyName] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [imageShareError, setImageShareError] = useState<string | null>(null);
   const standingsCaptureRef = useRef<HTMLDivElement>(null);
@@ -81,7 +83,7 @@ export default function LadderPage() {
 
   async function handleReset() {
     if (!currentClubId) return;
-    if (!window.confirm('Reset the ladder? Everyone enrolled will be reseeded by current ELO rating and win/loss history on the ladder is cleared. This can\'t be undone.')) return;
+    setShowResetConfirm(false);
     setResetting(true);
     setActionError(null);
     try {
@@ -131,9 +133,20 @@ export default function LadderPage() {
       {imageShareError && <p style={{ color: 'var(--danger)', marginBottom: 12, fontWeight: 600 }}>{imageShareError}</p>}
 
       {isAdmin && (
-        <button className="btn-secondary" onClick={handleReset} disabled={resetting} style={{ marginBottom: 16 }}>
+        <button className="btn-secondary" onClick={() => setShowResetConfirm(true)} disabled={resetting} style={{ marginBottom: 16 }}>
           {resetting ? 'Resetting…' : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><RefreshCw size={14} /> Reset Ladder (reseed by ELO)</span>}
         </button>
+      )}
+
+      {showResetConfirm && (
+        <ConfirmModal
+          title="Reset the ladder?"
+          message="Everyone enrolled will be reseeded by current ELO rating and win/loss history on the ladder is cleared. This can't be undone."
+          confirmLabel="Reset Ladder"
+          danger
+          onConfirm={handleReset}
+          onCancel={() => setShowResetConfirm(false)}
+        />
       )}
 
       <div className="card" ref={standingsCaptureRef}>

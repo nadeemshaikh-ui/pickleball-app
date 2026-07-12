@@ -5,7 +5,7 @@ import { joinClubByCode, searchClubsByName, requestToJoinClub, type ClubRow } fr
 
 interface JoinClubStepProps {
   onJoined: (clubId: string) => void;
-  onRequestSent: () => void;
+  onRequestSent?: (clubName: string) => void;
 }
 
 export default function JoinClubStep({ onJoined, onRequestSent }: JoinClubStepProps) {
@@ -16,7 +16,7 @@ export default function JoinClubStep({ onJoined, onRequestSent }: JoinClubStepPr
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<ClubRow[]>([]);
   const [searching, setSearching] = useState(false);
-  const [requestedClubName, setRequestedClubName] = useState<string | null>(null);
+  const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set());
 
   async function handleJoinByCode() {
     if (!code.trim()) return;
@@ -47,19 +47,8 @@ export default function JoinClubStep({ onJoined, onRequestSent }: JoinClubStepPr
 
   async function handleRequest(club: ClubRow) {
     await requestToJoinClub(club.id);
-    setRequestedClubName(club.name);
-  }
-
-  if (requestedClubName) {
-    return (
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <h2>Request sent to {requestedClubName}</h2>
-        <p style={{ color: 'var(--muted)' }}>We&apos;ll let you in once the admin approves you.</p>
-        <button className="btn-primary" onClick={onRequestSent}>
-          Done
-        </button>
-      </div>
-    );
+    setRequestedIds(prev => new Set(prev).add(club.id));
+    onRequestSent?.(club.name);
   }
 
   return (
@@ -78,6 +67,7 @@ export default function JoinClubStep({ onJoined, onRequestSent }: JoinClubStepPr
         </button>
       </div>
       {codeError && <p style={{ color: 'var(--danger)', fontWeight: 600 }}>{codeError}</p>}
+      <p style={{ fontSize: 12, color: 'var(--muted)' }}>A code joins instantly — no approval needed. Get it from your club&apos;s admin.</p>
 
       <h2>Or find a club by name</h2>
       <input
@@ -91,11 +81,19 @@ export default function JoinClubStep({ onJoined, onRequestSent }: JoinClubStepPr
       {results.map(c => (
         <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ flex: 1, fontWeight: 700 }}>{c.name}</span>
-          <button className="btn-secondary" style={{ minHeight: 32, padding: '4px 12px', fontSize: 13 }} onClick={() => handleRequest(c)}>
-            Request to Join
+          <button
+            className="btn-secondary"
+            style={{ minHeight: 32, padding: '4px 12px', fontSize: 13 }}
+            disabled={requestedIds.has(c.id)}
+            onClick={() => handleRequest(c)}
+          >
+            {requestedIds.has(c.id) ? 'Requested ✓' : 'Request to Join'}
           </button>
         </div>
       ))}
+      <p style={{ fontSize: 12, color: 'var(--muted)' }}>
+        Requesting to join needs the club&apos;s admin to approve you first — you&apos;ll get access once they do.
+      </p>
     </div>
   );
 }

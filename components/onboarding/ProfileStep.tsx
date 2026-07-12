@@ -13,6 +13,7 @@ export default function ProfileStep({ clubId, onDone }: { clubId: string; onDone
   const [paddle, setPaddle] = useState('');
   const [playingSinceYear, setPlayingSinceYear] = useState('');
   const [signatureShot, setSignatureShot] = useState('');
+  const [bio, setBio] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +34,7 @@ export default function ProfileStep({ clubId, onDone }: { clubId: string; onDone
         setPaddle(existing.paddle ?? '');
         setPlayingSinceYear(existing.playing_since_year?.toString() ?? '');
         setSignatureShot(existing.signature_shot ?? '');
+        setBio(existing.bio ?? '');
       } else {
         setName(user.user_metadata?.full_name ?? '');
       }
@@ -67,7 +69,7 @@ export default function ProfileStep({ clubId, onDone }: { clubId: string; onDone
         name: trimmed,
         nickname: nickname.trim() || null,
         photoUrl,
-        bio: null,
+        bio: bio.trim() || null,
         dominantHand: dominantHand || null,
         paddle: paddle.trim() || null,
         playingSinceYear: playingSinceYear ? Number(playingSinceYear) : null,
@@ -119,6 +121,14 @@ export default function ProfileStep({ clubId, onDone }: { clubId: string; onDone
         style={inputStyle}
       />
       <input value={signatureShot} onChange={e => setSignatureShot(e.target.value)} placeholder="Signature shot — dink, smash, lob? (optional)" aria-label="Signature shot" style={inputStyle} />
+      <textarea
+        value={bio}
+        onChange={e => setBio(e.target.value)}
+        placeholder="Short bio (optional)"
+        aria-label="Bio"
+        rows={2}
+        style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }}
+      />
 
       {error && <p style={{ color: 'var(--danger)', fontWeight: 600 }}>{error}</p>}
       <button className="btn-primary" onClick={handleSave} disabled={saving}>

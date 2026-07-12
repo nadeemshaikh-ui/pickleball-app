@@ -9,6 +9,7 @@ import Link from 'next/link';
 import SessionNav from '@/components/SessionNav';
 import Avatar from '@/components/Avatar';
 import Celebration from '@/components/Celebration';
+import ConfirmModal from '@/components/ConfirmModal';
 import NewSessionLink from '@/components/NewSessionLink';
 import SessionDate from '@/components/SessionDate';
 import GroupHeader from '@/components/GroupHeader';
@@ -41,6 +42,7 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
   const [ownPlayerName, setOwnPlayerName] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [voiding, setVoiding] = useState(false);
+  const [showVoidConfirm, setShowVoidConfirm] = useState(false);
   const [upiVpa, setUpiVpa] = useState<string | null>(null);
   const [winnerBadges, setWinnerBadges] = useState<Badge[]>([]);
   const [winnerStreak, setWinnerStreak] = useState(0);
@@ -110,11 +112,7 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
   }
 
   async function handleVoid() {
-    const warning =
-      confirmations.length > 0
-        ? `${confirmations.length} player${confirmations.length === 1 ? ' has' : 's have'} already confirmed they played this session. Void anyway? Its matches will stop counting toward league stats, badges, and streaks.`
-        : 'Void this session? Its matches will stop counting toward league stats, badges, and streaks.';
-    if (!window.confirm(warning)) return;
+    setShowVoidConfirm(false);
     setVoiding(true);
     try {
       await voidSession(id);
@@ -223,11 +221,25 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
                 </button>
               )}
               {isAdmin && (
-                <button className="btn-secondary" style={{ minHeight: 32, padding: '4px 12px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={handleVoid} disabled={voiding}>
+                <button className="btn-secondary" style={{ minHeight: 32, padding: '4px 12px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={() => setShowVoidConfirm(true)} disabled={voiding}>
                   {voiding ? 'Voiding…' : <><Ban size={13} /> Void Session</>}
                 </button>
               )}
             </div>
+            {showVoidConfirm && (
+              <ConfirmModal
+                title="Void this session?"
+                message={
+                  confirmations.length > 0
+                    ? `${confirmations.length} player${confirmations.length === 1 ? ' has' : 's have'} already confirmed they played this session. Void anyway? Its matches will stop counting toward league stats, badges, and streaks.`
+                    : 'Its matches will stop counting toward league stats, badges, and streaks.'
+                }
+                confirmLabel="Void Session"
+                danger
+                onConfirm={handleVoid}
+                onCancel={() => setShowVoidConfirm(false)}
+              />
+            )}
           </div>
         )}
 

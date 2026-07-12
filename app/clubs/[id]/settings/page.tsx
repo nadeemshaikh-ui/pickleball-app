@@ -19,6 +19,7 @@ import {
 import { listPlayers } from '@/lib/players';
 import { getCurrentUser } from '@/lib/auth';
 import { shareElementAsImage } from '@/lib/shareImage';
+import ConfirmModal from '@/components/ConfirmModal';
 import { isDevModeEnabled, setDevModeEnabled } from '@/lib/devMode';
 
 export default function ClubSettingsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -44,6 +45,7 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
   const [upiSavedMsg, setUpiSavedMsg] = useState<string | null>(null);
   const [imageShareError, setImageShareError] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetMsg, setResetMsg] = useState<string | null>(null);
   const [devMode, setDevMode] = useState(false);
   const inviteCaptureRef = useRef<HTMLDivElement>(null);
@@ -128,13 +130,7 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
 
   async function handleResetClub() {
     if (!club) return;
-    const typed = window.prompt(
-      `This permanently deletes every session, match, badge, and streak record for "${club.name}". Player names/photos are kept, stats reset to zero. This cannot be undone.\n\nType the club's name to confirm:`
-    );
-    if (typed !== club.name) {
-      if (typed !== null) setResetMsg('Name didn\'t match — nothing was deleted.');
-      return;
-    }
+    setShowResetConfirm(false);
     setResetting(true);
     setResetMsg(null);
     try {
@@ -302,7 +298,7 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
           <button
             className="btn-secondary"
             style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}
-            onClick={handleResetClub}
+            onClick={() => setShowResetConfirm(true)}
             disabled={resetting}
           >
             {resetting ? 'Resetting…' : 'Reset All Club Data'}
@@ -313,6 +309,18 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
           </p>
         )}
       </div>
+
+      {showResetConfirm && club && (
+        <ConfirmModal
+          title="Reset all club data?"
+          message={`This permanently deletes every session, match, badge, and streak record for "${club.name}". Player names/photos are kept, stats reset to zero. This cannot be undone.`}
+          confirmLabel="Reset Club Data"
+          danger
+          requireText={club.name}
+          onConfirm={handleResetClub}
+          onCancel={() => setShowResetConfirm(false)}
+        />
+      )}
     </main>
   );
 }

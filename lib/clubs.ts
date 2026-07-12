@@ -149,6 +149,22 @@ export async function requestToJoinClub(clubId: string): Promise<void> {
   if (error && error.code !== '23505') throw error; // duplicate request is a silent no-op, not an error
 }
 
+// The requester's own view of their pending requests — powers the
+// "your request is pending" banner instead of leaving them stuck with no
+// club after requesting to join.
+export async function listMyPendingJoinRequests(): Promise<(JoinRequestRow & { club: ClubRow })[]> {
+  const user = (await supabase.auth.getUser()).data.user;
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from('club_join_requests')
+    .select('*, club:clubs(*)')
+    .eq('user_id', user.id)
+    .eq('status', 'pending')
+    .order('requested_at', { ascending: true });
+  if (error) throw error;
+  return data as unknown as (JoinRequestRow & { club: ClubRow })[];
+}
+
 export async function listPendingJoinRequests(clubId: string): Promise<JoinRequestRow[]> {
   const { data, error } = await supabase
     .from('club_join_requests')
