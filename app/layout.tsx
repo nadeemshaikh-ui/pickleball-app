@@ -35,7 +35,7 @@ export default function RootLayout({
         <DecorativeBackground />
         <AuthGate />
         <ClubSwitcher />
-        <div style={{ paddingBottom: 64 }}>{children}</div>
+        <div style={{ paddingBottom: 80 }}>{children}</div>
         <GlobalNav />
         <DevModePanel />
       </body>

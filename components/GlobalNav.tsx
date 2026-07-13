@@ -2,26 +2,38 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Trophy, User, Settings } from 'lucide-react';
+import { Home, Trophy, Users, User, Plus } from 'lucide-react';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 
 // Session pages have their own bottom nav (SessionNav) — don't stack two
 // fixed bars on top of each other while scoring a match.
 const HIDDEN_PREFIXES = ['/session/', '/login', '/onboarding'];
 
+// 5-tab bar with an elevated center action, same pattern Strava uses for its
+// "Record" tab — the single most frequent action (starting a session) gets
+// a permanently visible, physically distinct button instead of being one
+// more link buried on Home. Clubs and You (profile + sign-out) are their
+// own tabs too, not hidden behind a "More" drawer — hidden nav is exactly
+// what caused the "can't find club switching / sign-out" complaints.
 export default function GlobalNav() {
   const pathname = usePathname();
-  const { user, currentClubId, isCurrentClubAdmin, loading } = useCurrentClub();
+  const { user, currentClubId, loading } = useCurrentClub();
 
   if (loading || !user || !currentClubId) return null;
   if (HIDDEN_PREFIXES.some(p => pathname.startsWith(p))) return null;
 
-  const tabs = [
+  const sideTabs = [
     { href: '/', label: 'Home', icon: Home },
     { href: '/league', label: 'League', icon: Trophy },
-    { href: '/register', label: 'Profile', icon: User },
-    ...(isCurrentClubAdmin ? [{ href: `/clubs/${currentClubId}/settings`, label: 'Admin', icon: Settings }] : []),
   ];
+  const rightTabs = [
+    { href: '/clubs', label: 'Clubs', icon: Users },
+    { href: '/register', label: 'You', icon: User },
+  ];
+
+  function isActive(href: string) {
+    return href === '/' ? pathname === '/' : pathname.startsWith(href);
+  }
 
   return (
     <nav
@@ -32,6 +44,7 @@ export default function GlobalNav() {
         left: 0,
         right: 0,
         display: 'flex',
+        alignItems: 'flex-end',
         justifyContent: 'space-around',
         background: 'white',
         borderTop: '1px solid var(--border)',
@@ -39,8 +52,65 @@ export default function GlobalNav() {
         zIndex: 50,
       }}
     >
-      {tabs.map(tab => {
-        const active = tab.href === '/' ? pathname === '/' : pathname.startsWith(tab.href);
+      {sideTabs.map(tab => {
+        const active = isActive(tab.href);
+        const Icon = tab.icon;
+        return (
+          <Link
+            key={tab.href}
+            href={tab.href}
+            aria-current={active ? 'page' : undefined}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 2,
+              padding: '10px 12px 6px',
+              fontSize: 11,
+              fontWeight: 700,
+              color: active ? 'var(--primary, #1a1a1a)' : 'var(--muted)',
+              flex: 1,
+            }}
+          >
+            <Icon size={22} />
+            {tab.label}
+          </Link>
+        );
+      })}
+
+      <Link
+        href="/setup"
+        aria-label="New Session"
+        aria-current={isActive('/setup') ? 'page' : undefined}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 2,
+          flex: '0 0 auto',
+          padding: '0 8px',
+          transform: 'translateY(-10px)',
+        }}
+      >
+        <span
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: '50%',
+            background: 'var(--primary, #1a1a1a)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+          }}
+        >
+          <Plus size={26} color="white" />
+        </span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary, #1a1a1a)' }}>New Session</span>
+      </Link>
+
+      {rightTabs.map(tab => {
+        const active = isActive(tab.href);
         const Icon = tab.icon;
         return (
           <Link

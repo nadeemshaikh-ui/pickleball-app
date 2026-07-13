@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, signOut } from '@/lib/auth';
 import { getOwnPlayer, upsertOwnPlayer, listPlayers, type PlayerRow } from '@/lib/players';
 import { uploadPlayerPhoto } from '@/lib/db';
 import { useCurrentClub } from '@/lib/useCurrentClub';
@@ -11,7 +11,7 @@ import type { User } from '@supabase/supabase-js';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { currentClubId, loading: clubLoading } = useCurrentClub();
+  const { currentClubId, isCurrentClubAdmin, loading: clubLoading } = useCurrentClub();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
@@ -56,6 +56,11 @@ export default function RegisterPage() {
     }
     load();
   }, [currentClubId, clubLoading]);
+
+  async function handleSignOut() {
+    await signOut();
+    router.push('/login');
+  }
 
   async function handlePhotoSelect(file: File | null) {
     if (!file) return;
@@ -104,7 +109,7 @@ export default function RegisterPage() {
   if (!user) {
     return (
       <main className="page">
-        <h1>Register</h1>
+        <h1>Profile</h1>
         <p style={{ color: 'var(--muted)', marginTop: 8 }}>Sign in first to register a player profile.</p>
         <Link href="/login" className="btn-primary" style={{ marginTop: 16, display: 'inline-block' }}>
           Sign In
@@ -117,8 +122,10 @@ export default function RegisterPage() {
 
   return (
     <main className="page">
-      <h1>Register</h1>
-      <div className="card" style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <h1>Profile</h1>
+
+      <h2>My Profile</h2>
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {photoUrl && (
           <img src={photoUrl} alt="" width={140} height={140} style={{ borderRadius: '50%', objectFit: 'cover' }} />
         )}
@@ -172,7 +179,7 @@ export default function RegisterPage() {
         </button>
       </div>
 
-      <h2>Registered Players ({directory.length})</h2>
+      <h2>Club Directory ({directory.length})</h2>
       <div className="card">
         {directory.length === 0 && <p style={{ color: 'var(--muted)', fontSize: 14 }}>Nobody's registered yet.</p>}
         {directory.map(p => (
@@ -188,6 +195,18 @@ export default function RegisterPage() {
             </span>
           </div>
         ))}
+      </div>
+
+      <h2>Account</h2>
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {isCurrentClubAdmin && currentClubId && (
+          <Link href={`/clubs/${currentClubId}/settings`} className="btn-secondary" style={{ textAlign: 'center' }}>
+            Club Settings
+          </Link>
+        )}
+        <button className="btn-secondary" onClick={handleSignOut} style={{ color: 'var(--danger)' }}>
+          Sign Out
+        </button>
       </div>
     </main>
   );
