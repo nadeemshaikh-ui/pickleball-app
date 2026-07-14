@@ -3,10 +3,11 @@
 import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Swords, ChevronDown, ChevronUp } from 'lucide-react';
+import { Swords, ChevronDown, ChevronUp, Zap } from 'lucide-react';
 import { fetchRivalriesForPlayer, type Rivalry } from '@/lib/leagueStats';
 import { fetchPersonalBests, type PersonalBests } from '@/lib/personalBests';
 import { fetchMatchHistory, type MatchHistoryEntry } from '@/lib/matchHistory';
+import { fetchPendingChallenges, createChallenge, type Challenge } from '@/lib/challenges';
 import { listPlayers } from '@/lib/players';
 import { getCurrentUser } from '@/lib/auth';
 import { getOwnPlayer } from '@/lib/players';
@@ -32,6 +33,9 @@ function HeadToHeadPageInner() {
   const [rivalries, setRivalries] = useState<Rivalry[]>([]);
   const [bests, setBests] = useState<PersonalBests | null>(null);
   const [loading, setLoading] = useState(true);
+  const [ownPlayerName, setOwnPlayerName] = useState<string | null>(null);
+  const [pendingChallenges, setPendingChallenges] = useState<Challenge[]>([]);
+  const [challenging, setChallenging] = useState<string | null>(null);
 
   // Expanded opponent card — mirrors the ?vs= query param (deep-linkable,
   // shareable) but renders inline under that opponent's own card instead of
@@ -48,10 +52,23 @@ function HeadToHeadPageInner() {
       setNames(sorted);
       const own = user ? await getOwnPlayer(currentClubId!, user.id) : null;
       setSelected(own?.name ?? sorted[0] ?? '');
+      setOwnPlayerName(own?.name ?? null);
+      if (own) fetchPendingChallenges(currentClubId!, own.name).then(setPendingChallenges).catch(() => setPendingChallenges([]));
       setLoading(false);
     }
     init();
   }, [currentClubId, clubLoading]);
+
+  async function handleChallenge(opponentName: string) {
+    if (!currentClubId || !ownPlayerName) return;
+    setChallenging(opponentName);
+    try {
+      await createChallenge(currentClubId, ownPlayerName, opponentName);
+      setPendingChallenges(await fetchPendingChallenges(currentClubId, ownPlayerName));
+    } finally {
+      setChallenging(null);
+    }
+  }
 
   useEffect(() => {
     if (!currentClubId || !selected) return;
@@ -182,6 +199,18 @@ function HeadToHeadPageInner() {
                         </div>
                       </div>
                     ))}
+                  {selected === ownPlayerName && (
+                    <button
+                      className="text-link-btn"
+                      style={{ fontSize: 12, marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                      disabled={challenging === name || pendingChallenges.some(c => c.opponentName === name || c.challengerName === name)}
+                      onClick={() => handleChallenge(name)}
+                    >
+                      {pendingChallenges.some(c => c.opponentName === name || c.challengerName === name)
+                        ? 'Challenge pending'
+                        : <><Zap size={12} /> Challenge</>}
+                    </button>
+                  )}
                 </div>
               )}
             </div>

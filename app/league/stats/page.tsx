@@ -2,24 +2,22 @@
 
 import { Fragment, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Share2, PartyPopper, Zap, Trophy, Swords, FlaskConical } from 'lucide-react';
+import { Share2, PartyPopper, Zap, Swords, FlaskConical } from 'lucide-react';
 import {
   fetchLifetimeLeaderboard,
   fetchMvpCounts,
   fetchStreaks,
   fetchBestDuos,
-  fetchRivalriesForPlayer,
   fetchClosestRivalries,
   MIN_GAMES_FOR_RANKING,
   type LifetimePlayerStats,
   type RankedDuo,
-  type Rivalry,
 } from '@/lib/leagueStats';
 import { fetchStreakRecords, type StreakRecord } from '@/lib/streakRecords';
 import { recordNewlyEarnedBadges } from '@/lib/badgeEvents';
-import { fetchPendingChallenges, createChallenge, type Challenge } from '@/lib/challenges';
+import { fetchPendingChallenges, type Challenge } from '@/lib/challenges';
 import ShareableBadgeCard from '@/components/ShareableBadgeCard';
-import { fetchPersonalBests, fetchClubStreakBests, type PersonalBests, type StreakBest } from '@/lib/personalBests';
+import { fetchClubStreakBests, type StreakBest } from '@/lib/personalBests';
 import { computeChemistryScore } from '@/lib/chemistry';
 import { flightForRating } from '@/lib/flights';
 import { computeBadges, BADGE_CATALOG, type Badge, type PlayerBadgeInput } from '@/lib/badges';
@@ -58,7 +56,6 @@ export default function LeagueStatsPage() {
   const [equipping, setEquipping] = useState(false);
   const [newlyEarned, setNewlyEarned] = useState<Badge[]>([]);
   const [pendingChallenges, setPendingChallenges] = useState<Challenge[]>([]);
-  const [challenging, setChallenging] = useState<string | null>(null);
   const [ownPhotoUrl, setOwnPhotoUrl] = useState<string | null>(null);
   const [shareCardBadge, setShareCardBadge] = useState<Badge | null>(null);
   const [sharingBadge, setSharingBadge] = useState(false);
@@ -70,9 +67,6 @@ export default function LeagueStatsPage() {
   const [nameFilter, setNameFilter] = useState('');
 
   const [expandedName, setExpandedName] = useState<string | null>(null);
-  const [expandedRivalries, setExpandedRivalries] = useState<Rivalry[]>([]);
-  const [expandedBests, setExpandedBests] = useState<PersonalBests | null>(null);
-  const [expandedLoading, setExpandedLoading] = useState(false);
   const [imageShareError, setImageShareError] = useState<string | null>(null);
   const statsCaptureRef = useRef<HTMLDivElement>(null);
 
@@ -177,38 +171,8 @@ export default function LeagueStatsPage() {
     init();
   }, [currentClubId, clubLoading]);
 
-  async function handleToggleExpand(name: string) {
-    if (expandedName === name) {
-      setExpandedName(null);
-      return;
-    }
-    if (!currentClubId) return;
-    setExpandedName(name);
-    setExpandedLoading(true);
-    try {
-      const [rivalries, bests] = await Promise.all([fetchRivalriesForPlayer(currentClubId, name), fetchPersonalBests(currentClubId, name)]);
-      setExpandedRivalries(rivalries);
-      setExpandedBests(bests);
-    } catch {
-      setExpandedRivalries([]);
-      setExpandedBests(null);
-    } finally {
-      setExpandedLoading(false);
-    }
-  }
-
-  async function handleChallenge(opponentName: string) {
-    if (!currentClubId || !ownPlayerName) return;
-    setChallenging(opponentName);
-    try {
-      await createChallenge(currentClubId, ownPlayerName, opponentName);
-      const refreshed = await fetchPendingChallenges(currentClubId, ownPlayerName);
-      setPendingChallenges(refreshed);
-    } catch (e) {
-      setLoadError(e instanceof Error ? e.message : 'Failed to send challenge.');
-    } finally {
-      setChallenging(null);
-    }
+  function handleToggleExpand(name: string) {
+    setExpandedName(prev => (prev === name ? null : name));
   }
 
   function chemistryFor(name: string) {
@@ -311,24 +275,21 @@ export default function LeagueStatsPage() {
       </Link>
       {imageShareError && <p style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 13, marginTop: 8 }}>{imageShareError}</p>}
 
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12, marginBottom: 12 }}>
-        {([
-          ['rank', 'Ranked'],
-          ['wins', 'Wins'],
-          ['winPct', 'Win %'],
-          ['gamesPlayed', 'Games'],
-          ['pointsFor', 'Points'],
-          ['mvp', 'MVP'],
-        ] as [SortKey, string][]).map(([key, label]) => (
-          <button
-            key={key}
-            className={sortKey === key ? 'btn-primary' : 'btn-secondary'}
-            style={{ minHeight: 32, padding: '4px 12px', fontSize: 13 }}
-            onClick={() => setSortKey(key)}
-          >
-            {label}
-          </button>
-        ))}
+      <div style={{ marginTop: 12, marginBottom: 12 }}>
+        <label style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 4 }}>Sort by</label>
+        <select
+          value={sortKey}
+          onChange={e => setSortKey(e.target.value as SortKey)}
+          aria-label="Sort players"
+          style={{ width: '100%', minHeight: 40, padding: '8px 12px', fontSize: 15, border: '1px solid var(--border)', borderRadius: 8 }}
+        >
+          <option value="rank">Ranked (confidence-adjusted)</option>
+          <option value="wins">Wins</option>
+          <option value="winPct">Win %</option>
+          <option value="gamesPlayed">Games</option>
+          <option value="pointsFor">Points</option>
+          <option value="mvp">MVP</option>
+        </select>
       </div>
 
       <input
@@ -488,46 +449,7 @@ export default function LeagueStatsPage() {
                   </div>
                   {isExpanded && (
                     <div className="card" style={{ marginTop: -4, background: 'var(--background)' }}>
-                        {expandedLoading ? (
-                          <p style={{ fontSize: 13, color: 'var(--muted)' }}>Loading…</p>
-                        ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
-                            {expandedBests && expandedBests.biggestMargin !== null && (
-                              <div>
-                                <strong style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Trophy size={14} /> Personal Bests</strong>
-                                <p style={{ margin: '4px 0 0' }}>
-                                  Biggest win: {expandedBests.biggestMarginOwnScore}-{expandedBests.biggestMarginOppScore} vs{' '}
-                                  {expandedBests.biggestMarginOpponents} (margin of {expandedBests.biggestMargin})
-                                </p>
-                                <p style={{ margin: '2px 0 0' }}>Longest-ever win streak: {expandedBests.longestStreak}</p>
-                              </div>
-                            )}
-
-                            <div>
-                              <strong style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Swords size={14} /> Head-to-Head</strong>
-                              {expandedRivalries.length === 0 && <p style={{ margin: '4px 0 0', color: 'var(--muted)' }}>No games logged against anyone yet.</p>}
-                              {expandedRivalries.slice(0, 10).map(r => (
-                                <p key={r.players.join('|')} style={{ margin: '2px 0 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  vs {r.players[1]} — {r.record[0]}-{r.record[1]} ({r.gamesTogether} games)
-                                  {isSelf && (
-                                    <button
-                                      className="text-link-btn"
-                                      style={{ fontSize: 11 }}
-                                      disabled={challenging === r.players[1] || pendingChallenges.some(c => c.opponentName === r.players[1] || c.challengerName === r.players[1])}
-                                      onClick={e => {
-                                        e.stopPropagation();
-                                        handleChallenge(r.players[1]);
-                                      }}
-                                    >
-                                      {pendingChallenges.some(c => c.opponentName === r.players[1] || c.challengerName === r.players[1])
-                                        ? 'Challenge pending'
-                                        : <><Zap size={11} /> Challenge</>}
-                                    </button>
-                                  )}
-                                </p>
-                              ))}
-                            </div>
-
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
                             <div>
                               <strong style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FlaskConical size={14} /> Team Chemistry</strong>
                               {chemistryFor(p.name).length === 0 && <p style={{ margin: '4px 0 0', color: 'var(--muted)' }}>Not enough games with any one partner yet.</p>}
@@ -537,8 +459,16 @@ export default function LeagueStatsPage() {
                                 </p>
                               ))}
                             </div>
+
+                            <Link
+                              href="/league/h2h"
+                              className="text-link-btn"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}
+                              onClick={e => e.stopPropagation()}
+                            >
+                              <Swords size={14} /> Personal Bests, Head-to-Head &amp; Challenge →
+                            </Link>
                           </div>
-                        )}
                     </div>
                   )}
                 </Fragment>
