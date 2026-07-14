@@ -9,24 +9,18 @@ import {
   fetchYearlyLeaderboard,
   fetchBestDuos,
   fetchRivalriesForPlayer,
-  fetchMvpCounts,
-  fetchStreaks,
   type RankedDuo,
   type Rivalry,
 } from '@/lib/leagueStats';
-import { fetchStreakRecords } from '@/lib/streakRecords';
 import { fetchPersonalBests, type PersonalBests } from '@/lib/personalBests';
 import { flightForRating } from '@/lib/flights';
-import { computeBadges, type Badge } from '@/lib/badges';
+import { computeBadges, buildBadgeInput, type Badge } from '@/lib/badges';
 import { getCurrentUser } from '@/lib/auth';
 import { getOwnPlayer } from '@/lib/players';
 import { shareElementAsImage } from '@/lib/shareImage';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import Avatar from '@/components/Avatar';
 import BadgeMedallion from '@/components/BadgeMedallion';
-
-const POWER_DUO_MIN_GAMES = 10;
-const POWER_DUO_MIN_WIN_RATE = 0.7;
 
 type Period = 'month' | 'year';
 
@@ -70,13 +64,10 @@ export default function WrappedPage() {
           return;
         }
 
-        const [periodBoard, duos, rivalries, mvpCounts, streaks, streakRecords, personalBests] = await Promise.all([
+        const [periodBoard, duos, rivalries, personalBests] = await Promise.all([
           period === 'month' ? fetchPlayerOfTheMonthBoard(currentClubId!) : fetchYearlyLeaderboard(currentClubId!),
           fetchBestDuos(currentClubId!),
           fetchRivalriesForPlayer(currentClubId!, own.name),
-          fetchMvpCounts(currentClubId!),
-          fetchStreaks(currentClubId!),
-          fetchStreakRecords(currentClubId!),
           fetchPersonalBests(currentClubId!, own.name),
         ]);
 
@@ -97,23 +88,8 @@ export default function WrappedPage() {
             ? null
             : [...closeRivalries].sort((a, b) => Math.abs(a.record[0] - a.record[1]) - Math.abs(b.record[0] - b.record[1]))[0];
 
-        const winStreakRecordHolder = streakRecords.find(r => r.streakType === 'win')?.holderName;
-        const lossStreakRecordHolder = streakRecords.find(r => r.streakType === 'loss')?.holderName;
-        const eligibleDuos = duos.filter(d => d.gamesPlayed >= POWER_DUO_MIN_GAMES);
-        const topDuo = eligibleDuos.length > 0 ? [...eligibleDuos].sort((a, b) => b.winPct - a.winPct)[0] : null;
-        const flight = flightForRating(own.elo_rating);
-
-        const badges = computeBadges({
-          gamesPlayed: own.games_played,
-          currentStreak: streaks.get(own.name) ?? 0,
-          mvpCount: mvpCounts.get(own.name) ?? 0,
-          flight,
-          isWinStreakRecordHolder: winStreakRecordHolder === own.name,
-          isLossStreakRecordHolder: lossStreakRecordHolder === own.name,
-          duoCount: duos.filter(d => d.players.includes(own.name)).length,
-          hasPowerDuo: duos.some(d => d.players.includes(own.name) && d.gamesPlayed >= POWER_DUO_MIN_GAMES && d.winPct >= POWER_DUO_MIN_WIN_RATE),
-          isClubTopDuo: topDuo !== null && topDuo.players.includes(own.name),
-        });
+        const badgeInput = await buildBadgeInput(currentClubId!, own.name, own.games_played, own.elo_rating);
+        const badges = computeBadges(badgeInput);
 
         setData({
           playerName: own.name,

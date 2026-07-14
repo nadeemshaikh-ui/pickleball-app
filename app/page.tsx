@@ -6,18 +6,15 @@ import Link from 'next/link';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import { hasCompletedOnboarding } from '@/lib/onboarding';
 import { getOwnPlayer } from '@/lib/players';
-import { fetchLifetimeLeaderboard, fetchStreaks, fetchMvpCounts, fetchBestDuos, type LifetimePlayerStats } from '@/lib/leagueStats';
+import { fetchLifetimeLeaderboard, fetchStreaks, fetchMvpCounts, type LifetimePlayerStats } from '@/lib/leagueStats';
 import { fetchStreakRecords } from '@/lib/streakRecords';
 import { fetchPendingChallenges } from '@/lib/challenges';
 import { listPendingJoinRequests, listMyPendingJoinRequests, type JoinRequestRow, type ClubRow } from '@/lib/clubs';
 import { flightForRating } from '@/lib/flights';
-import { computeBadges, type Badge } from '@/lib/badges';
+import { computeBadges, buildBadgeInput, type Badge } from '@/lib/badges';
 import SignInGate from '@/components/SignInGate';
 import { Flame, Crown, Zap, Bell, Trophy, Gift, Award, Swords, IndianRupee } from 'lucide-react';
 import BadgeMedallion from '@/components/BadgeMedallion';
-
-const POWER_DUO_MIN_GAMES = 10;
-const POWER_DUO_MIN_WIN_RATE = 0.7;
 
 export default function HomePage() {
   const router = useRouter();
@@ -64,13 +61,12 @@ export default function HomePage() {
       setDashboardLoading(true);
       try {
         const own = await getOwnPlayer(currentClubId!, user!.id);
-        const [streaks, records, challenges, leaderboard, mvpCounts, duos] = await Promise.all([
+        const [streaks, records, challenges, leaderboard, mvpCounts] = await Promise.all([
           fetchStreaks(currentClubId!),
           fetchStreakRecords(currentClubId!),
           fetchPendingChallenges(currentClubId!, own?.name ?? ''),
           fetchLifetimeLeaderboard(currentClubId!),
           fetchMvpCounts(currentClubId!),
-          fetchBestDuos(currentClubId!),
         ]);
         if (own) {
           const flightName = flightForRating(own.elo_rating);
@@ -86,22 +82,7 @@ export default function HomePage() {
           setRank(rankedIndex >= 0 ? rankedIndex + 1 : null);
           setMvpCount(mvpCounts.get(own.name) ?? 0);
 
-          const ownDuos = duos.filter(d => d.players.includes(own.name));
-          const eligibleDuos = duos.filter(d => d.gamesPlayed >= POWER_DUO_MIN_GAMES);
-          const topDuo = eligibleDuos.length > 0 ? [...eligibleDuos].sort((a, b) => b.winPct - a.winPct)[0] : null;
-          setBadges(
-            computeBadges({
-              gamesPlayed: own.games_played,
-              currentStreak: streaks.get(own.name) ?? 0,
-              mvpCount: mvpCounts.get(own.name) ?? 0,
-              flight: flightName,
-              isWinStreakRecordHolder: winRecordHolder === own.name,
-              isLossStreakRecordHolder: lossRecordHolder === own.name,
-              duoCount: ownDuos.length,
-              hasPowerDuo: ownDuos.some(d => d.gamesPlayed >= POWER_DUO_MIN_GAMES && d.winPct >= POWER_DUO_MIN_WIN_RATE),
-              isClubTopDuo: topDuo !== null && topDuo.players.includes(own.name),
-            })
-          );
+          buildBadgeInput(currentClubId!, own.name, own.games_played, own.elo_rating).then(input => setBadges(computeBadges(input)));
         }
         setPendingChallengeCount(challenges.length);
         if (isCurrentClubAdmin) {

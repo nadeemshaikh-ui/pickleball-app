@@ -111,6 +111,71 @@ export interface PlayerBadgeInput {
 
 export const ALL_SESSION_FORMATS_COUNT = 5;
 
+// Assembles a complete PlayerBadgeInput from every data source the badge
+// system currently uses — the single shared path every call site should go
+// through. Before this, Home/Wrapped built a partial input by hand (missing
+// rivalry/format/ladder fields that Stats/Badges included), so the same
+// player's earned-badge list could differ depending which page they were
+// on. Import cycle note: dynamic imports below avoid a static circular
+// dependency between badges.ts and the lib modules that already import
+// badge-related types.
+export async function buildBadgeInput(clubId: string, playerName: string, gamesPlayed: number, eloRating: number): Promise<PlayerBadgeInput> {
+  const [{ fetchMvpCounts, fetchStreaks, fetchBestDuos, fetchClosestRivalries }, { fetchStreakRecords }, { flightForRating }, { fetchLifetimeGameStats }, { fetchLadderStandings }, { fetchCurrentBadgeHolders }] =
+    await Promise.all([
+      import('./leagueStats'),
+      import('./streakRecords'),
+      import('./flights'),
+      import('./lifetimeGameStats'),
+      import('./ladderStandings'),
+      import('./badgeHolders'),
+    ]);
+
+  const POWER_DUO_MIN_GAMES = 10;
+  const POWER_DUO_MIN_WIN_RATE = 0.7;
+
+  const [mvpCounts, streaks, streakRecords, duos, gameStats, rivalries, ladderStandings, currentHolders] = await Promise.all([
+    fetchMvpCounts(clubId),
+    fetchStreaks(clubId),
+    fetchStreakRecords(clubId),
+    fetchBestDuos(clubId),
+    fetchLifetimeGameStats(clubId),
+    fetchClosestRivalries(clubId),
+    fetchLadderStandings(clubId),
+    fetchCurrentBadgeHolders(clubId),
+  ]);
+
+  const winStreakRecordHolder = streakRecords.find(r => r.streakType === 'win')?.holderName;
+  const lossStreakRecordHolder = streakRecords.find(r => r.streakType === 'loss')?.holderName;
+  const ownDuos = duos.filter(d => d.players.includes(playerName));
+  const eligibleDuos = duos.filter(d => d.gamesPlayed >= POWER_DUO_MIN_GAMES);
+  const topDuo = eligibleDuos.length > 0 ? [...eligibleDuos].sort((a, b) => b.winPct - a.winPct)[0] : null;
+  const gs = gameStats.get(playerName);
+  const maxRivalryGames = rivalries.filter(r => r.players.includes(playerName)).reduce((max, r) => Math.max(max, r.gamesTogether), 0);
+
+  return {
+    gamesPlayed,
+    currentStreak: streaks.get(playerName) ?? 0,
+    mvpCount: mvpCounts.get(playerName) ?? 0,
+    flight: flightForRating(eloRating),
+    isWinStreakRecordHolder: winStreakRecordHolder === playerName,
+    isLossStreakRecordHolder: lossStreakRecordHolder === playerName,
+    duoCount: ownDuos.length,
+    hasPowerDuo: ownDuos.some(d => d.gamesPlayed >= POWER_DUO_MIN_GAMES && d.winPct >= POWER_DUO_MIN_WIN_RATE),
+    isClubTopDuo: topDuo !== null && topDuo.players.includes(playerName),
+    maxRivalryGames,
+    formatsPlayed: gs?.formats.size ?? 0,
+    squadRivalryWins: gs?.squadRivalryWins ?? 0,
+    maxWinMargin: gs?.maxMargin ?? 0,
+    nailBiterGames: gs?.nailBiters ?? 0,
+    hasShutout: (gs?.shutouts ?? 0) > 0,
+    perfectSessions: gs?.perfectSessions ?? 0,
+    nightSessions: gs?.nightSessions ?? 0,
+    ladderWins: ladderStandings.find(s => s.player_name === playerName)?.wins ?? 0,
+    isLadderChampion: currentHolders.get('ladder_champion')?.holderName === playerName,
+    isTheRealKing: currentHolders.get('the_real_king')?.holderName === playerName,
+  };
+}
+
 export function computeBadges(input: PlayerBadgeInput): Badge[] {
   const earned: Badge[] = [];
 

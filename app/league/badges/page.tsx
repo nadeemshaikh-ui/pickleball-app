@@ -3,20 +3,12 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Award } from 'lucide-react';
-import { fetchMvpCounts, fetchStreaks, fetchBestDuos, fetchClosestRivalries } from '@/lib/leagueStats';
-import { fetchStreakRecords } from '@/lib/streakRecords';
-import { flightForRating } from '@/lib/flights';
-import { BADGE_CATALOG, computeBadges, type Badge } from '@/lib/badges';
-import { fetchLifetimeGameStats } from '@/lib/lifetimeGameStats';
-import { fetchLadderStandings } from '@/lib/ladderStandings';
+import { BADGE_CATALOG, computeBadges, buildBadgeInput, type Badge } from '@/lib/badges';
 import { fetchCurrentBadgeHolders, fetchBadgeHoldCounts, type BadgeHolder } from '@/lib/badgeHolders';
 import { getCurrentUser } from '@/lib/auth';
 import { getOwnPlayer } from '@/lib/players';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import BadgeMedallion from '@/components/BadgeMedallion';
-
-const POWER_DUO_MIN_GAMES = 10;
-const POWER_DUO_MIN_WIN_RATE = 0.7;
 
 // Contestable badges — a single current club-wide holder, tracked in
 // league_badge_holder_history (see lib/badgeHolders.ts) rather than a
@@ -58,48 +50,11 @@ export default function BadgesGalleryPage() {
           setLoading(false);
           return;
         }
-        const [mvpCounts, streaks, streakRecords, duos, gameStats, rivalries, ladderStandings, currentHolders] = await Promise.all([
-          fetchMvpCounts(currentClubId!),
-          fetchStreaks(currentClubId!),
-          fetchStreakRecords(currentClubId!),
-          fetchBestDuos(currentClubId!),
-          fetchLifetimeGameStats(currentClubId!),
-          fetchClosestRivalries(currentClubId!),
-          fetchLadderStandings(currentClubId!),
+        const [badgeInput, currentHolders] = await Promise.all([
+          buildBadgeInput(currentClubId!, own.name, own.games_played, own.elo_rating),
           fetchCurrentBadgeHolders(currentClubId!),
         ]);
-        const winStreakRecordHolder = streakRecords.find(r => r.streakType === 'win')?.holderName;
-        const lossStreakRecordHolder = streakRecords.find(r => r.streakType === 'loss')?.holderName;
-        const ownDuos = duos.filter(d => d.players.includes(own.name));
-        const eligibleDuos = duos.filter(d => d.gamesPlayed >= POWER_DUO_MIN_GAMES);
-        const topDuo = eligibleDuos.length > 0 ? [...eligibleDuos].sort((a, b) => b.winPct - a.winPct)[0] : null;
-        const gs = gameStats.get(own.name);
-        const maxRivalryGames = rivalries
-          .filter(r => r.players.includes(own.name))
-          .reduce((max, r) => Math.max(max, r.gamesTogether), 0);
-
-        const badges = computeBadges({
-          gamesPlayed: own.games_played,
-          currentStreak: streaks.get(own.name) ?? 0,
-          mvpCount: mvpCounts.get(own.name) ?? 0,
-          flight: flightForRating(own.elo_rating),
-          isWinStreakRecordHolder: winStreakRecordHolder === own.name,
-          isLossStreakRecordHolder: lossStreakRecordHolder === own.name,
-          duoCount: ownDuos.length,
-          hasPowerDuo: ownDuos.some(d => d.gamesPlayed >= POWER_DUO_MIN_GAMES && d.winPct >= POWER_DUO_MIN_WIN_RATE),
-          isClubTopDuo: topDuo !== null && topDuo.players.includes(own.name),
-          maxRivalryGames,
-          formatsPlayed: gs?.formats.size ?? 0,
-          squadRivalryWins: gs?.squadRivalryWins ?? 0,
-          maxWinMargin: gs?.maxMargin ?? 0,
-          nailBiterGames: gs?.nailBiters ?? 0,
-          hasShutout: (gs?.shutouts ?? 0) > 0,
-          perfectSessions: gs?.perfectSessions ?? 0,
-          nightSessions: gs?.nightSessions ?? 0,
-          ladderWins: ladderStandings.find(s => s.player_name === own.name)?.wins ?? 0,
-          isLadderChampion: currentHolders.get('ladder_champion')?.holderName === own.name,
-          isTheRealKing: currentHolders.get('the_real_king')?.holderName === own.name,
-        });
+        const badges = computeBadges(badgeInput);
         setEarnedIds(new Set(badges.map(b => b.id)));
         setHolders(currentHolders);
 
