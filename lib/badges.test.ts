@@ -8,25 +8,21 @@ describe('computeBadges', () => {
 
   it('awards the volume tier ladder, highest tier only', () => {
     const ids = (n: number) => computeBadges({ gamesPlayed: n, currentStreak: 0, mvpCount: 0, flight: 'Bronze' }).map(b => b.id);
-    expect(ids(9)).not.toContain('kitchen_regular');
-    expect(ids(10)).toEqual(['kitchen_regular']);
-    expect(ids(25)).toEqual(['dink_master']);
-    expect(ids(50)).toEqual(['rally_beast']);
-    expect(ids(100)).toContain('pickle_royalty');
-    expect(ids(100)).not.toContain('kitchen_regular');
+    expect(ids(9)).not.toContain('the_regular');
+    expect(ids(10)).toEqual(['the_regular']);
+    expect(ids(99)).toEqual(['the_regular']);
+    expect(ids(100)).toEqual(['century_club']);
+    expect(ids(250)).toEqual(['iron_paddle']);
+    expect(ids(500)).toContain('living_legend');
+    expect(ids(500)).not.toContain('century_club');
   });
 
-  it('stacks rare milestones on top of the tier badge', () => {
-    const ids = (n: number) => computeBadges({ gamesPlayed: n, currentStreak: 0, mvpCount: 0, flight: 'Bronze' }).map(b => b.id);
-    expect(ids(200)).toEqual(['pickle_royalty', 'paddle_legend']);
-    expect(ids(500)).toEqual(['pickle_royalty', 'ironwood']);
-  });
-
-  it('awards streak badges at 5 and 10', () => {
+  it('awards streak badges at 3, 5, and 10 — all stack, no highest-only rule', () => {
     const ids = (n: number) => computeBadges({ gamesPlayed: 0, currentStreak: n, mvpCount: 0, flight: 'Bronze' }).map(b => b.id);
-    expect(ids(4)).toEqual([]);
-    expect(ids(5)).toContain('hot_streak_5');
-    expect(ids(10)).toContain('unstoppable');
+    expect(ids(2)).toEqual([]);
+    expect(ids(3)).toEqual(['on_a_roll']);
+    expect(ids(5)).toEqual(['on_a_roll', 'hot_streak_5']);
+    expect(ids(10)).toEqual(['on_a_roll', 'hot_streak_5', 'unstoppable']);
   });
 
   it('awards the streak crown only to the record holder', () => {
@@ -92,6 +88,6 @@ describe('computeBadges', () => {
       isWinStreakRecordHolder: true,
     });
     const ids = badges.map(b => b.id);
-    expect(ids).toEqual(['pickle_royalty', 'hot_streak_5', 'unstoppable', 'streak_king', 'crowd_pleaser', 'platinum_flight']);
+    expect(ids).toEqual(['century_club', 'on_a_roll', 'hot_streak_5', 'unstoppable', 'streak_king', 'crowd_pleaser', 'platinum_flight']);
   });
 });

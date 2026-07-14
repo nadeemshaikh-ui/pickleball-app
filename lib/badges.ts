@@ -19,29 +19,30 @@ export interface Badge {
   tier?: 1 | 2 | 3 | 4; // bronze/silver/gold/platinum, for medallion ring color
 }
 
-// Games-played tier ladder.
+// Games-played tier ladder. Named for dedication/attendance, not skill —
+// a raw counter can't tell you how good someone is, only how often they show
+// up, so the names stay in that lane instead of claiming "mastery".
 const VOLUME_TIERS: { threshold: number; tier: 1 | 2 | 3 | 4; id: string; label: string; icon: string }[] = [
-  { threshold: 10, tier: 1, id: 'kitchen_regular', label: 'Kitchen Regular', icon: 'Salad' },
-  { threshold: 25, tier: 2, id: 'dink_master', label: 'Dink Master', icon: 'Target' },
-  { threshold: 50, tier: 3, id: 'rally_beast', label: 'Rally Beast', icon: 'Dumbbell' },
-  { threshold: 100, tier: 4, id: 'pickle_royalty', label: 'Pickle Royalty', icon: 'Crown' },
+  { threshold: 10, tier: 1, id: 'the_regular', label: 'The Regular', icon: 'Salad' },
+  { threshold: 100, tier: 2, id: 'century_club', label: 'Century Club', icon: 'Target' },
+  { threshold: 250, tier: 3, id: 'iron_paddle', label: 'Iron Paddle', icon: 'Dumbbell' },
+  { threshold: 500, tier: 4, id: 'living_legend', label: 'Living Legend', icon: 'Crown' },
 ];
 
-// MVP-count tier ladder.
+// MVP-count tier ladder — legitimately skill/character-flavored since MVP
+// is peer-voted recognition, not a raw counter.
 const MVP_TIERS: { threshold: number; tier: 1 | 2 | 3 | 4; id: string; label: string; icon: string }[] = [
   { threshold: 1, tier: 1, id: 'fan_favorite', label: 'Fan Favorite', icon: 'Star' },
   { threshold: 3, tier: 2, id: 'crowd_pleaser', label: 'Crowd Pleaser', icon: 'Sparkles' },
-  { threshold: 7, tier: 3, id: 'mvp_regular', label: 'MVP Regular', icon: 'Award' },
   { threshold: 15, tier: 4, id: 'hall_of_famer', label: 'Hall of Famer', icon: 'Landmark' },
 ];
 
 export const BADGE_CATALOG: Badge[] = [
   // Volume tiers
   ...VOLUME_TIERS.map(t => ({ id: t.id, label: t.label, icon: t.icon, tier: t.tier, description: `${t.threshold}+ lifetime games` })),
-  { id: 'paddle_legend', label: 'Paddle Legend', icon: 'TreePine', description: '200+ lifetime games' },
-  { id: 'ironwood', label: 'Ironwood', icon: 'Trees', description: '500+ lifetime games' },
 
   // Win-streak flavor
+  { id: 'on_a_roll', label: 'On a Roll', icon: 'Sparkle', description: '3-game win streak' },
   { id: 'hot_streak_5', label: 'Hot Streak', icon: 'Flame', description: '5-game win streak' },
   { id: 'unstoppable', label: 'Unstoppable', icon: 'Rocket', description: '10-game win streak' },
 
@@ -185,9 +186,8 @@ export function computeBadges(input: PlayerBadgeInput): Badge[] {
       break; // highest tier only, avoids cluttering the row with all lower tiers too
     }
   }
-  if (input.gamesPlayed >= 500) earned.push(findBadge('ironwood'));
-  else if (input.gamesPlayed >= 200) earned.push(findBadge('paddle_legend'));
 
+  if (input.currentStreak >= 3) earned.push(findBadge('on_a_roll'));
   if (input.currentStreak >= 5) earned.push(findBadge('hot_streak_5'));
   if (input.currentStreak >= 10) earned.push(findBadge('unstoppable'));
 

@@ -17,9 +17,9 @@ const CONTESTABLE_BADGE_IDS = new Set(['streak_king', 'wooden_spoon', 'ladder_ch
 
 const SECTIONS: { title: string; ids: string[] }[] = [
   { title: 'Crowns', ids: ['streak_king', 'wooden_spoon', 'ladder_champion', 'the_real_king'] },
-  { title: 'Volume', ids: ['kitchen_regular', 'dink_master', 'rally_beast', 'pickle_royalty', 'paddle_legend', 'ironwood'] },
-  { title: 'Streaks', ids: ['hot_streak_5', 'unstoppable'] },
-  { title: 'MVP', ids: ['fan_favorite', 'crowd_pleaser', 'mvp_regular', 'hall_of_famer'] },
+  { title: 'Volume', ids: ['the_regular', 'century_club', 'iron_paddle', 'living_legend'] },
+  { title: 'Streaks', ids: ['on_a_roll', 'hot_streak_5', 'unstoppable'] },
+  { title: 'MVP', ids: ['fan_favorite', 'crowd_pleaser', 'hall_of_famer'] },
   { title: 'Flight', ids: ['gold_flight', 'platinum_flight'] },
   { title: 'Partnership', ids: ['power_duo', 'golden_pair', 'chemistry_lab'] },
   { title: 'Game Log', ids: ['arch_rivals', 'format_explorer', 'squad_legend', 'blowout_artist', 'nail_biter_veteran', 'shutout_king', 'perfectionist', 'night_owl', 'rung_climber'] },
