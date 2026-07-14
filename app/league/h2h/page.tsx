@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Swords, X } from 'lucide-react';
+import { Swords, ChevronDown, ChevronUp } from 'lucide-react';
 import { fetchRivalriesForPlayer, type Rivalry } from '@/lib/leagueStats';
 import { fetchPersonalBests, type PersonalBests } from '@/lib/personalBests';
 import { fetchMatchHistory, type MatchHistoryEntry } from '@/lib/matchHistory';
@@ -33,6 +33,9 @@ function HeadToHeadPageInner() {
   const [bests, setBests] = useState<PersonalBests | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Expanded opponent card — mirrors the ?vs= query param (deep-linkable,
+  // shareable) but renders inline under that opponent's own card instead of
+  // a separate section elsewhere on the page.
   const opponent = searchParams.get('vs');
   const [matchHistory, setMatchHistory] = useState<MatchHistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -69,8 +72,8 @@ function HeadToHeadPageInner() {
       .finally(() => setHistoryLoading(false));
   }, [currentClubId, selected, opponent]);
 
-  function showHistoryFor(name: string) {
-    router.push(`/league/h2h?vs=${encodeURIComponent(name)}`);
+  function toggleHistoryFor(name: string) {
+    router.push(opponent === name ? '/league/h2h' : `/league/h2h?vs=${encodeURIComponent(name)}`);
   }
 
   if (loading || clubLoading) return <main className="page"><p>Loading…</p></main>;
@@ -99,93 +102,91 @@ function HeadToHeadPageInner() {
       </div>
 
       {bests && bests.biggestMargin !== null && (
-        <>
-          <h2 style={{ fontSize: 15 }}>Personal Bests</h2>
-          <div className="card" style={{ marginBottom: 16, fontSize: 13 }}>
-            <p style={{ margin: 0 }}>
-              Biggest win: {bests.biggestMarginOwnScore}-{bests.biggestMarginOppScore} vs {bests.biggestMarginOpponents} (margin of {bests.biggestMargin})
-            </p>
-            <p style={{ margin: '4px 0 0' }}>Longest-ever win streak: {bests.longestStreak}</p>
+        <div className="card" style={{ marginBottom: 16, display: 'flex', gap: 16 }}>
+          <div style={{ flex: 1, textAlign: 'center' }}>
+            <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700 }}>Biggest Win</div>
+            <div style={{ fontSize: 20, fontWeight: 800, marginTop: 2 }}>{bests.biggestMarginOwnScore}-{bests.biggestMarginOppScore}</div>
+            <div style={{ fontSize: 11, color: 'var(--muted)' }}>vs {bests.biggestMarginOpponents} (+{bests.biggestMargin})</div>
           </div>
-        </>
-      )}
-
-      {opponent && (
-        <>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-            <h2 style={{ fontSize: 15, margin: 0 }}>
-              {selected} vs {opponent} — Match History
-            </h2>
-            <button className="icon-btn" aria-label="Close match history" onClick={() => router.push('/league/h2h')} style={{ width: 28, height: 28 }}>
-              <X size={16} />
-            </button>
+          <div style={{ flex: 1, textAlign: 'center', borderLeft: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700 }}>Best Streak</div>
+            <div style={{ fontSize: 20, fontWeight: 800, marginTop: 2 }}>{bests.longestStreak}</div>
+            <div style={{ fontSize: 11, color: 'var(--muted)' }}>games</div>
           </div>
-          {historyLoading && <p style={{ fontSize: 13, color: 'var(--muted)' }}>Loading…</p>}
-          {!historyLoading && matchHistory.length === 0 && (
-            <p className="card" style={{ color: 'var(--muted)', fontSize: 14 }}>No matches found between these two.</p>
-          )}
-          {matchHistory.length > 0 && (
-            <div style={{ overflowX: 'auto', marginBottom: 16 }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
-                    <th style={{ padding: '6px 4px' }}>Date</th>
-                    <th style={{ padding: '6px 4px' }}>Format</th>
-                    <th style={{ padding: '6px 4px' }}>Partners</th>
-                    <th style={{ padding: '6px 4px', textAlign: 'right' }}>Score</th>
-                    <th style={{ padding: '6px 4px', textAlign: 'right' }}>Result</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {matchHistory.map((m, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '8px 4px', color: 'var(--muted)' }}>{new Date(m.date).toLocaleDateString()}</td>
-                      <td style={{ padding: '8px 4px', color: 'var(--muted)' }}>{formatLabel(m.format as Format)}</td>
-                      <td style={{ padding: '8px 4px', fontSize: 12, color: 'var(--muted)' }}>
-                        {m.yourPartner ?? '—'} vs {m.opponentPartner ?? '—'}
-                      </td>
-                      <td style={{ padding: '8px 4px', textAlign: 'right', fontWeight: 700 }}>{m.yourScore}-{m.opponentScore}</td>
-                      <td style={{ padding: '8px 4px', textAlign: 'right', fontWeight: 700, color: m.won ? 'var(--accent, #3f6b4a)' : 'var(--danger)' }}>
-                        {m.won ? 'Won' : 'Lost'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>
+        </div>
       )}
 
       <h2 style={{ fontSize: 15 }}>Record vs Every Opponent</h2>
       <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: -8, marginBottom: 8 }}>Tap a name to see match-by-match history.</p>
       {rivalries.length === 0 && <p className="card" style={{ color: 'var(--muted)', fontSize: 14 }}>No games logged against anyone yet.</p>}
 
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <thead>
-            <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
-              <th style={{ padding: '6px 4px' }}>Opponent</th>
-              <th style={{ padding: '6px 4px', textAlign: 'right' }}>Record</th>
-              <th style={{ padding: '6px 4px', textAlign: 'right' }}>Games</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rivalries.map(r => (
-              <tr
-                key={r.players[1]}
-                onClick={() => showHistoryFor(r.players[1])}
-                style={{ borderBottom: '1px solid var(--border)', opacity: r.provisional ? 0.5 : 1, cursor: 'pointer', background: opponent === r.players[1] ? 'var(--background)' : undefined }}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {rivalries.map(r => {
+          const name = r.players[1];
+          const isOpen = opponent === name;
+          return (
+            <div key={name} className="card" style={{ opacity: r.provisional ? 0.5 : 1, padding: 0, overflow: 'hidden' }}>
+              <button
+                onClick={() => toggleHistoryFor(name)}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '12px 14px',
+                  background: 'none',
+                  border: 'none',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                }}
               >
-                <td style={{ padding: '8px 4px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Avatar name={r.players[1]} size={22} /> {r.players[1]}
-                </td>
-                <td style={{ padding: '8px 4px', textAlign: 'right', fontWeight: 700 }}>{r.record[0]}-{r.record[1]}</td>
-                <td style={{ padding: '8px 4px', textAlign: 'right', color: 'var(--muted)' }}>{r.gamesTogether}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                <Avatar name={name} size={28} />
+                <span style={{ flex: 1, fontWeight: 700, fontSize: 14 }}>{name}</span>
+                <span style={{ fontWeight: 800, fontSize: 15 }}>{r.record[0]}-{r.record[1]}</span>
+                <span style={{ fontSize: 12, color: 'var(--muted)', minWidth: 60, textAlign: 'right' }}>{r.gamesTogether} games</span>
+                {isOpen ? <ChevronUp size={16} color="var(--muted)" /> : <ChevronDown size={16} color="var(--muted)" />}
+              </button>
+
+              {isOpen && (
+                <div style={{ borderTop: '1px solid var(--border)', padding: '10px 14px 14px' }}>
+                  {historyLoading && <p style={{ fontSize: 13, color: 'var(--muted)' }}>Loading…</p>}
+                  {!historyLoading && matchHistory.length === 0 && (
+                    <p style={{ fontSize: 13, color: 'var(--muted)' }}>No matches found between these two.</p>
+                  )}
+                  {!historyLoading &&
+                    matchHistory.map((m, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '8px 0',
+                          borderBottom: i < matchHistory.length - 1 ? '1px solid var(--border)' : undefined,
+                          fontSize: 13,
+                        }}
+                      >
+                        <div>
+                          <div style={{ color: 'var(--muted)', fontSize: 11 }}>
+                            {new Date(m.date).toLocaleDateString()} · {formatLabel(m.format as Format)}
+                          </div>
+                          <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                            {m.yourPartner ?? '—'} vs {m.opponentPartner ?? '—'}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontWeight: 700 }}>{m.yourScore}-{m.opponentScore}</div>
+                          <div style={{ fontWeight: 700, fontSize: 11, color: m.won ? 'var(--accent, #3f6b4a)' : 'var(--danger)' }}>
+                            {m.won ? 'Won' : 'Lost'}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </main>
   );
