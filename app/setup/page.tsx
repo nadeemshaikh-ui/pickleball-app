@@ -956,33 +956,51 @@ export default function SetupPage() {
 
           {squadMode === 'manual' && (
             <div className="card" style={{ marginTop: 12 }}>
-              <strong>Tap a player to assign {squadGoldLabel.trim() || 'Gold'} / {squadBlackLabel.trim() || 'Black'}</strong>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-                {names.map(n => n.trim()).map((name, playerIndex) => {
-                  if (!name) return null;
-                  const squad = manualSquadAssignment[playerIndex] ?? null;
-                  return (
-                    <button
-                      key={playerIndex}
-                      type="button"
-                      onClick={() => cycleSquadPlayer(playerIndex)}
-                      style={{
-                        minHeight: 44,
-                        padding: '6px 14px',
-                        borderRadius: 999,
-                        border: '1px solid var(--border)',
-                        background: squad === null ? 'white' : squad === 0 ? '#d4af37' : '#1a1a1a',
-                        color: squad === null ? 'var(--foreground)' : 'white',
-                        fontSize: 13,
-                        fontWeight: 700,
-                      }}
-                    >
-                      {name} {squad === 0 ? '— Gold' : squad === 1 ? '— Black' : ''}
-                    </button>
-                  );
-                })}
-              </div>
-              <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>Every player needs a squad, split evenly.</p>
+              <strong>Tap a player to cycle Unassigned → {squadGoldLabel.trim() || 'Gold'} → {squadBlackLabel.trim() || 'Black'}</strong>
+              {(() => {
+                const trimmedNames = names.map(n => n.trim());
+                const indexed = trimmedNames.map((name, playerIndex) => ({ name, playerIndex })).filter(p => p.name);
+                const unassigned = indexed.filter(p => (manualSquadAssignment[p.playerIndex] ?? null) === null);
+                const goldTeam = indexed.filter(p => manualSquadAssignment[p.playerIndex] === 0);
+                const blackTeam = indexed.filter(p => manualSquadAssignment[p.playerIndex] === 1);
+                const chip = (p: { name: string; playerIndex: number }, bg: string, color: string) => (
+                  <button
+                    key={p.playerIndex}
+                    type="button"
+                    onClick={() => cycleSquadPlayer(p.playerIndex)}
+                    style={{ minHeight: 40, padding: '6px 14px', borderRadius: 999, border: '1px solid var(--border)', background: bg, color, fontSize: 13, fontWeight: 700 }}
+                  >
+                    {p.name}
+                  </button>
+                );
+                return (
+                  <>
+                    {unassigned.length > 0 && (
+                      <div style={{ marginTop: 10 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>
+                          Unassigned
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{unassigned.map(p => chip(p, 'white', 'var(--foreground)'))}</div>
+                      </div>
+                    )}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 14 }}>
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: '#8a6d10', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6, borderBottom: '2px solid #d4af37', paddingBottom: 4 }}>
+                          {squadGoldLabel.trim() || 'Gold'} ({goldTeam.length})
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{goldTeam.map(p => chip(p, '#d4af37', 'white'))}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--foreground)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6, borderBottom: '2px solid #1a1a1a', paddingBottom: 4 }}>
+                          {squadBlackLabel.trim() || 'Black'} ({blackTeam.length})
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{blackTeam.map(p => chip(p, '#1a1a1a', 'white'))}</div>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+              <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 10 }}>Every player needs a squad, split evenly.</p>
             </div>
           )}
         </>

@@ -99,7 +99,14 @@ export default function HomePage() {
           <img src={currentClub.logo_url} alt="" width={36} height={36} style={{ borderRadius: '50%', objectFit: 'cover' }} />
         )}
         <div>
-          <h1 style={{ margin: 0 }}>{currentClub?.name ?? 'Pickleball Session'}</h1>
+          <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+            {currentClub?.name ?? 'Pickleball Session'}
+            {isCurrentClubAdmin && (
+              <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--primary)', border: '1.5px solid var(--primary)', borderRadius: 4, padding: '2px 6px' }}>
+                Admin
+              </span>
+            )}
+          </h1>
         </div>
       </div>
 

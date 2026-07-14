@@ -87,7 +87,16 @@ export async function listMyClubs(): Promise<ClubMembership[]> {
     .select('club_id, role, club:clubs(id, name, logo_url, logo_url_2, join_code, created_by, created_at, upi_vpa)')
     .eq('user_id', userData.user.id);
   if (error) throw error;
-  return (data as unknown as { club_id: string; role: 'admin' | 'member'; club: ClubRow }[]).map(r => ({
+  const rows = data as unknown as { club_id: string; role: 'admin' | 'member'; club: ClubRow }[];
+  // Deterministic order (admin clubs first, then alphabetical) — Postgres
+  // gives no ordering guarantee here, and useCurrentClub() falls back to
+  // memberships[0] for a fresh sign-in with nothing saved yet, so an
+  // unordered result could hand a multi-club admin a random starting club.
+  rows.sort((a, b) => {
+    if (a.role !== b.role) return a.role === 'admin' ? -1 : 1;
+    return a.club.name.localeCompare(b.club.name);
+  });
+  return rows.map(r => ({
     club_id: r.club_id,
     role: r.role,
     club: r.club,

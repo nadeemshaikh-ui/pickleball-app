@@ -1,19 +1,30 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { signOut, getCurrentUser } from '@/lib/auth';
 import type { User } from '@supabase/supabase-js';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
 
+// Google sign-in is a full-page OAuth redirect, not an in-page async call —
+// the "just signed in" moment only becomes visible when this page reloads
+// after the round trip. Without an explicit redirect here, a signed-in user
+// would be stuck showing "Signed in as X" with nowhere to go (this route
+// hides the bottom nav, same as /onboarding and /session/*).
 export default function LoginPage() {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     getCurrentUser().then(u => {
+      if (u) {
+        router.replace('/');
+        return;
+      }
       setUser(u);
       setLoading(false);
     });
-  }, []);
+  }, [router]);
 
   async function handleSignOut() {
     await signOut();
