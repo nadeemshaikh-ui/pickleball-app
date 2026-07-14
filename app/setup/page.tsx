@@ -398,6 +398,17 @@ export default function SetupPage() {
     setNames(copy);
   }
 
+  // Typing "amit" when the club already has a registered "Amit" silently
+  // creates a second, permanently-distinct identity for every stat system
+  // (exact string matching everywhere) — auto-correct casing against the
+  // registered roster on blur so this can't happen from manual typing.
+  function normalizeNameCasing(index: number) {
+    const trimmed = names[index].trim();
+    if (!trimmed) return;
+    const match = registeredPlayers.find(p => p.name.toLowerCase() === trimmed.toLowerCase());
+    if (match && match.name !== trimmed) updateName(index, match.name);
+  }
+
   function updateCourtLabel(index: number, value: string) {
     setCourtLabels(prev => prev.map((v, i) => (i === index ? value : v)));
   }
@@ -749,6 +760,7 @@ export default function SetupPage() {
               <input
                 value={name}
                 onChange={e => updateName(i, e.target.value)}
+                onBlur={() => normalizeNameCasing(i)}
                 placeholder={`Player ${i + 1}`}
                 style={{ flex: 1, minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
               />
