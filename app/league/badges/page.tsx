@@ -100,7 +100,7 @@ export default function BadgesGalleryPage() {
 
   return (
     <main className="page">
-      <Link href="/league/stats" className="text-link-btn">← Stats</Link>
+      <Link href="/league" className="text-link-btn">← League</Link>
       <h1 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Award size={22} /> Badge Gallery</h1>
       <p style={{ fontSize: 12, color: 'var(--muted)', padding: '0 8px', marginTop: 4, marginBottom: 16 }}>
         {earnedIds.size} of {BADGE_CATALOG.length - CONTESTABLE_BADGE_IDS.size} personal badges earned. Crowns are club-wide and contested by performance.

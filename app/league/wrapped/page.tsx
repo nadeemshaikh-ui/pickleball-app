@@ -199,11 +199,12 @@ export default function WrappedPage() {
           {data.badges.length === 0 ? (
             <p style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>None yet — keep playing.</p>
           ) : (
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
               {data.badges.map(b => (
-                <div key={b.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, width: 64 }}>
+                <div key={b.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, width: 84 }}>
                   <BadgeMedallion badge={b} size={32} />
-                  <span style={{ fontSize: 10, textAlign: 'center', color: 'var(--muted)' }}>{b.label}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, textAlign: 'center' }}>{b.label}</span>
+                  <span style={{ fontSize: 9, textAlign: 'center', color: 'var(--muted)', lineHeight: 1.25 }}>{b.description}</span>
                 </div>
               ))}
             </div>
