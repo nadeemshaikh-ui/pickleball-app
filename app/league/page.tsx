@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Share2, RefreshCw, Sparkles, Swords, BarChart3, ListOrdered, Gift, Award, ScrollText, CalendarDays } from 'lucide-react';
+import { Share2, RefreshCw, Sparkles, Swords, BarChart3, ListOrdered, Gift, Award, ScrollText, CalendarDays, IndianRupee } from 'lucide-react';
 import {
   fetchPlayerOfTheMonthBoard,
   fetchBestDuos,
@@ -101,6 +101,15 @@ export default function LeaguePage() {
   const rankedDuos = duos.filter(d => !d.provisional).slice(0, 5);
   const rankedRivalries = rivalries.filter(r => !r.provisional).slice(0, 5);
 
+  const exploreLinks = [
+    { href: '/league/stats', label: 'Lifetime Stats', icon: BarChart3 },
+    { href: '/league/ladder', label: 'Ladder League', icon: ListOrdered },
+    { href: '/league/wrapped', label: 'Your Wrapped', icon: Gift },
+    { href: '/league/badges', label: 'Badge Gallery', icon: Award },
+    { href: '/league/sessions', label: 'Session History', icon: ScrollText },
+    { href: '/league/dues', label: 'My Dues', icon: IndianRupee },
+  ];
+
   return (
     <main className="page">
       <div className="page-header-row">
@@ -128,6 +137,7 @@ export default function LeaguePage() {
       <div ref={snapshotCaptureRef}>
         {monthLeader && (
           <>
+            <h2 style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--muted)', marginBottom: 8 }}>This Month</h2>
             <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Sparkles size={17} /> Player of the Month</h2>
             <Link href="/league/potm" className="card" style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'inherit', textDecoration: 'none' }}>
               <Avatar name={monthLeader.name} size={44} />
@@ -179,25 +189,15 @@ export default function LeaguePage() {
         </div>
       </div>
 
-      <Link href="/league/stats" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, textAlign: 'center', marginBottom: 12, marginTop: 16 }}>
-        <BarChart3 size={15} /> View Full Lifetime Stats
-      </Link>
-
-      <Link href="/league/ladder" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, textAlign: 'center', marginBottom: 12 }}>
-        <ListOrdered size={15} /> View Ladder League
-      </Link>
-
-      <Link href="/league/wrapped" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, textAlign: 'center', marginBottom: 12 }}>
-        <Gift size={15} /> Your Pickleball Wrapped
-      </Link>
-
-      <Link href="/league/badges" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, textAlign: 'center', marginBottom: 12 }}>
-        <Award size={15} /> Badge Gallery
-      </Link>
-
-      <Link href="/league/sessions" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, textAlign: 'center', marginBottom: 12 }}>
-        <ScrollText size={15} /> Session History
-      </Link>
+      <h2 style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--muted)', marginTop: 16, marginBottom: 8 }}>Explore</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
+        {exploreLinks.map(({ href, label, icon: Icon }) => (
+          <Link key={href} href={href} className="btn-secondary" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, textAlign: 'center', padding: '14px 8px' }}>
+            <Icon size={20} />
+            <span style={{ fontSize: 12 }}>{label}</span>
+          </Link>
+        ))}
+      </div>
 
       {isAdmin && (
         <button

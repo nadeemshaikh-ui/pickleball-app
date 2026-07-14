@@ -6,21 +6,19 @@ import Link from 'next/link';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import { hasCompletedOnboarding } from '@/lib/onboarding';
 import { getOwnPlayer } from '@/lib/players';
-import { fetchLifetimeLeaderboard, fetchStreaks, fetchMvpCounts, type LifetimePlayerStats } from '@/lib/leagueStats';
+import { fetchLifetimeLeaderboard, fetchStreaks, type LifetimePlayerStats } from '@/lib/leagueStats';
 import { fetchStreakRecords } from '@/lib/streakRecords';
 import { fetchPendingChallenges } from '@/lib/challenges';
 import { listPendingJoinRequests, listMyPendingJoinRequests, type JoinRequestRow, type ClubRow } from '@/lib/clubs';
-import { flightForRating } from '@/lib/flights';
 import { computeBadges, buildBadgeInput, type Badge } from '@/lib/badges';
 import SignInGate from '@/components/SignInGate';
-import { Flame, Crown, Zap, Bell, Trophy, Gift, Award, Swords, IndianRupee } from 'lucide-react';
+import { Flame, Crown, Zap, Bell } from 'lucide-react';
 import BadgeMedallion from '@/components/BadgeMedallion';
 
 export default function HomePage() {
   const router = useRouter();
   const { user, currentClub, currentClubId, isCurrentClubAdmin, loading: clubLoading } = useCurrentClub();
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
-  const [flight, setFlight] = useState<string | null>(null);
   const [streak, setStreak] = useState(0);
   const [isStreakKing, setIsStreakKing] = useState(false);
   const [pendingChallengeCount, setPendingChallengeCount] = useState(0);
@@ -29,7 +27,6 @@ export default function HomePage() {
   const [dashboardLoading, setDashboardLoading] = useState(true);
   const [ownStats, setOwnStats] = useState<LifetimePlayerStats | null>(null);
   const [rank, setRank] = useState<number | null>(null);
-  const [mvpCount, setMvpCount] = useState(0);
   const [badges, setBadges] = useState<Badge[]>([]);
 
   useEffect(() => {
@@ -61,26 +58,21 @@ export default function HomePage() {
       setDashboardLoading(true);
       try {
         const own = await getOwnPlayer(currentClubId!, user!.id);
-        const [streaks, records, challenges, leaderboard, mvpCounts] = await Promise.all([
+        const [streaks, records, challenges, leaderboard] = await Promise.all([
           fetchStreaks(currentClubId!),
           fetchStreakRecords(currentClubId!),
           fetchPendingChallenges(currentClubId!, own?.name ?? ''),
           fetchLifetimeLeaderboard(currentClubId!),
-          fetchMvpCounts(currentClubId!),
         ]);
         if (own) {
-          const flightName = flightForRating(own.elo_rating);
-          setFlight(flightName);
           setStreak(streaks.get(own.name) ?? 0);
           const winRecordHolder = records.find(r => r.streakType === 'win')?.holderName;
-          const lossRecordHolder = records.find(r => r.streakType === 'loss')?.holderName;
           setIsStreakKing(winRecordHolder === own.name);
 
           const statsRow = leaderboard.find(p => p.name === own.name) ?? null;
           setOwnStats(statsRow);
           const rankedIndex = leaderboard.filter(p => !p.provisional).findIndex(p => p.name === own.name);
           setRank(rankedIndex >= 0 ? rankedIndex + 1 : null);
-          setMvpCount(mvpCounts.get(own.name) ?? 0);
 
           buildBadgeInput(currentClubId!, own.name, own.games_played, own.elo_rating).then(input => setBadges(computeBadges(input)));
         }
@@ -128,19 +120,12 @@ export default function HomePage() {
         </div>
       )}
 
-      {!dashboardLoading && flight && (
+      {!dashboardLoading && ownStats && (
         <div className="card" style={{ marginBottom: 12 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(64px, 1fr))', gap: 10 }}>
-            <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Rank</div><div style={{ fontWeight: 800 }}>{rank ? `#${rank}` : '—'}</div></div>
-            <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Record</div><div style={{ fontWeight: 800 }}>{ownStats ? `${ownStats.wins}-${ownStats.losses}` : '—'}</div></div>
-            <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Win%</div><div style={{ fontWeight: 800 }}>{ownStats ? `${(ownStats.winPct * 100).toFixed(0)}%` : '—'}</div></div>
-            <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Games</div><div style={{ fontWeight: 800 }}>{ownStats?.gamesPlayed ?? '—'}</div></div>
-            <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>MVP</div><div style={{ fontWeight: 800 }}>{mvpCount}</div></div>
-            <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Flight</div><div style={{ fontWeight: 800 }}>{flight}</div></div>
-            <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Streak</div><div style={{ fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 3 }}>{streak > 0 ? <><Flame size={13} /> {streak}</> : '—'}{isStreakKing && <Crown size={13} />}</div></div>
-            {pendingChallengeCount > 0 && (
-              <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Challenges</div><div style={{ fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 3 }}><Zap size={13} /> {pendingChallengeCount}</div></div>
-            )}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+            <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Rank</div><div style={{ fontWeight: 800, fontSize: 20 }}>{rank ? `#${rank}` : '—'}</div></div>
+            <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Record</div><div style={{ fontWeight: 800, fontSize: 20 }}>{ownStats.wins}-{ownStats.losses}</div></div>
+            <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Streak</div><div style={{ fontWeight: 800, fontSize: 20, display: 'inline-flex', alignItems: 'center', gap: 3 }}>{streak > 0 ? <><Flame size={16} /> {streak}</> : '—'}{isStreakKing && <Crown size={16} />}</div></div>
           </div>
 
           {badges.length > 0 && (
@@ -153,7 +138,17 @@ export default function HomePage() {
               )}
             </div>
           )}
+
+          <Link href="/league/stats" style={{ display: 'block', textAlign: 'right', fontSize: 12, color: 'var(--muted)', marginTop: 10 }}>
+            View full stats →
+          </Link>
         </div>
+      )}
+
+      {pendingChallengeCount > 0 && (
+        <Link href="/league/h2h" className="card" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, color: 'var(--text-accent, inherit)' }}>
+          <Zap size={15} /> {pendingChallengeCount} pending challenge{pendingChallengeCount === 1 ? '' : 's'} — respond
+        </Link>
       )}
 
       {isCurrentClubAdmin && pendingJoinRequests.length > 0 && currentClubId && (
@@ -161,26 +156,6 @@ export default function HomePage() {
           <Bell size={15} /> {pendingJoinRequests.length} pending join request{pendingJoinRequests.length === 1 ? '' : 's'} — review
         </Link>
       )}
-
-      <Link href="/setup" className="btn-primary" style={{ display: 'block', textAlign: 'center', marginTop: 8 }}>
-        New Session
-      </Link>
-      <Link href="/register" className="btn-secondary" style={{ display: 'block', textAlign: 'center', marginTop: 10 }}>
-        My Profile
-      </Link>
-      {isCurrentClubAdmin && currentClubId && (
-        <Link href={`/clubs/${currentClubId}/settings`} className="btn-secondary" style={{ display: 'block', textAlign: 'center', marginTop: 10 }}>
-          Club Settings
-        </Link>
-      )}
-
-      <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-        <Link href="/league" className="btn-secondary" style={{ flex: 1, textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><Trophy size={14} /> League</Link>
-        <Link href="/league/wrapped" className="btn-secondary" style={{ flex: 1, textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><Gift size={14} /> Wrapped</Link>
-        <Link href="/league/badges" className="btn-secondary" style={{ flex: 1, textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><Award size={14} /> Badges</Link>
-      </div>
-      <Link href="/league/h2h" className="btn-secondary" style={{ display: 'flex', textAlign: 'center', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 8 }}><Swords size={14} /> Head-to-Head</Link>
-      <Link href="/league/dues" className="btn-secondary" style={{ display: 'flex', textAlign: 'center', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 8 }}><IndianRupee size={14} /> My Dues</Link>
     </main>
   );
 }
