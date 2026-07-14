@@ -62,7 +62,7 @@ export default function MyDuesPage() {
             </div>
             {vpa && (
               <a
-                href={`upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent('Pickleball Session')}&am=${d.amount_owed}&cu=INR`}
+                href={`tez://upi/pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent('Pickleball Session')}&am=${d.amount_owed}&cu=INR`}
                 className="btn-secondary"
                 style={{ minHeight: 32, padding: '4px 12px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 4 }}
               >

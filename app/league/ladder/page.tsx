@@ -11,6 +11,7 @@ import { shareElementAsImage } from '@/lib/shareImage';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import Avatar from '@/components/Avatar';
 import ConfirmModal from '@/components/ConfirmModal';
+import { displayName } from '@/lib/displayNamePref';
 
 export default function LadderPage() {
   const { currentClubId, loading: clubLoading } = useCurrentClub();
@@ -183,7 +184,7 @@ export default function LadderPage() {
                 onClick={() => handleEnroll(p.name)}
                 style={{ minHeight: 36, padding: '6px 12px', fontSize: 13 }}
               >
-                + {p.nickname || p.name}
+                + {displayName(p)}
               </button>
             ))}
           </div>

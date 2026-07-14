@@ -7,11 +7,13 @@ import { getCurrentUser, signOut } from '@/lib/auth';
 import { getOwnPlayer, upsertOwnPlayer, listPlayers, type PlayerRow } from '@/lib/players';
 import { uploadPlayerPhoto } from '@/lib/db';
 import { useCurrentClub } from '@/lib/useCurrentClub';
+import { getDisplayNamePref, setDisplayNamePref, type DisplayNamePref } from '@/lib/displayNamePref';
 import type { User } from '@supabase/supabase-js';
 
 export default function RegisterPage() {
   const router = useRouter();
   const { currentClubId, isCurrentClubAdmin, loading: clubLoading } = useCurrentClub();
+  const [namePref, setNamePref] = useState<DisplayNamePref>('nickname');
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
@@ -26,6 +28,10 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [directory, setDirectory] = useState<PlayerRow[]>([]);
+
+  useEffect(() => {
+    setNamePref(getDisplayNamePref());
+  }, []);
 
   useEffect(() => {
     if (clubLoading) return;
@@ -195,6 +201,36 @@ export default function RegisterPage() {
             </span>
           </div>
         ))}
+      </div>
+
+      <h2>Display</h2>
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>Show player names as</label>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            type="button"
+            className={namePref === 'nickname' ? 'btn-primary' : 'btn-secondary'}
+            style={{ flex: 1 }}
+            onClick={() => {
+              setNamePref('nickname');
+              setDisplayNamePref('nickname');
+            }}
+          >
+            Nickname
+          </button>
+          <button
+            type="button"
+            className={namePref === 'firstName' ? 'btn-primary' : 'btn-secondary'}
+            style={{ flex: 1 }}
+            onClick={() => {
+              setNamePref('firstName');
+              setDisplayNamePref('firstName');
+            }}
+          >
+            First Name
+          </button>
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--muted)' }}>This device only — falls back to first name if someone has no nickname set.</p>
       </div>
 
       <h2>Account</h2>

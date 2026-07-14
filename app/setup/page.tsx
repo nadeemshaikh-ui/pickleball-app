@@ -27,6 +27,7 @@ import { useCurrentClub } from '@/lib/useCurrentClub';
 import StatusChip from '@/components/StatusChip';
 import SignInGate from '@/components/SignInGate';
 import InfoModal from '@/components/InfoModal';
+import { displayName } from '@/lib/displayNamePref';
 
 const MIN_GAMES_FOR_NEMESIS_ALERT = 3;
 
@@ -510,11 +511,6 @@ export default function SetupPage() {
 
       const parsedCourtCost = courtCost.trim() === '' ? null : Number(courtCost);
       const parsedBallCost = ballCost.trim() === '' ? 200 : Number(ballCost);
-      if (parsedCourtCost !== null && bookerUpiVpa.trim() === '') {
-        setError('Enter your UPI ID so others can pay you, or leave court cost blank to skip dues.');
-        setSubmitting(false);
-        return;
-      }
 
       const baseOptions = {
         clubId: currentClubId,
@@ -705,7 +701,7 @@ export default function SetupPage() {
                   ) : (
                     <span style={{ width: 20, height: 20, borderRadius: '50%', background: '#ddd', display: 'inline-block' }} />
                   )}
-                  {p.nickname || p.name}
+                  {displayName(p)}
                   {alreadyAdded && ' ✓'}
                 </button>
               );
@@ -1273,7 +1269,7 @@ export default function SetupPage() {
       {courtCost.trim() !== '' && (
         <div style={{ marginBottom: 16 }}>
           <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>
-            Your UPI ID (others pay you here)
+            Your UPI ID (optional — others pay you here)
           </label>
           <input
             type="text"
@@ -1284,7 +1280,7 @@ export default function SetupPage() {
             style={{ width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
           />
           {bookerUpiVpa.trim() === '' && (
-            <p style={{ fontSize: 12, color: 'var(--danger)', marginTop: 6 }}>Required since you set a court cost — or clear the cost above to skip dues.</p>
+            <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>Leave blank to use the club's default UPI ID (set in Club Settings), if any.</p>
           )}
         </div>
       )}

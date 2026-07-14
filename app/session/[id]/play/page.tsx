@@ -15,6 +15,9 @@ import { formatLabel } from '@/lib/formatLabel';
 import { detectUpset } from '@/lib/upset';
 import { detectFlightChange } from '@/lib/flightChange';
 import { listPlayers } from '@/lib/players';
+import { getDisplayNamePref } from '@/lib/displayNamePref';
+import { getCurrentUser, isCurrentUserAdmin } from '@/lib/auth';
+import ConfirmModal from '@/components/ConfirmModal';
 
 export default function PlayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -28,6 +31,9 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
   const [flightChanges, setFlightChanges] = useState<Record<string, RoundMessage[]>>({});
   const [kotcMovement, setKotcMovement] = useState<Record<number, string[]>>({});
   const [scoreErrors, setScoreErrors] = useState<Record<string, string>>({});
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
+  const [ending, setEnding] = useState(false);
 
   function setScoreError(courtId: string, message: string) {
     setScoreErrors(prev => ({ ...prev, [courtId]: message }));
@@ -43,11 +49,26 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
     const [s, r] = await Promise.all([getSession(id), getRounds(id)]);
     setSession(s);
     setRounds(r);
+    if (s) {
+      const user = await getCurrentUser();
+      if (user) setIsAdmin(await isCurrentUserAdmin(s.club_id));
+    }
   }
 
   useEffect(() => {
     reload();
   }, [id]);
+
+  async function handleEndSessionEarly() {
+    setShowEndConfirm(false);
+    setEnding(true);
+    try {
+      await markSessionCompleted(id);
+      router.push(`/session/${id}/results`);
+    } finally {
+      setEnding(false);
+    }
+  }
 
   // Scoped to the session's own club, not whatever club is "currently
   // active" in the switcher — a session's data always belongs to the club
@@ -65,7 +86,9 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
   // On-court display name — the full registered name (often first + last)
   // overflows the score box, and nobody needs the surname mid-match.
   function displayName(fullName: string): string {
-    return nicknameByName.get(fullName) ?? fullName.split(' ')[0];
+    const firstName = fullName.split(' ')[0];
+    if (getDisplayNamePref() === 'firstName') return firstName;
+    return nicknameByName.get(fullName) ?? firstName;
   }
 
   type RoundMessage = { kind: 'promoted' | 'relegated' | 'record-win' | 'record-loss'; text: string };
@@ -229,6 +252,27 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
         <p style={{ color: 'var(--muted)', marginTop: 4 }}>
           Round {currentRoundNumber ?? session?.round_count ?? '—'} of {session?.round_count ?? '…'} — tap a score box to enter, it saves automatically
         </p>
+
+        {isAdmin && currentRoundNumber !== undefined && (
+          <button
+            className="btn-secondary"
+            style={{ marginBottom: 12, fontSize: 13 }}
+            onClick={() => setShowEndConfirm(true)}
+            disabled={ending}
+          >
+            {ending ? 'Ending…' : 'End Session Early'}
+          </button>
+        )}
+
+        {showEndConfirm && (
+          <ConfirmModal
+            title="End session early?"
+            message="Rounds that haven't been scored yet stay unscored — everything played so far still counts toward stats, badges, and streaks. This isn't the same as Void Session, which erases a session's results entirely."
+            confirmLabel="End Session"
+            onConfirm={handleEndSessionEarly}
+            onCancel={() => setShowEndConfirm(false)}
+          />
+        )}
 
         {roundNumbers.map(roundNumber => {
           const courts = rounds.filter(r => r.round_number === roundNumber).sort((a, b) => a.court - b.court);
