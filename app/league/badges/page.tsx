@@ -22,7 +22,8 @@ const SECTIONS: { title: string; ids: string[] }[] = [
   { title: 'MVP', ids: ['fan_favorite', 'crowd_pleaser', 'hall_of_famer'] },
   { title: 'Flight', ids: ['gold_flight', 'platinum_flight'] },
   { title: 'Partnership', ids: ['power_duo', 'golden_pair', 'chemistry_lab'] },
-  { title: 'Game Log', ids: ['arch_rivals', 'format_explorer', 'squad_legend', 'blowout_artist', 'nail_biter_veteran', 'shutout_king', 'perfectionist', 'night_owl', 'rung_climber'] },
+  { title: 'Game Log', ids: ['arch_rivals', 'format_explorer', 'squad_legend', 'blowout_artist', 'nail_biter_veteran', 'grinder', 'shutout_king', 'perfectionist', 'night_owl', 'rung_climber'] },
+  { title: 'Head-to-Head', ids: ['nemesis', 'rivalry_slayer'] },
 ];
 
 export default function BadgesGalleryPage() {

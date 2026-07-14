@@ -71,6 +71,21 @@ describe('computeBadges', () => {
     expect(computeBadges({ ...base, ladderWins: 10 }).map(b => b.id)).toContain('rung_climber');
   });
 
+  it('awards the nail-biter tier ladder, highest tier only', () => {
+    const ids = (n: number) => computeBadges({ gamesPlayed: 0, currentStreak: 0, mvpCount: 0, flight: 'Bronze', nailBiterGames: n }).map(b => b.id);
+    expect(ids(9)).toEqual([]);
+    expect(ids(10)).toEqual(['nail_biter_veteran']);
+    expect(ids(20)).toEqual(['grinder']);
+  });
+
+  it('awards nemesis/rivalry-slayer from the optional rivalry-record inputs', () => {
+    const base = { gamesPlayed: 0, currentStreak: 0, mvpCount: 0, flight: 'Bronze' };
+    expect(computeBadges({ ...base, hasLosingRivalry: true }).map(b => b.id)).toContain('nemesis');
+    expect(computeBadges({ ...base, hasDominantRivalry: true }).map(b => b.id)).toContain('rivalry_slayer');
+    expect(computeBadges(base).map(b => b.id)).not.toContain('nemesis');
+    expect(computeBadges(base).map(b => b.id)).not.toContain('rivalry_slayer');
+  });
+
   it('awards crown badges only to the current holder', () => {
     const base = { gamesPlayed: 0, currentStreak: 0, mvpCount: 0, flight: 'Bronze' };
     expect(computeBadges({ ...base, isLadderChampion: true }).map(b => b.id)).toContain('ladder_champion');

@@ -37,6 +37,13 @@ const MVP_TIERS: { threshold: number; tier: 1 | 2 | 3 | 4; id: string; label: st
   { threshold: 15, tier: 4, id: 'hall_of_famer', label: 'Hall of Famer', icon: 'Landmark' },
 ];
 
+// Nail-biter tier ladder — counts games decided by 2 points or fewer,
+// win or lose (a close loss is just as much of a grind as a close win).
+const NAIL_BITER_TIERS: { threshold: number; tier: 1 | 2 | 3 | 4; id: string; label: string; icon: string }[] = [
+  { threshold: 10, tier: 1, id: 'nail_biter_veteran', label: 'Nail-Biter Veteran', icon: 'Feather' },
+  { threshold: 20, tier: 2, id: 'grinder', label: 'Grinder', icon: 'Feather' },
+];
+
 export const BADGE_CATALOG: Badge[] = [
   // Volume tiers
   ...VOLUME_TIERS.map(t => ({ id: t.id, label: t.label, icon: t.icon, tier: t.tier, description: `${t.threshold}+ lifetime games` })),
@@ -67,11 +74,15 @@ export const BADGE_CATALOG: Badge[] = [
   { id: 'format_explorer', label: 'Format Explorer', icon: 'Compass', description: 'Played every session format at least once' },
   { id: 'squad_legend', label: 'Squad Legend', icon: 'Layers', description: '20+ wins in Squad Rivalry' },
   { id: 'blowout_artist', label: 'Blowout Artist', icon: 'Zap', description: 'Won a game by 8+ points' },
-  { id: 'nail_biter_veteran', label: 'Nail-Biter Veteran', icon: 'Feather', description: '10+ games decided by 2 points or fewer' },
+  ...NAIL_BITER_TIERS.map(t => ({ id: t.id, label: t.label, icon: t.icon, tier: t.tier, description: `${t.threshold}+ games decided by 2 points or fewer` })),
   { id: 'shutout_king', label: 'Shutout King', icon: 'Ban', description: 'Won a game without the opponent scoring' },
   { id: 'perfectionist', label: 'Perfectionist', icon: 'CheckCircle2', description: 'Went undefeated in a full session (3+ games)' },
   { id: 'night_owl', label: 'Night Owl', icon: 'Moon', description: '10+ sessions started at 8pm or later' },
   { id: 'rung_climber', label: 'Rung Climber', icon: 'ArrowUpDown', description: '10+ ladder challenge wins' },
+
+  // Head-to-head flavor — same fetchRivalriesForPlayer data H2H page uses
+  { id: 'nemesis', label: 'Nemesis', icon: 'Swords', description: 'Losing head-to-head record (5+ games) against one rival' },
+  { id: 'rivalry_slayer', label: 'Rivalry Slayer', icon: 'Swords', description: 'Winning head-to-head record (10+ games, 70%+) against one rival' },
 
   // Ladder/leaderboard crowns — club-wide contestable, single current holder (see lib/badgeHolders.ts)
   { id: 'ladder_champion', label: 'Ladder Champion', icon: 'Crown', description: 'Currently rung #1 on the ladder' },
@@ -108,6 +119,9 @@ export interface PlayerBadgeInput {
   ladderWins?: number;
   isLadderChampion?: boolean;
   isTheRealKing?: boolean;
+  // Optional — call sites without a fetchRivalriesForPlayer() pass omit these.
+  hasLosingRivalry?: boolean; // 5+ games against one opponent, more losses than wins
+  hasDominantRivalry?: boolean; // 10+ games against one opponent, 70%+ win rate
 }
 
 export const ALL_SESSION_FORMATS_COUNT = 5;
@@ -121,26 +135,35 @@ export const ALL_SESSION_FORMATS_COUNT = 5;
 // dependency between badges.ts and the lib modules that already import
 // badge-related types.
 export async function buildBadgeInput(clubId: string, playerName: string, gamesPlayed: number, eloRating: number): Promise<PlayerBadgeInput> {
-  const [{ fetchMvpCounts, fetchStreaks, fetchBestDuos, fetchClosestRivalries }, { fetchStreakRecords }, { flightForRating }, { fetchLifetimeGameStats }, { fetchLadderStandings }, { fetchCurrentBadgeHolders }] =
-    await Promise.all([
-      import('./leagueStats'),
-      import('./streakRecords'),
-      import('./flights'),
-      import('./lifetimeGameStats'),
-      import('./ladderStandings'),
-      import('./badgeHolders'),
-    ]);
+  const [
+    { fetchMvpCounts, fetchStreaks, fetchBestDuos, fetchClosestRivalries, fetchRivalriesForPlayer, MIN_GAMES_FOR_RIVALRY },
+    { fetchStreakRecords },
+    { flightForRating },
+    { fetchLifetimeGameStats },
+    { fetchLadderStandings },
+    { fetchCurrentBadgeHolders },
+  ] = await Promise.all([
+    import('./leagueStats'),
+    import('./streakRecords'),
+    import('./flights'),
+    import('./lifetimeGameStats'),
+    import('./ladderStandings'),
+    import('./badgeHolders'),
+  ]);
 
   const POWER_DUO_MIN_GAMES = 10;
   const POWER_DUO_MIN_WIN_RATE = 0.7;
+  const RIVALRY_SLAYER_MIN_GAMES = 10;
+  const RIVALRY_SLAYER_MIN_WIN_RATE = 0.7;
 
-  const [mvpCounts, streaks, streakRecords, duos, gameStats, rivalries, ladderStandings, currentHolders] = await Promise.all([
+  const [mvpCounts, streaks, streakRecords, duos, gameStats, rivalries, ownRivalries, ladderStandings, currentHolders] = await Promise.all([
     fetchMvpCounts(clubId),
     fetchStreaks(clubId),
     fetchStreakRecords(clubId),
     fetchBestDuos(clubId),
     fetchLifetimeGameStats(clubId),
     fetchClosestRivalries(clubId),
+    fetchRivalriesForPlayer(clubId, playerName),
     fetchLadderStandings(clubId),
     fetchCurrentBadgeHolders(clubId),
   ]);
@@ -152,6 +175,10 @@ export async function buildBadgeInput(clubId: string, playerName: string, gamesP
   const topDuo = eligibleDuos.length > 0 ? [...eligibleDuos].sort((a, b) => b.winPct - a.winPct)[0] : null;
   const gs = gameStats.get(playerName);
   const maxRivalryGames = rivalries.filter(r => r.players.includes(playerName)).reduce((max, r) => Math.max(max, r.gamesTogether), 0);
+  const hasLosingRivalry = ownRivalries.some(r => r.gamesTogether >= MIN_GAMES_FOR_RIVALRY && r.record[0] < r.record[1]);
+  const hasDominantRivalry = ownRivalries.some(
+    r => r.gamesTogether >= RIVALRY_SLAYER_MIN_GAMES && r.record[0] / r.gamesTogether >= RIVALRY_SLAYER_MIN_WIN_RATE
+  );
 
   return {
     gamesPlayed,
@@ -174,6 +201,8 @@ export async function buildBadgeInput(clubId: string, playerName: string, gamesP
     ladderWins: ladderStandings.find(s => s.player_name === playerName)?.wins ?? 0,
     isLadderChampion: currentHolders.get('ladder_champion')?.holderName === playerName,
     isTheRealKing: currentHolders.get('the_real_king')?.holderName === playerName,
+    hasLosingRivalry,
+    hasDominantRivalry,
   };
 }
 
@@ -212,13 +241,21 @@ export function computeBadges(input: PlayerBadgeInput): Badge[] {
   if ((input.formatsPlayed ?? 0) >= ALL_SESSION_FORMATS_COUNT) earned.push(findBadge('format_explorer'));
   if ((input.squadRivalryWins ?? 0) >= 20) earned.push(findBadge('squad_legend'));
   if ((input.maxWinMargin ?? 0) >= 8) earned.push(findBadge('blowout_artist'));
-  if ((input.nailBiterGames ?? 0) >= 10) earned.push(findBadge('nail_biter_veteran'));
+  for (const t of [...NAIL_BITER_TIERS].reverse()) {
+    if ((input.nailBiterGames ?? 0) >= t.threshold) {
+      earned.push(findBadge(t.id));
+      break;
+    }
+  }
   if (input.hasShutout) earned.push(findBadge('shutout_king'));
   if ((input.perfectSessions ?? 0) >= 1) earned.push(findBadge('perfectionist'));
   if ((input.nightSessions ?? 0) >= 10) earned.push(findBadge('night_owl'));
   if ((input.ladderWins ?? 0) >= 10) earned.push(findBadge('rung_climber'));
   if (input.isLadderChampion) earned.push(findBadge('ladder_champion'));
   if (input.isTheRealKing) earned.push(findBadge('the_real_king'));
+
+  if (input.hasLosingRivalry) earned.push(findBadge('nemesis'));
+  if (input.hasDominantRivalry) earned.push(findBadge('rivalry_slayer'));
 
   return earned;
 }
