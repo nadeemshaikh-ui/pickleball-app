@@ -20,6 +20,7 @@ import { preloadPlayerPhotos } from '@/lib/playerPhotos';
 import { shareElementAsImage } from '@/lib/shareImage';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import Avatar from '@/components/Avatar';
+import ShareBrandedHeader from '@/components/ShareBrandedHeader';
 
 export default function LeaguePage() {
   const { currentClubId, loading: clubLoading } = useCurrentClub();
@@ -135,6 +136,7 @@ export default function LeaguePage() {
       {imageShareError && <p style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 13, marginBottom: 12 }}>{imageShareError}</p>}
 
       <div ref={snapshotCaptureRef}>
+        <ShareBrandedHeader clubId={currentClubId} />
         {monthLeader && (
           <>
             <h2 style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--muted)', marginBottom: 8 }}>This Month</h2>

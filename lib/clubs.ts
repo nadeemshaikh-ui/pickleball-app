@@ -11,6 +11,15 @@ export interface ClubRow {
   upi_vpa: string | null;
 }
 
+// Name + logo only — for the branded header stamped onto every shared
+// session/league image (see components/ShareBrandedHeader.tsx), not a full
+// club record fetch.
+export async function getClubBranding(clubId: string): Promise<{ name: string; logo_url: string | null } | null> {
+  const { data, error } = await supabase.from('clubs').select('name, logo_url').eq('id', clubId).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 // Admin-only at the DB level (RLS + a raise inside the function itself).
 // Deletes every session/round/dues/confirmation/challenge/streak-record/
 // badge-holder-history row for this club and resets each player's elo/games

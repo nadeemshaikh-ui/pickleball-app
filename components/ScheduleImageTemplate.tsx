@@ -5,9 +5,11 @@ import { computeRoundTimeRange } from '@/lib/roundTiming';
 export default function ScheduleImageTemplate({
   session,
   rounds,
+  club,
 }: {
   session: SessionRow;
   rounds: RoundRow[];
+  club?: { name: string; logo_url: string | null } | null;
 }) {
   const byRound = new Map<number, RoundRow[]>();
   for (const r of rounds) {
@@ -29,6 +31,16 @@ export default function ScheduleImageTemplate({
   return (
     <div style={{ width: 1080, background: '#e5fa00', padding: 32, fontFamily: 'var(--font-body), Arial, sans-serif' }}>
       <div style={{ background: '#121a2f', color: '#e5fa00', padding: '24px 32px', border: '3px solid #121a2f' }}>
+        {club && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+            {club.logo_url && (
+              <img src={club.logo_url} alt="" width={48} height={48} style={{ borderRadius: '50%', objectFit: 'cover', border: '2px solid #e5fa00' }} />
+            )}
+            <div style={{ fontFamily: 'var(--font-display), sans-serif', fontSize: 28, fontWeight: 800, letterSpacing: 0.5 }}>
+              {club.name.toUpperCase()}
+            </div>
+          </div>
+        )}
         {session.group_name && (
           <div style={{ fontFamily: 'var(--font-display), sans-serif', fontSize: 44, lineHeight: 1 }}>
             {session.group_name.toUpperCase()}

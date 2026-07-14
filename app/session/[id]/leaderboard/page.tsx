@@ -10,6 +10,7 @@ import NewSessionLink from '@/components/NewSessionLink';
 import SessionDate from '@/components/SessionDate';
 import GroupHeader from '@/components/GroupHeader';
 import { WhatsAppIcon } from '@/components/icons';
+import ShareBrandedHeader from '@/components/ShareBrandedHeader';
 import { preloadPlayerPhotos } from '@/lib/playerPhotos';
 
 const POLL_INTERVAL_MS = 4000;
@@ -80,6 +81,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
         {imageShareError && <p style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 14 }}>{imageShareError}</p>}
 
         <div ref={leaderboardCaptureRef}>
+          <ShareBrandedHeader clubId={session?.club_id} />
         {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
         <h1>Leaderboard</h1>
         {session && <SessionDate createdAt={session.created_at} venue={session.venue} />}

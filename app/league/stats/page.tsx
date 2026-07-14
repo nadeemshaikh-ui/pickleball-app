@@ -31,6 +31,7 @@ import { shareElementAsImage } from '@/lib/shareImage';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import Avatar from '@/components/Avatar';
 import BadgeMedallion from '@/components/BadgeMedallion';
+import ShareBrandedHeader from '@/components/ShareBrandedHeader';
 
 const POWER_DUO_MIN_GAMES = 10;
 const POWER_DUO_MIN_WIN_RATE = 0.7;
@@ -301,6 +302,7 @@ export default function LeagueStatsPage() {
       />
 
       <div ref={statsCaptureRef} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <ShareBrandedHeader clubId={currentClubId} />
         {sorted.length === 0 && <p className="card" style={{ color: 'var(--muted)', fontSize: 14 }}>No games played yet.</p>}
         {sorted.map((p, i) => {
               const flight = flightByName.get(p.name) ?? 'Bronze';

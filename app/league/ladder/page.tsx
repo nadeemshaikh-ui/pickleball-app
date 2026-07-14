@@ -11,6 +11,7 @@ import { shareElementAsImage } from '@/lib/shareImage';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import Avatar from '@/components/Avatar';
 import ConfirmModal from '@/components/ConfirmModal';
+import ShareBrandedHeader from '@/components/ShareBrandedHeader';
 import { displayName } from '@/lib/displayNamePref';
 
 export default function LadderPage() {
@@ -151,6 +152,7 @@ export default function LadderPage() {
       )}
 
       <div className="card" ref={standingsCaptureRef}>
+        <ShareBrandedHeader clubId={currentClubId} />
         {standings.length === 0 && <p style={{ color: 'var(--muted)', fontSize: 14 }}>No players enrolled on the ladder yet.</p>}
         {standings.map(s => (
           <div key={s.player_name} className="leaderboard-row">

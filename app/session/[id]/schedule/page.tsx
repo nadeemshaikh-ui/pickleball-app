@@ -3,6 +3,7 @@
 import { use, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { getSession, getRounds, renamePlayerEverywhere, type RoundRow, type SessionRow } from '@/lib/db';
+import { getClubBranding } from '@/lib/clubs';
 import { shareElementAsImage } from '@/lib/shareImage';
 import { listPlayers, type PlayerRow } from '@/lib/players';
 import { flightForRating } from '@/lib/flights';
@@ -32,6 +33,7 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
   const [sharingImage, setSharingImage] = useState(false);
   const [imageShareError, setImageShareError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
+  const [club, setClub] = useState<{ name: string; logo_url: string | null } | null>(null);
   const tableCaptureRef = useRef<HTMLDivElement>(null);
 
   async function reload() {
@@ -39,6 +41,7 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
     setSession(s);
     setRounds(r);
     setNameDrafts(s.players);
+    getClubBranding(s.club_id).then(setClub).catch(() => setClub(null));
     listPlayers(s.club_id)
       .then(players => setPlayersByName(new Map(players.map(p => [p.name, p]))))
       .catch(() => setPlayersByName(new Map()));
@@ -207,7 +210,7 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
         {session && (
           <div style={{ position: 'fixed', left: -99999, top: 0 }} aria-hidden="true">
             <div ref={tableCaptureRef}>
-              <ScheduleImageTemplate session={session} rounds={rounds} />
+              <ScheduleImageTemplate session={session} rounds={rounds} club={club} />
             </div>
           </div>
         )}

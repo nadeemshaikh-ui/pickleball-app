@@ -23,7 +23,7 @@ import { flightForRating } from '@/lib/flights';
 import { computeBadges, type Badge } from '@/lib/badges';
 import { listPlayers, getOwnPlayer } from '@/lib/players';
 import { fetchConfirmations, confirmParticipation, voidSession, type Confirmation } from '@/lib/sessionConfirmations';
-import { getClubUpiVpa } from '@/lib/clubs';
+import { getClubUpiVpa, getClubBranding } from '@/lib/clubs';
 import { shareToWhatsApp } from '@/lib/whatsapp';
 
 export default function ResultsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -44,6 +44,7 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
   const [voiding, setVoiding] = useState(false);
   const [showVoidConfirm, setShowVoidConfirm] = useState(false);
   const [upiVpa, setUpiVpa] = useState<string | null>(null);
+  const [club, setClub] = useState<{ name: string; logo_url: string | null } | null>(null);
   const [winnerBadges, setWinnerBadges] = useState<Badge[]>([]);
   const [winnerStreak, setWinnerStreak] = useState(0);
   const [winnerMvpCount, setWinnerMvpCount] = useState(0);
@@ -62,6 +63,7 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
       setDues(await fetchSessionDues(id));
       setConfirmations(await fetchConfirmations(id));
       getClubUpiVpa(s.club_id).then(setUpiVpa).catch(() => setUpiVpa(null));
+      getClubBranding(s.club_id).then(setClub).catch(() => setClub(null));
       if (user) {
         setIsAdmin(await isCurrentUserAdmin(s.club_id));
         const own = await getOwnPlayer(s.club_id, user.id);
@@ -181,7 +183,7 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
         {session && (
           <div style={{ position: 'fixed', left: -99999, top: 0 }} aria-hidden="true">
             <div ref={recapCaptureRef}>
-              <RecapImageTemplate session={session} leaderboard={leaderboard} rounds={rounds} />
+              <RecapImageTemplate session={session} leaderboard={leaderboard} rounds={rounds} club={club} />
             </div>
           </div>
         )}

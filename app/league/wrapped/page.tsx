@@ -21,6 +21,7 @@ import { shareElementAsImage } from '@/lib/shareImage';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import Avatar from '@/components/Avatar';
 import BadgeMedallion from '@/components/BadgeMedallion';
+import ShareBrandedHeader from '@/components/ShareBrandedHeader';
 
 type Period = 'month' | 'year';
 
@@ -150,6 +151,7 @@ export default function WrappedPage() {
       {imageShareError && <p style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 13, marginBottom: 12 }}>{imageShareError}</p>}
 
       <div ref={cardsRef} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <ShareBrandedHeader clubId={currentClubId} />
         <div className="card" style={{ textAlign: 'center', padding: 24 }}>
           <Avatar name={data.playerName} size={56} />
           <h2 style={{ marginTop: 8, marginBottom: 0 }}>{periodLabel} on the Court</h2>
