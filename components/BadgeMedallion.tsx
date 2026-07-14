@@ -28,6 +28,15 @@ import {
   Moon,
   ArrowUpDown,
   Sparkle,
+  Cake,
+  RotateCcw,
+  Shuffle,
+  Anchor,
+  Sunrise,
+  CalendarDays,
+  CloudRain,
+  Users,
+  Tv,
   type LucideIcon,
 } from 'lucide-react';
 import type { Badge } from '@/lib/badges';
@@ -61,6 +70,15 @@ const ICONS: Record<string, LucideIcon> = {
   Moon,
   ArrowUpDown,
   Sparkle,
+  Cake,
+  RotateCcw,
+  Shuffle,
+  Anchor,
+  Sunrise,
+  CalendarDays,
+  CloudRain,
+  Users,
+  Tv,
 };
 
 // Enamel-medallion art rendered as SVG — no external art asset needed.

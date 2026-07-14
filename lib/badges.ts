@@ -87,6 +87,18 @@ export const BADGE_CATALOG: Badge[] = [
   // Ladder/leaderboard crowns — club-wide contestable, single current holder (see lib/badgeHolders.ts)
   { id: 'ladder_champion', label: 'Ladder Champion', icon: 'Crown', description: 'Currently rung #1 on the ladder' },
   { id: 'the_real_king', label: 'The Real King', icon: 'Sparkle', description: 'Currently #1 on the lifetime leaderboard' },
+
+  // Dedication/loyalty and calendar flavor (from fetchLifetimeGameStats' date/format/roster tracking)
+  { id: 'anniversary', label: 'Anniversary', icon: 'Cake', description: '1+ year since your first logged game' },
+  { id: 'comeback_kid', label: 'Comeback Kid', icon: 'RotateCcw', description: 'Snapped a 5+ game losing streak with a win' },
+  { id: 'scramble_specialist', label: 'Scramble Specialist', icon: 'Shuffle', description: '20+ wins in Scramble format' },
+  { id: 'one_trick_pony', label: 'One-Trick Pony', icon: 'Anchor', description: '90%+ of games (min 10) in a single format' },
+  { id: 'early_bird', label: 'Early Bird', icon: 'Sunrise', description: '10+ sessions started before 8am' },
+  { id: 'weekend_warrior', label: 'Weekend Warrior', icon: 'CalendarDays', description: '20+ sessions on a Saturday or Sunday' },
+  { id: 'monsoon_regular', label: 'Monsoon Regular', icon: 'CloudRain', description: '10+ sessions played June–September' },
+  { id: 'full_house', label: 'Full House', icon: 'Users', description: 'Played in a session with 12+ total players' },
+  { id: 'diwali_dink', label: 'Diwali Dink', icon: 'Sparkles', description: 'Played a session during Diwali week' },
+  { id: 'ipl_widows_revenge', label: "IPL Widow's Revenge", icon: 'Tv', description: 'Played a session during an IPL final' },
 ];
 
 function findBadge(id: string): Badge {
@@ -122,6 +134,17 @@ export interface PlayerBadgeInput {
   // Optional — call sites without a fetchRivalriesForPlayer() pass omit these.
   hasLosingRivalry?: boolean; // 5+ games against one opponent, more losses than wins
   hasDominantRivalry?: boolean; // 10+ games against one opponent, 70%+ win rate
+  // Optional — same fetchLifetimeGameStats() pass as the fields above, just newer.
+  hasAnniversary?: boolean;
+  hadComebackFromLoss?: boolean;
+  scrambleWins?: number;
+  isOneTrickPony?: boolean;
+  earlySessions?: number;
+  weekendSessions?: number;
+  monsoonSessions?: number;
+  playedFullHouseSession?: boolean;
+  diwaliSessions?: number;
+  iplFinalSessions?: number;
 }
 
 export const ALL_SESSION_FORMATS_COUNT = 5;
@@ -180,6 +203,14 @@ export async function buildBadgeInput(clubId: string, playerName: string, gamesP
     r => r.gamesTogether >= RIVALRY_SLAYER_MIN_GAMES && r.record[0] / r.gamesTogether >= RIVALRY_SLAYER_MIN_WIN_RATE
   );
 
+  const ONE_TRICK_PONY_MIN_GAMES = 10;
+  const ONE_TRICK_PONY_MIN_SHARE = 0.9;
+  const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+  const totalFormatGames = gs ? [...gs.gamesByFormat.values()].reduce((a, b) => a + b, 0) : 0;
+  const maxFormatGames = gs && gs.gamesByFormat.size > 0 ? Math.max(...gs.gamesByFormat.values()) : 0;
+  const isOneTrickPony = totalFormatGames >= ONE_TRICK_PONY_MIN_GAMES && maxFormatGames / totalFormatGames >= ONE_TRICK_PONY_MIN_SHARE;
+  const hasAnniversary = !!gs?.firstSessionDate && Date.now() - new Date(gs.firstSessionDate).getTime() >= ONE_YEAR_MS;
+
   return {
     gamesPlayed,
     currentStreak: streaks.get(playerName) ?? 0,
@@ -203,6 +234,16 @@ export async function buildBadgeInput(clubId: string, playerName: string, gamesP
     isTheRealKing: currentHolders.get('the_real_king')?.holderName === playerName,
     hasLosingRivalry,
     hasDominantRivalry,
+    hasAnniversary,
+    hadComebackFromLoss: gs?.hadComebackFromLoss ?? false,
+    scrambleWins: gs?.winsByFormat.get('scramble') ?? 0,
+    isOneTrickPony,
+    earlySessions: gs?.earlySessions ?? 0,
+    weekendSessions: gs?.weekendSessions ?? 0,
+    monsoonSessions: gs?.monsoonSessions ?? 0,
+    playedFullHouseSession: gs?.playedFullHouseSession ?? false,
+    diwaliSessions: gs?.diwaliSessions ?? 0,
+    iplFinalSessions: gs?.iplFinalSessions ?? 0,
   };
 }
 
@@ -256,6 +297,17 @@ export function computeBadges(input: PlayerBadgeInput): Badge[] {
 
   if (input.hasLosingRivalry) earned.push(findBadge('nemesis'));
   if (input.hasDominantRivalry) earned.push(findBadge('rivalry_slayer'));
+
+  if (input.hasAnniversary) earned.push(findBadge('anniversary'));
+  if (input.hadComebackFromLoss) earned.push(findBadge('comeback_kid'));
+  if ((input.scrambleWins ?? 0) >= 20) earned.push(findBadge('scramble_specialist'));
+  if (input.isOneTrickPony) earned.push(findBadge('one_trick_pony'));
+  if ((input.earlySessions ?? 0) >= 10) earned.push(findBadge('early_bird'));
+  if ((input.weekendSessions ?? 0) >= 20) earned.push(findBadge('weekend_warrior'));
+  if ((input.monsoonSessions ?? 0) >= 10) earned.push(findBadge('monsoon_regular'));
+  if (input.playedFullHouseSession) earned.push(findBadge('full_house'));
+  if ((input.diwaliSessions ?? 0) >= 1) earned.push(findBadge('diwali_dink'));
+  if ((input.iplFinalSessions ?? 0) >= 1) earned.push(findBadge('ipl_widows_revenge'));
 
   return earned;
 }

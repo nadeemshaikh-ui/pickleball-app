@@ -24,6 +24,21 @@ const SECTIONS: { title: string; ids: string[] }[] = [
   { title: 'Partnership', ids: ['power_duo', 'golden_pair', 'chemistry_lab'] },
   { title: 'Game Log', ids: ['arch_rivals', 'format_explorer', 'squad_legend', 'blowout_artist', 'nail_biter_veteran', 'grinder', 'shutout_king', 'perfectionist', 'night_owl', 'rung_climber'] },
   { title: 'Head-to-Head', ids: ['nemesis', 'rivalry_slayer'] },
+  {
+    title: 'Dedication & Calendar',
+    ids: [
+      'anniversary',
+      'comeback_kid',
+      'scramble_specialist',
+      'one_trick_pony',
+      'early_bird',
+      'weekend_warrior',
+      'monsoon_regular',
+      'full_house',
+      'diwali_dink',
+      'ipl_widows_revenge',
+    ],
+  },
 ];
 
 export default function BadgesGalleryPage() {

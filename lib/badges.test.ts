@@ -86,6 +86,22 @@ describe('computeBadges', () => {
     expect(computeBadges(base).map(b => b.id)).not.toContain('rivalry_slayer');
   });
 
+  it('awards the new dedication/calendar badges from the optional fetchLifetimeGameStats inputs', () => {
+    const base = { gamesPlayed: 0, currentStreak: 0, mvpCount: 0, flight: 'Bronze' };
+    expect(computeBadges({ ...base, hasAnniversary: true }).map(b => b.id)).toContain('anniversary');
+    expect(computeBadges({ ...base, hadComebackFromLoss: true }).map(b => b.id)).toContain('comeback_kid');
+    expect(computeBadges({ ...base, scrambleWins: 20 }).map(b => b.id)).toContain('scramble_specialist');
+    expect(computeBadges({ ...base, scrambleWins: 19 }).map(b => b.id)).not.toContain('scramble_specialist');
+    expect(computeBadges({ ...base, isOneTrickPony: true }).map(b => b.id)).toContain('one_trick_pony');
+    expect(computeBadges({ ...base, earlySessions: 10 }).map(b => b.id)).toContain('early_bird');
+    expect(computeBadges({ ...base, weekendSessions: 20 }).map(b => b.id)).toContain('weekend_warrior');
+    expect(computeBadges({ ...base, monsoonSessions: 10 }).map(b => b.id)).toContain('monsoon_regular');
+    expect(computeBadges({ ...base, playedFullHouseSession: true }).map(b => b.id)).toContain('full_house');
+    expect(computeBadges({ ...base, diwaliSessions: 1 }).map(b => b.id)).toContain('diwali_dink');
+    expect(computeBadges({ ...base, iplFinalSessions: 1 }).map(b => b.id)).toContain('ipl_widows_revenge');
+    expect(computeBadges(base).map(b => b.id)).toEqual([]);
+  });
+
   it('awards crown badges only to the current holder', () => {
     const base = { gamesPlayed: 0, currentStreak: 0, mvpCount: 0, flight: 'Bronze' };
     expect(computeBadges({ ...base, isLadderChampion: true }).map(b => b.id)).toContain('ladder_champion');
