@@ -1,6 +1,6 @@
 import { Trophy, Zap } from 'lucide-react';
 import type { RoundRow, SessionRow } from '@/lib/db';
-import type { PlayerStats } from '@/lib/analytics';
+import { computeSquadTotals, type PlayerStats } from '@/lib/analytics';
 import { findBiggestBlowout } from '@/lib/gameStats';
 
 export default function RecapImageTemplate({
@@ -20,6 +20,7 @@ export default function RecapImageTemplate({
   const blowoutWinner = blowout && blowout.score_a! > blowout.score_b! ? blowout.team_a : blowout?.team_b;
 
   const rankColor = (i: number) => (i === 0 ? '#e5c100' : i === 1 ? '#c0c0c0' : '#b06a3a');
+  const squadTotals = session.format === 'squad_rivalry' && session.squads ? computeSquadTotals(rounds, session.squads) : null;
 
   return (
     <div style={{ width: 1080, background: '#e5fa00', padding: 32, fontFamily: 'var(--font-body), Arial, sans-serif' }}>
@@ -46,6 +47,14 @@ export default function RecapImageTemplate({
           {new Date(session.created_at).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
         </div>
       </div>
+
+      {squadTotals && (
+        <div style={{ background: '#ffffff', border: '3px solid #121a2f', borderTop: 'none', padding: '28px 32px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 28 }}>
+          <SquadResult label={session.squad_gold_label || 'Gold'} logoUrl={session.squad_gold_logo_url} score={squadTotals.gold} color="#d4af37" />
+          <div style={{ fontFamily: 'var(--font-display), sans-serif', fontSize: 36, color: '#121a2f' }}>VS</div>
+          <SquadResult label={session.squad_black_label || 'Black'} logoUrl={session.squad_black_logo_url} score={squadTotals.black} color="#121a2f" />
+        </div>
+      )}
 
       <div style={{ background: '#ffffff', border: '3px solid #121a2f', borderTop: 'none', padding: 32 }}>
         <div style={{ fontFamily: 'var(--font-display), sans-serif', fontSize: 30, color: '#121a2f', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -106,6 +115,35 @@ export default function RecapImageTemplate({
       >
         GAME ON. HAVE FUN.
       </div>
+    </div>
+  );
+}
+
+function SquadResult({ label, logoUrl, score, color }: { label: string; logoUrl: string | null; score: number; color: string }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 200 }}>
+      {logoUrl ? (
+        <img src={logoUrl} alt="" width={72} height={72} style={{ borderRadius: '50%', objectFit: 'cover', border: `4px solid ${color}` }} />
+      ) : (
+        <div
+          style={{
+            width: 72,
+            height: 72,
+            borderRadius: '50%',
+            background: color,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#ffffff',
+            fontFamily: 'var(--font-display), sans-serif',
+            fontSize: 30,
+          }}
+        >
+          {label.charAt(0).toUpperCase()}
+        </div>
+      )}
+      <div style={{ fontFamily: 'var(--font-display), sans-serif', fontSize: 22, color: '#121a2f', textAlign: 'center' }}>{label.toUpperCase()}</div>
+      <div style={{ fontFamily: 'var(--font-display), sans-serif', fontSize: 40, color: '#121a2f' }}>{score}</div>
     </div>
   );
 }

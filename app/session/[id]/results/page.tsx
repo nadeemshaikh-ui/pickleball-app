@@ -14,6 +14,7 @@ import NewSessionLink from '@/components/NewSessionLink';
 import SessionDate from '@/components/SessionDate';
 import GroupHeader from '@/components/GroupHeader';
 import RecapImageTemplate from '@/components/RecapImageTemplate';
+import SquadVersusHero from '@/components/SquadVersusHero';
 import { WhatsAppIcon } from '@/components/icons';
 import { preloadPlayerPhotos } from '@/lib/playerPhotos';
 import { fetchSessionDues, markDuePaid, type DueRow } from '@/lib/dues';
@@ -192,16 +193,16 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
         <h1>Results</h1>
         {session && <SessionDate createdAt={session.created_at} venue={session.venue} />}
 
-        {squadTotals && (
-          <div className="card" style={{ marginTop: 16, display: 'flex', justifyContent: 'space-around' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>GOLD</div>
-              <div style={{ fontSize: 28, fontWeight: 800 }}>{squadTotals.gold}</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>BLACK</div>
-              <div style={{ fontSize: 28, fontWeight: 800 }}>{squadTotals.black}</div>
-            </div>
+        {squadTotals && session && (
+          <div className="card" style={{ marginTop: 16 }}>
+            <SquadVersusHero
+              goldLabel={session.squad_gold_label || 'Gold'}
+              blackLabel={session.squad_black_label || 'Black'}
+              goldLogoUrl={session.squad_gold_logo_url}
+              blackLogoUrl={session.squad_black_logo_url}
+              goldScore={squadTotals.gold}
+              blackScore={squadTotals.black}
+            />
           </div>
         )}
 

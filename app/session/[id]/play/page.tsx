@@ -19,6 +19,8 @@ import { listPlayers } from '@/lib/players';
 import { getDisplayNamePref } from '@/lib/displayNamePref';
 import { getCurrentUser, isCurrentUserAdmin } from '@/lib/auth';
 import ConfirmModal from '@/components/ConfirmModal';
+import SquadVersusHero from '@/components/SquadVersusHero';
+import { computeSquadTotals } from '@/lib/analytics';
 
 export default function PlayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -253,6 +255,16 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
     <>
       <main className="page">
         {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
+        {session && session.format === 'squad_rivalry' && session.squads && (
+          <SquadVersusHero
+            goldLabel={session.squad_gold_label || 'Gold'}
+            blackLabel={session.squad_black_label || 'Black'}
+            goldLogoUrl={session.squad_gold_logo_url}
+            blackLogoUrl={session.squad_black_logo_url}
+            goldScore={computeSquadTotals(rounds, session.squads).gold}
+            blackScore={computeSquadTotals(rounds, session.squads).black}
+          />
+        )}
         <h1>Live Scoring</h1>
         <p style={{ color: 'var(--muted)', marginTop: 4 }}>
           Round {currentRoundNumber ?? session?.round_count ?? '—'} of {session?.round_count ?? '…'} — tap a score box to enter, it saves automatically

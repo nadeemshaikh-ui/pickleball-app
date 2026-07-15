@@ -3,6 +3,24 @@ import type { ScrambleRound, Squads } from './shuffle';
 
 export type Format = 'scramble' | 'squad_rivalry' | 'court_blocks' | 'fixed_partners' | 'king_of_court';
 
+const MAX_SQUAD_LOGO_BYTES = 5 * 1024 * 1024;
+
+// Same pattern as lib/clubs.ts' uploadClubLogo — reuses the group-logos
+// bucket (already public-read) rather than a dedicated squad-logos bucket,
+// since squad branding is ephemeral (one session's Gold/Black identity,
+// not a persistent club asset) and doesn't warrant its own bucket.
+export async function uploadSquadLogo(file: File): Promise<string> {
+  if (!file.type.startsWith('image/')) throw new Error('Squad logo must be an image file.');
+  if (file.size > MAX_SQUAD_LOGO_BYTES) throw new Error('Squad logo must be under 5MB.');
+  const dotIndex = file.name.lastIndexOf('.');
+  const ext = dotIndex > 0 ? file.name.slice(dotIndex + 1) : 'png';
+  const path = `squad-${Math.random().toString(36).slice(2)}.${ext}`;
+  const { error } = await supabase.storage.from('group-logos').upload(path, file);
+  if (error) throw error;
+  const { data } = supabase.storage.from('group-logos').getPublicUrl(path);
+  return data.publicUrl;
+}
+
 export interface SessionRow {
   id: string;
   club_id: string;
@@ -26,6 +44,8 @@ export interface SessionRow {
   venue: string | null;
   squad_gold_label: string | null;
   squad_black_label: string | null;
+  squad_gold_logo_url: string | null;
+  squad_black_logo_url: string | null;
   storylines: string[] | null;
   booker_upi_vpa: string | null;
 }
@@ -66,6 +86,8 @@ export interface CreateSessionOptions {
   venue: string | null;
   squadGoldLabel: string | null;
   squadBlackLabel: string | null;
+  squadGoldLogoUrl: string | null;
+  squadBlackLogoUrl: string | null;
   storylines: string[];
   bookerUpiVpa: string | null;
 }
@@ -93,6 +115,8 @@ export async function createSession(options: CreateSessionOptions): Promise<stri
     venue: options.venue,
     squad_gold_label: options.squadGoldLabel,
     squad_black_label: options.squadBlackLabel,
+    squad_gold_logo_url: options.squadGoldLogoUrl,
+    squad_black_logo_url: options.squadBlackLogoUrl,
     storylines: options.storylines,
     booker_upi_vpa: options.bookerUpiVpa,
     status: 'in_progress',

@@ -14,7 +14,7 @@ import {
   type Squads,
 } from '@/lib/shuffle';
 import { generateInitialKingOfCourtRound } from '@/lib/kingOfCourt';
-import { createSession, insertRounds, uploadPlayerPhoto, getMostRecentSession } from '@/lib/db';
+import { createSession, insertRounds, uploadPlayerPhoto, uploadSquadLogo, getMostRecentSession } from '@/lib/db';
 import { saveRoster, loadRoster } from '@/lib/savedRoster';
 import { getPlayerPhoto, savePlayerPhoto, preloadPlayerPhotos } from '@/lib/playerPhotos';
 import { listPlayers, getSkillRatingsForNames, getOwnPlayer, type PlayerRow } from '@/lib/players';
@@ -127,6 +127,8 @@ export default function SetupPage() {
   const [squadMode, setSquadMode] = useState<'auto' | 'manual'>('auto');
   const [squadGoldLabel, setSquadGoldLabel] = useState('');
   const [squadBlackLabel, setSquadBlackLabel] = useState('');
+  const [squadGoldLogoFile, setSquadGoldLogoFile] = useState<File | null>(null);
+  const [squadBlackLogoFile, setSquadBlackLogoFile] = useState<File | null>(null);
   // 0 = gold, 1 = black, null = unassigned, indexed by player.
   const [manualSquadAssignment, setManualSquadAssignment] = useState<(0 | 1 | null)[]>([]);
 
@@ -523,6 +525,14 @@ export default function SetupPage() {
       const parsedCourtCost = courtCost.trim() === '' ? null : Number(courtCost);
       const parsedBallCost = ballCost.trim() === '' ? 200 : Number(ballCost);
 
+      const [squadGoldLogoUrl, squadBlackLogoUrl] =
+        format === 'squad_rivalry'
+          ? await Promise.all([
+              squadGoldLogoFile ? uploadSquadLogo(squadGoldLogoFile) : Promise.resolve(null),
+              squadBlackLogoFile ? uploadSquadLogo(squadBlackLogoFile) : Promise.resolve(null),
+            ])
+          : [null, null];
+
       const baseOptions = {
         clubId: currentClubId,
         players: trimmed,
@@ -539,6 +549,8 @@ export default function SetupPage() {
         venue: venue.trim() || null,
         squadGoldLabel: format === 'squad_rivalry' ? squadGoldLabel.trim() || null : null,
         squadBlackLabel: format === 'squad_rivalry' ? squadBlackLabel.trim() || null : null,
+        squadGoldLogoUrl,
+        squadBlackLogoUrl,
         storylines,
         bookerUpiVpa: bookerUpiVpa.trim() || null,
       };
@@ -929,6 +941,13 @@ export default function SetupPage() {
                 aria-label="Squad 1 name"
                 style={{ width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
               />
+              <input
+                type="file"
+                accept="image/*"
+                aria-label="Squad 1 logo"
+                onChange={e => setSquadGoldLogoFile(e.target.files?.[0] ?? null)}
+                style={{ marginTop: 6, fontSize: 12 }}
+              />
             </div>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>Squad 2</label>
@@ -938,6 +957,13 @@ export default function SetupPage() {
                 placeholder="Black"
                 aria-label="Squad 2 name"
                 style={{ width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+              />
+              <input
+                type="file"
+                accept="image/*"
+                aria-label="Squad 2 logo"
+                onChange={e => setSquadBlackLogoFile(e.target.files?.[0] ?? null)}
+                style={{ marginTop: 6, fontSize: 12 }}
               />
             </div>
           </div>

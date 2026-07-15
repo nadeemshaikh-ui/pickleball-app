@@ -11,6 +11,7 @@ import SessionDate from '@/components/SessionDate';
 import GroupHeader from '@/components/GroupHeader';
 import { WhatsAppIcon } from '@/components/icons';
 import ShareBrandedHeader from '@/components/ShareBrandedHeader';
+import SquadVersusHero from '@/components/SquadVersusHero';
 import { preloadPlayerPhotos } from '@/lib/playerPhotos';
 
 const POLL_INTERVAL_MS = 4000;
@@ -90,15 +91,15 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
         </p>
 
         {squadTotals && (
-          <div className="card" style={{ marginTop: 16, display: 'flex', justifyContent: 'space-around' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>{(session?.squad_gold_label || 'Gold').toUpperCase()}</div>
-              <div style={{ fontSize: 28, fontWeight: 800 }}>{squadTotals.gold}</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>{(session?.squad_black_label || 'Black').toUpperCase()}</div>
-              <div style={{ fontSize: 28, fontWeight: 800 }}>{squadTotals.black}</div>
-            </div>
+          <div className="card" style={{ marginTop: 16 }}>
+            <SquadVersusHero
+              goldLabel={session?.squad_gold_label || 'Gold'}
+              blackLabel={session?.squad_black_label || 'Black'}
+              goldLogoUrl={session?.squad_gold_logo_url ?? null}
+              blackLogoUrl={session?.squad_black_logo_url ?? null}
+              goldScore={squadTotals.gold}
+              blackScore={squadTotals.black}
+            />
           </div>
         )}
 
