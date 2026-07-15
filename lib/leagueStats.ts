@@ -256,3 +256,85 @@ export async function syncCourtRegular(clubId: string): Promise<void> {
   if (!winner) return;
   await recordBadgeHolderChange(clubId, 'court_regular', winner, winnerCount);
 }
+
+// Forward-only elo history for the Glow-Up badge — there's no backfill, so
+// a player's trend only becomes meaningful after they've played a few
+// scored rounds since this shipped. Called once per participant right
+// after a round score save (see session/[id]/play/page.tsx), the same
+// point that already re-fetches fresh elo for the flight-change check.
+export async function recordEloSnapshot(clubId: string, playerName: string, eloRating: number): Promise<void> {
+  const { error } = await supabase.from('player_elo_snapshots').insert({ club_id: clubId, player_name: playerName, elo_rating: eloRating });
+  if (error) throw error;
+}
+
+const GLOW_UP_WINDOW_DAYS = 90;
+
+// Earliest snapshot within the trailing window — the closest thing to
+// "elo 90 days ago" we have without a backfill. With less than 90 days of
+// tracking history so far, this is just the first sample ever recorded,
+// which understates any real gain rather than overstating it.
+export async function fetchEloBaseline(clubId: string, playerName: string): Promise<number | null> {
+  const since = new Date(Date.now() - GLOW_UP_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from('player_elo_snapshots')
+    .select('elo_rating')
+    .eq('club_id', clubId)
+    .eq('player_name', playerName)
+    .gte('recorded_at', since)
+    .order('recorded_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.elo_rating ?? null;
+}
+
+function currentMonthKey(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// Best-effort POTM history — there's no cron in this app, everything is
+// admin-refresh-triggered, so this captures "whoever's leading the current
+// month right now" every time an admin hits Refresh Stats Now, upserting
+// over the same month's row as the lead changes. It settles on the real
+// final winner as long as someone refreshes at all near month-end, which
+// matches how every other synced crown in this app already works — not a
+// guarantee, but not a guess either.
+export async function recordPotmProgress(clubId: string): Promise<void> {
+  const board = await fetchPlayerOfTheMonthBoard(clubId);
+  const leader = board.find(p => !p.provisional);
+  if (!leader) return;
+  const { error } = await supabase
+    .from('league_potm_history')
+    .upsert(
+      { club_id: clubId, period_key: currentMonthKey(), period_type: 'month', winner_name: leader.name, recorded_at: new Date().toISOString() },
+      { onConflict: 'club_id,period_key,period_type' }
+    );
+  if (error) throw error;
+}
+
+export async function fetchPotmWinCount(clubId: string, playerName: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('league_potm_history')
+    .select('id', { count: 'exact', head: true })
+    .eq('club_id', clubId)
+    .eq('period_type', 'month')
+    .eq('winner_name', playerName);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+// True if this player owns the 3 most recent recorded months outright —
+// not necessarily 3 calendar-consecutive months, since a month an admin
+// never refreshed during just has no row at all rather than a false one.
+export async function hasThreePeat(clubId: string, playerName: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('league_potm_history')
+    .select('winner_name')
+    .eq('club_id', clubId)
+    .eq('period_type', 'month')
+    .order('period_key', { ascending: false })
+    .limit(3);
+  if (error) throw error;
+  return data.length === 3 && data.every(r => r.winner_name === playerName);
+}

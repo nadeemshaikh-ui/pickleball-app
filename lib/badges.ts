@@ -105,6 +105,11 @@ export const BADGE_CATALOG: Badge[] = [
 
   // Contestable crown — club-wide rotating record, synced alongside the other crowns (see lib/badgeHolders.ts)
   { id: 'court_regular', label: 'Court Regular', icon: 'MapPin', description: 'Most sessions attended in the trailing 90 days' },
+
+  // Forward-only history (player_elo_snapshots / league_potm_history) — no backfill, see lib/leagueStats.ts
+  { id: 'glow_up', label: 'Glow-Up', icon: 'TrendingUp', description: 'Gained 100+ rating points in the trailing 90 days' },
+  { id: 'player_of_the_month', label: 'Player of the Month', icon: 'Sparkles', description: 'Won the monthly leaderboard at least once' },
+  { id: 'three_peat', label: 'Three-Peat', icon: 'Award', description: 'Won Player of the Month 3 recorded months running' },
 ];
 
 function findBadge(id: string): Badge {
@@ -157,6 +162,10 @@ export interface PlayerBadgeInput {
   isOneAndOnly?: boolean;
   // Optional — call sites without a fetchCurrentBadgeHolders() pass omit this (same as isLadderChampion/isTheRealKing).
   isCourtRegular?: boolean;
+  // Optional — forward-only history, see lib/leagueStats.ts. Omitted before this player has any recorded snapshots/history.
+  hasGlowUp?: boolean;
+  hasWonPotm?: boolean;
+  hasThreePeat?: boolean;
 }
 
 export const ALL_SESSION_FORMATS_COUNT = 5;
@@ -171,7 +180,17 @@ export const ALL_SESSION_FORMATS_COUNT = 5;
 // badge-related types.
 export async function buildBadgeInput(clubId: string, playerName: string, gamesPlayed: number, eloRating: number): Promise<PlayerBadgeInput> {
   const [
-    { fetchMvpCounts, fetchStreaks, fetchBestDuos, fetchClosestRivalries, fetchRivalriesForPlayer, MIN_GAMES_FOR_RIVALRY },
+    {
+      fetchMvpCounts,
+      fetchStreaks,
+      fetchBestDuos,
+      fetchClosestRivalries,
+      fetchRivalriesForPlayer,
+      MIN_GAMES_FOR_RIVALRY,
+      fetchEloBaseline,
+      fetchPotmWinCount,
+      hasThreePeat: fetchHasThreePeat,
+    },
     { fetchStreakRecords },
     { flightForRating },
     { fetchLifetimeGameStats },
@@ -195,7 +214,8 @@ export async function buildBadgeInput(clubId: string, playerName: string, gamesP
   const ONE_AND_ONLY_MIN_GAMES = 15;
   const ONE_AND_ONLY_MIN_SHARE = 0.9;
 
-  const [mvpCounts, streaks, streakRecords, duos, gameStats, rivalries, ownRivalries, ladderStandings, currentHolders, foundingFive] = await Promise.all([
+  const [mvpCounts, streaks, streakRecords, duos, gameStats, rivalries, ownRivalries, ladderStandings, currentHolders, foundingFive, eloBaseline, potmWinCount, threePeat] =
+    await Promise.all([
     fetchMvpCounts(clubId),
     fetchStreaks(clubId),
     fetchStreakRecords(clubId),
@@ -206,6 +226,9 @@ export async function buildBadgeInput(clubId: string, playerName: string, gamesP
     fetchLadderStandings(clubId),
     fetchCurrentBadgeHolders(clubId),
     fetchFoundingFiveNames(clubId),
+    fetchEloBaseline(clubId, playerName),
+    fetchPotmWinCount(clubId, playerName),
+    fetchHasThreePeat(clubId, playerName),
   ]);
 
   const winStreakRecordHolder = streakRecords.find(r => r.streakType === 'win')?.holderName;
@@ -231,6 +254,9 @@ export async function buildBadgeInput(clubId: string, playerName: string, gamesP
   const totalPartneredGames = ownDuos.reduce((sum, d) => sum + d.gamesPlayed, 0);
   const maxPartnerGames = ownDuos.length > 0 ? Math.max(...ownDuos.map(d => d.gamesPlayed)) : 0;
   const isOneAndOnly = totalPartneredGames >= ONE_AND_ONLY_MIN_GAMES && maxPartnerGames / totalPartneredGames >= ONE_AND_ONLY_MIN_SHARE;
+
+  const GLOW_UP_MIN_GAIN = 100;
+  const hasGlowUp = eloBaseline !== null && eloRating - eloBaseline >= GLOW_UP_MIN_GAIN;
 
   return {
     gamesPlayed,
@@ -268,6 +294,9 @@ export async function buildBadgeInput(clubId: string, playerName: string, gamesP
     isFoundingFive: foundingFive.has(playerName),
     isOneAndOnly,
     isCourtRegular: currentHolders.get('court_regular')?.holderName === playerName,
+    hasGlowUp,
+    hasWonPotm: potmWinCount >= 1,
+    hasThreePeat: threePeat,
   };
 }
 
@@ -336,6 +365,10 @@ export function computeBadges(input: PlayerBadgeInput): Badge[] {
   if (input.isFoundingFive) earned.push(findBadge('founding_five'));
   if (input.isOneAndOnly) earned.push(findBadge('one_and_only'));
   if (input.isCourtRegular) earned.push(findBadge('court_regular'));
+
+  if (input.hasGlowUp) earned.push(findBadge('glow_up'));
+  if (input.hasWonPotm) earned.push(findBadge('player_of_the_month'));
+  if (input.hasThreePeat) earned.push(findBadge('three_peat'));
 
   return earned;
 }

@@ -110,6 +110,14 @@ describe('computeBadges', () => {
     expect(computeBadges(base).map(b => b.id)).toEqual([]);
   });
 
+  it('awards Glow-Up/Player of the Month/Three-Peat from the optional forward-only history inputs', () => {
+    const base = { gamesPlayed: 0, currentStreak: 0, mvpCount: 0, flight: 'Bronze' };
+    expect(computeBadges({ ...base, hasGlowUp: true }).map(b => b.id)).toContain('glow_up');
+    expect(computeBadges({ ...base, hasWonPotm: true }).map(b => b.id)).toContain('player_of_the_month');
+    expect(computeBadges({ ...base, hasThreePeat: true }).map(b => b.id)).toContain('three_peat');
+    expect(computeBadges(base).map(b => b.id)).toEqual([]);
+  });
+
   it('awards crown badges only to the current holder', () => {
     const base = { gamesPlayed: 0, currentStreak: 0, mvpCount: 0, flight: 'Bronze' };
     expect(computeBadges({ ...base, isLadderChampion: true }).map(b => b.id)).toContain('ladder_champion');

@@ -41,6 +41,7 @@ const SECTIONS: { title: string; ids: string[] }[] = [
       'one_and_only',
     ],
   },
+  { title: 'Trajectory', ids: ['glow_up', 'player_of_the_month', 'three_peat'] },
 ];
 
 export default function BadgesGalleryPage() {

@@ -7,6 +7,7 @@ import { getSession, getRounds, updateRoundScore, insertRounds, markSessionCompl
 import { resolveChallengesForRound } from '@/lib/challenges';
 import { computeCurrentStreaks, maybeSetStreakRecord } from '@/lib/streakRecords';
 import { syncLadderChampion } from '@/lib/ladderStandings';
+import { recordEloSnapshot } from '@/lib/leagueStats';
 import { computeNextKingOfCourtRound } from '@/lib/kingOfCourt';
 import SessionNav from '@/components/SessionNav';
 import GroupHeader from '@/components/GroupHeader';
@@ -144,6 +145,10 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
     setEloByName(freshElo);
 
     const participants = [...court.team_a, ...court.team_b];
+    for (const name of participants) {
+      const rating = freshElo.get(name);
+      if (rating !== undefined) recordEloSnapshot(session.club_id, name, rating).catch(err => console.error('Failed to record elo snapshot:', err));
+    }
     const messages: RoundMessage[] = [];
     for (const name of participants) {
       const before = beforeElo.get(name);

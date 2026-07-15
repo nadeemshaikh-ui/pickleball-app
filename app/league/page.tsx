@@ -10,6 +10,7 @@ import {
   refreshLeagueStats,
   syncTheRealKing,
   syncCourtRegular,
+  recordPotmProgress,
   MIN_GAMES_FOR_DUO_RANKING,
   MIN_GAMES_FOR_RIVALRY,
   type RankedPlayer,
@@ -75,6 +76,7 @@ export default function LeaguePage() {
       await refreshLeagueStats();
       await syncTheRealKing(currentClubId);
       await syncCourtRegular(currentClubId);
+      await recordPotmProgress(currentClubId);
       await load(currentClubId);
     } catch (e) {
       setRefreshError(e instanceof Error ? e.message : 'Refresh failed.');
