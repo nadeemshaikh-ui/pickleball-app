@@ -223,3 +223,36 @@ export async function syncTheRealKing(clubId: string): Promise<void> {
   if (!leader) return;
   await recordBadgeHolderChange(clubId, 'the_real_king', leader.name);
 }
+
+const COURT_REGULAR_WINDOW_DAYS = 90;
+
+// Same rotating-crown shape as syncTheRealKing — whoever's attended the
+// most distinct sessions in the trailing 90 days holds "Court Regular"
+// until someone overtakes them. Reads directly off sessions.players (no
+// matview involved), so this doesn't depend on refresh_league_stats()
+// having run first — still called alongside it from the same "Refresh
+// Stats Now" trigger for one predictable place admins reconcile crowns.
+export async function syncCourtRegular(clubId: string): Promise<void> {
+  const since = new Date(Date.now() - COURT_REGULAR_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('players')
+    .eq('club_id', clubId)
+    .gte('created_at', since);
+  if (error) throw error;
+
+  const counts = new Map<string, number>();
+  for (const row of data as { players: string[] }[]) {
+    for (const name of row.players) counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  let winner: string | null = null;
+  let winnerCount = 0;
+  for (const [name, count] of counts) {
+    if (count > winnerCount) {
+      winner = name;
+      winnerCount = count;
+    }
+  }
+  if (!winner) return;
+  await recordBadgeHolderChange(clubId, 'court_regular', winner, winnerCount);
+}

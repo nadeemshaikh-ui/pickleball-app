@@ -50,6 +50,23 @@ export async function listPlayers(clubId: string): Promise<PlayerRow[]> {
   return data as PlayerRow[];
 }
 
+const FOUNDING_FIVE_COUNT = 5;
+
+// The first 5 player rows ever registered at this club, by created_at — for
+// the "Founding Five" badge. A player row's created_at is when they first
+// registered, not when the club itself was founded, so this is "among the
+// first 5 to join" rather than literal club-founding membership.
+export async function fetchFoundingFiveNames(clubId: string): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from('players')
+    .select('name')
+    .eq('club_id', clubId)
+    .order('created_at', { ascending: true })
+    .limit(FOUNDING_FIVE_COUNT);
+  if (error) throw error;
+  return new Set((data as { name: string }[]).map(p => p.name));
+}
+
 // A user_id can now have one player row per club (unique per club_id+user_id,
 // not globally) — so "my player" only makes sense scoped to a specific club.
 export async function getOwnPlayer(clubId: string, userId: string): Promise<PlayerRow | null> {

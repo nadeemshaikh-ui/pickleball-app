@@ -99,6 +99,12 @@ export const BADGE_CATALOG: Badge[] = [
   { id: 'full_house', label: 'Full House', icon: 'Users', description: 'Played in a session with 12+ total players' },
   { id: 'diwali_dink', label: 'Diwali Dink', icon: 'Sparkles', description: 'Played a session during Diwali week' },
   { id: 'ipl_widows_revenge', label: "IPL Widow's Revenge", icon: 'Tv', description: 'Played a session during an IPL final' },
+
+  { id: 'founding_five', label: 'Founding Five', icon: 'Flag', description: 'One of the first 5 players to join the club' },
+  { id: 'one_and_only', label: 'One and Only', icon: 'Heart', description: '90%+ of games (min 15) with a single partner' },
+
+  // Contestable crown — club-wide rotating record, synced alongside the other crowns (see lib/badgeHolders.ts)
+  { id: 'court_regular', label: 'Court Regular', icon: 'MapPin', description: 'Most sessions attended in the trailing 90 days' },
 ];
 
 function findBadge(id: string): Badge {
@@ -145,6 +151,12 @@ export interface PlayerBadgeInput {
   playedFullHouseSession?: boolean;
   diwaliSessions?: number;
   iplFinalSessions?: number;
+  // Optional — call sites without a fetchFoundingFiveNames() pass omit this.
+  isFoundingFive?: boolean;
+  // Derived from the same duo data as hasPowerDuo/isClubTopDuo, just a different ratio.
+  isOneAndOnly?: boolean;
+  // Optional — call sites without a fetchCurrentBadgeHolders() pass omit this (same as isLadderChampion/isTheRealKing).
+  isCourtRegular?: boolean;
 }
 
 export const ALL_SESSION_FORMATS_COUNT = 5;
@@ -165,6 +177,7 @@ export async function buildBadgeInput(clubId: string, playerName: string, gamesP
     { fetchLifetimeGameStats },
     { fetchLadderStandings },
     { fetchCurrentBadgeHolders },
+    { fetchFoundingFiveNames },
   ] = await Promise.all([
     import('./leagueStats'),
     import('./streakRecords'),
@@ -172,14 +185,17 @@ export async function buildBadgeInput(clubId: string, playerName: string, gamesP
     import('./lifetimeGameStats'),
     import('./ladderStandings'),
     import('./badgeHolders'),
+    import('./players'),
   ]);
 
   const POWER_DUO_MIN_GAMES = 10;
   const POWER_DUO_MIN_WIN_RATE = 0.7;
   const RIVALRY_SLAYER_MIN_GAMES = 10;
   const RIVALRY_SLAYER_MIN_WIN_RATE = 0.7;
+  const ONE_AND_ONLY_MIN_GAMES = 15;
+  const ONE_AND_ONLY_MIN_SHARE = 0.9;
 
-  const [mvpCounts, streaks, streakRecords, duos, gameStats, rivalries, ownRivalries, ladderStandings, currentHolders] = await Promise.all([
+  const [mvpCounts, streaks, streakRecords, duos, gameStats, rivalries, ownRivalries, ladderStandings, currentHolders, foundingFive] = await Promise.all([
     fetchMvpCounts(clubId),
     fetchStreaks(clubId),
     fetchStreakRecords(clubId),
@@ -189,6 +205,7 @@ export async function buildBadgeInput(clubId: string, playerName: string, gamesP
     fetchRivalriesForPlayer(clubId, playerName),
     fetchLadderStandings(clubId),
     fetchCurrentBadgeHolders(clubId),
+    fetchFoundingFiveNames(clubId),
   ]);
 
   const winStreakRecordHolder = streakRecords.find(r => r.streakType === 'win')?.holderName;
@@ -210,6 +227,10 @@ export async function buildBadgeInput(clubId: string, playerName: string, gamesP
   const maxFormatGames = gs && gs.gamesByFormat.size > 0 ? Math.max(...gs.gamesByFormat.values()) : 0;
   const isOneTrickPony = totalFormatGames >= ONE_TRICK_PONY_MIN_GAMES && maxFormatGames / totalFormatGames >= ONE_TRICK_PONY_MIN_SHARE;
   const hasAnniversary = !!gs?.firstSessionDate && Date.now() - new Date(gs.firstSessionDate).getTime() >= ONE_YEAR_MS;
+
+  const totalPartneredGames = ownDuos.reduce((sum, d) => sum + d.gamesPlayed, 0);
+  const maxPartnerGames = ownDuos.length > 0 ? Math.max(...ownDuos.map(d => d.gamesPlayed)) : 0;
+  const isOneAndOnly = totalPartneredGames >= ONE_AND_ONLY_MIN_GAMES && maxPartnerGames / totalPartneredGames >= ONE_AND_ONLY_MIN_SHARE;
 
   return {
     gamesPlayed,
@@ -244,6 +265,9 @@ export async function buildBadgeInput(clubId: string, playerName: string, gamesP
     playedFullHouseSession: gs?.playedFullHouseSession ?? false,
     diwaliSessions: gs?.diwaliSessions ?? 0,
     iplFinalSessions: gs?.iplFinalSessions ?? 0,
+    isFoundingFive: foundingFive.has(playerName),
+    isOneAndOnly,
+    isCourtRegular: currentHolders.get('court_regular')?.holderName === playerName,
   };
 }
 
@@ -308,6 +332,10 @@ export function computeBadges(input: PlayerBadgeInput): Badge[] {
   if (input.playedFullHouseSession) earned.push(findBadge('full_house'));
   if ((input.diwaliSessions ?? 0) >= 1) earned.push(findBadge('diwali_dink'));
   if ((input.iplFinalSessions ?? 0) >= 1) earned.push(findBadge('ipl_widows_revenge'));
+
+  if (input.isFoundingFive) earned.push(findBadge('founding_five'));
+  if (input.isOneAndOnly) earned.push(findBadge('one_and_only'));
+  if (input.isCourtRegular) earned.push(findBadge('court_regular'));
 
   return earned;
 }

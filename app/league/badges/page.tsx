@@ -13,10 +13,10 @@ import BadgeMedallion from '@/components/BadgeMedallion';
 // Contestable badges — a single current club-wide holder, tracked in
 // league_badge_holder_history (see lib/badgeHolders.ts) rather than a
 // personal-quota unlock. Shown with who holds it now, not just earned/locked.
-const CONTESTABLE_BADGE_IDS = new Set(['streak_king', 'wooden_spoon', 'ladder_champion', 'the_real_king']);
+const CONTESTABLE_BADGE_IDS = new Set(['streak_king', 'wooden_spoon', 'ladder_champion', 'the_real_king', 'court_regular']);
 
 const SECTIONS: { title: string; ids: string[] }[] = [
-  { title: 'Crowns', ids: ['streak_king', 'wooden_spoon', 'ladder_champion', 'the_real_king'] },
+  { title: 'Crowns', ids: ['streak_king', 'wooden_spoon', 'ladder_champion', 'the_real_king', 'court_regular'] },
   { title: 'Volume', ids: ['the_regular', 'century_club', 'iron_paddle', 'living_legend'] },
   { title: 'Streaks', ids: ['on_a_roll', 'hot_streak_5', 'unstoppable'] },
   { title: 'MVP', ids: ['fan_favorite', 'crowd_pleaser', 'hall_of_famer'] },
@@ -37,6 +37,8 @@ const SECTIONS: { title: string; ids: string[] }[] = [
       'full_house',
       'diwali_dink',
       'ipl_widows_revenge',
+      'founding_five',
+      'one_and_only',
     ],
   },
 ];
