@@ -2,7 +2,7 @@
 
 import { use, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { UserPlus, Share2, AlertTriangle, Code2 } from 'lucide-react';
+import { UserPlus, Share2, AlertTriangle, Code2, AlertOctagon } from 'lucide-react';
 import {
   listMyClubs,
   listPendingJoinRequests,
@@ -21,6 +21,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { shareElementAsImage } from '@/lib/shareImage';
 import ConfirmModal from '@/components/ConfirmModal';
 import { isDevModeEnabled, setDevModeEnabled } from '@/lib/devMode';
+import { fetchRecentErrorsForClub, type AppErrorRow } from '@/lib/errorLog';
 
 export default function ClubSettingsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -33,6 +34,7 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
   const [memberNames, setMemberNames] = useState<Map<string, string>>(new Map());
   const [ownDangerZoneAccess, setOwnDangerZoneAccess] = useState(false);
   const [ownUserId, setOwnUserId] = useState<string | null>(null);
+  const [errors, setErrors] = useState<AppErrorRow[]>([]);
 
   const [name, setName] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -60,11 +62,12 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
       setUpiVpa(mine.club.upi_vpa ?? '');
     }
     if (mine?.role === 'admin') {
-      const [req, memberRows, playerRows, user] = await Promise.all([
+      const [req, memberRows, playerRows, user, errorRows] = await Promise.all([
         listPendingJoinRequests(id),
         listClubMembers(id),
         listPlayers(id),
         getCurrentUser(),
+        fetchRecentErrorsForClub(id).catch(() => []),
       ]);
       setPending(req);
       setMemberCount(memberRows.length);
@@ -72,6 +75,7 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
       setMemberNames(new Map(playerRows.filter(p => p.user_id).map(p => [p.user_id as string, p.name])));
       setOwnUserId(user?.id ?? null);
       setOwnDangerZoneAccess(memberRows.find(m => m.user_id === user?.id)?.danger_zone_access ?? false);
+      setErrors(errorRows);
     }
     setLoading(false);
   }
@@ -285,6 +289,28 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
             Show a floating debug panel (your user/club id, role, current route, recent errors) — this browser only.
           </span>
         </label>
+      </div>
+
+      <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><AlertOctagon size={18} /> Errors</h2>
+      <div className="card">
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>
+          Client errors from any member's browser, across your whole club — not just yours. Last {errors.length} shown.
+        </p>
+        {errors.length === 0 ? (
+          <p style={{ fontSize: 13, color: 'var(--muted)' }}>No errors logged for this club yet.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto' }}>
+            {errors.map(e => (
+              <div key={e.id} style={{ borderBottom: '1px solid var(--border)', paddingBottom: 8, fontSize: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, color: 'var(--muted)' }}>
+                  <span>{e.path ?? '—'}</span>
+                  <span>{new Date(e.created_at).toLocaleString()}</span>
+                </div>
+                <div style={{ color: 'var(--danger)', fontWeight: 600, marginTop: 2, wordBreak: 'break-word' }}>{e.message}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <h2 style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: 6 }}><AlertTriangle size={18} /> Danger Zone</h2>

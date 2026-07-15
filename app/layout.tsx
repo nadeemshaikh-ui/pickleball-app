@@ -6,6 +6,7 @@ import AuthGate from "@/components/AuthGate";
 import ClubSwitcher from "@/components/ClubSwitcher";
 import GlobalNav from "@/components/GlobalNav";
 import DevModePanel from "@/components/DevModePanel";
+import ErrorLogger from "@/components/ErrorLogger";
 
 const bebas = Bebas_Neue({
   variable: "--font-display",
@@ -38,6 +39,7 @@ export default function RootLayout({
         <div style={{ paddingBottom: 80 }}>{children}</div>
         <GlobalNav />
         <DevModePanel />
+        <ErrorLogger />
       </body>
     </html>
   );

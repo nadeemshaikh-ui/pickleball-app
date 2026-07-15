@@ -32,8 +32,9 @@ const COMEBACK_LOSS_STREAK = 5;
 const DIWALI_WEEKS: [string, string][] = [
   ['2024-10-29', '2024-11-04'],
   ['2025-10-17', '2025-10-23'],
+  ['2026-11-05', '2026-11-11'], // Diwali falls Sun Nov 8, 2026
 ];
-const IPL_FINAL_DATES: string[] = ['2024-05-26', '2025-06-03'];
+const IPL_FINAL_DATES: string[] = ['2024-05-26', '2025-06-03', '2026-05-31'];
 
 function inDateRange(dateStr: string, ranges: [string, string][]): boolean {
   return ranges.some(([start, end]) => dateStr >= start && dateStr <= end);

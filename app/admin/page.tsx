@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { isSuperAdmin, listAllClubsForSuperAdmin, resetClubData, type SuperAdminClubRow } from '@/lib/clubs';
 import { listPlayers, type PlayerRow } from '@/lib/players';
+import { fetchRecentErrorsAllClubs, type AppErrorRow } from '@/lib/errorLog';
 import ConfirmModal from '@/components/ConfirmModal';
 
 export default function SuperAdminPage() {
@@ -15,12 +16,16 @@ export default function SuperAdminPage() {
   const [resetTarget, setResetTarget] = useState<SuperAdminClubRow | null>(null);
   const [resetting, setResetting] = useState(false);
   const [resetMsg, setResetMsg] = useState<string | null>(null);
+  const [errors, setErrors] = useState<AppErrorRow[]>([]);
 
   useEffect(() => {
     (async () => {
       const ok = await isSuperAdmin();
       setAllowed(ok);
-      if (ok) setClubs(await listAllClubsForSuperAdmin());
+      if (ok) {
+        setClubs(await listAllClubsForSuperAdmin());
+        setErrors(await fetchRecentErrorsAllClubs().catch(() => []));
+      }
       setLoading(false);
     })();
   }, []);
@@ -118,6 +123,26 @@ export default function SuperAdminPage() {
           </div>
         ))}
       </div>
+
+      <h2 style={{ marginTop: 24 }}>Errors — All Clubs</h2>
+      <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>
+        Client errors from every club on the platform, newest first. Last {errors.length} shown.
+      </p>
+      {errors.length === 0 ? (
+        <p className="card" style={{ fontSize: 13, color: 'var(--muted)' }}>No errors logged yet.</p>
+      ) : (
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 400, overflowY: 'auto' }}>
+          {errors.map(e => (
+            <div key={e.id} style={{ borderBottom: '1px solid var(--border)', paddingBottom: 8, fontSize: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, color: 'var(--muted)' }}>
+                <span>{clubs.find(c => c.id === e.club_id)?.name ?? 'Unknown club'} · {e.path ?? '—'}</span>
+                <span>{new Date(e.created_at).toLocaleString()}</span>
+              </div>
+              <div style={{ color: 'var(--danger)', fontWeight: 600, marginTop: 2, wordBreak: 'break-word' }}>{e.message}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {resetTarget && (
         <ConfirmModal
