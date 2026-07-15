@@ -19,6 +19,7 @@ import { computeRoundTimeRange } from '@/lib/roundTiming';
 import ScheduleImageTemplate from '@/components/ScheduleImageTemplate';
 import { getCurrentUser } from '@/lib/auth';
 import { submitPrediction, fetchPredictionsForRounds, type PredictionRow } from '@/lib/predictions';
+import SquadLineupCard from '@/components/SquadLineupCard';
 
 const FLIGHT_RANK: Record<string, number> = { Platinum: 4, Gold: 3, Silver: 2, Bronze: 1 };
 
@@ -158,6 +159,20 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
             {Math.round((session.round_count * session.round_duration_minutes) / 60 * 10) / 10} hr total
             {session.start_time && ` — starting ${session.start_time}`}
           </p>
+        )}
+
+        {session && session.format === 'squad_rivalry' && session.squads && (
+          <div style={{ marginTop: 16 }}>
+            <SquadLineupCard
+              goldLabel={session.squad_gold_label || 'Gold'}
+              blackLabel={session.squad_black_label || 'Black'}
+              goldLogoUrl={session.squad_gold_logo_url}
+              blackLogoUrl={session.squad_black_logo_url}
+              goldPlayers={session.squads.gold}
+              blackPlayers={session.squads.black}
+              filename={`squad-lineup-${id}.png`}
+            />
+          </div>
         )}
 
         {session && session.players.length > 0 && (

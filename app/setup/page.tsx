@@ -931,8 +931,8 @@ export default function SetupPage() {
       {format === 'squad_rivalry' && (
         <>
           <h2>Name Your Squads (optional)</h2>
-          <div className="card" style={{ display: 'flex', gap: 12 }}>
-            <div style={{ flex: 1 }}>
+          <div className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+            <div style={{ flex: '1 1 200px', minWidth: 0 }}>
               <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>Squad 1</label>
               <input
                 value={squadGoldLabel}
@@ -946,10 +946,10 @@ export default function SetupPage() {
                 accept="image/*"
                 aria-label="Squad 1 logo"
                 onChange={e => setSquadGoldLogoFile(e.target.files?.[0] ?? null)}
-                style={{ marginTop: 6, fontSize: 12 }}
+                style={{ width: '100%', boxSizing: 'border-box', maxWidth: '100%', marginTop: 6, fontSize: 12 }}
               />
             </div>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: '1 1 200px', minWidth: 0 }}>
               <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>Squad 2</label>
               <input
                 value={squadBlackLabel}
@@ -963,7 +963,7 @@ export default function SetupPage() {
                 accept="image/*"
                 aria-label="Squad 2 logo"
                 onChange={e => setSquadBlackLogoFile(e.target.files?.[0] ?? null)}
-                style={{ marginTop: 6, fontSize: 12 }}
+                style={{ width: '100%', boxSizing: 'border-box', maxWidth: '100%', marginTop: 6, fontSize: 12 }}
               />
             </div>
           </div>
