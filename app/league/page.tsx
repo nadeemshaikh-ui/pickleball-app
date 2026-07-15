@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Share2, RefreshCw, Sparkles, Swords, BarChart3, ListOrdered, Gift, Award, ScrollText, CalendarDays, IndianRupee } from 'lucide-react';
+import { Share2, RefreshCw, Sparkles, Swords, BarChart3, ListOrdered, Gift, Award, ScrollText, CalendarDays, IndianRupee, Crown } from 'lucide-react';
 import {
   fetchPlayerOfTheMonthBoard,
   fetchBestDuos,
@@ -10,6 +10,7 @@ import {
   refreshLeagueStats,
   syncTheRealKing,
   syncCourtRegular,
+  syncNewExclusiveCrowns,
   recordPotmProgress,
   MIN_GAMES_FOR_DUO_RANKING,
   MIN_GAMES_FOR_RIVALRY,
@@ -76,6 +77,7 @@ export default function LeaguePage() {
       await refreshLeagueStats();
       await syncTheRealKing(currentClubId);
       await syncCourtRegular(currentClubId);
+      await syncNewExclusiveCrowns(currentClubId);
       await recordPotmProgress(currentClubId);
       await load(currentClubId);
     } catch (e) {
@@ -127,6 +129,28 @@ export default function LeaguePage() {
       </div>
 
       <h1>League</h1>
+
+      <Link
+        href="/league/crowns"
+        className="card"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          marginBottom: 16,
+          background: 'var(--primary)',
+          color: '#e5fa00',
+          textDecoration: 'none',
+          borderColor: 'var(--primary)',
+        }}
+      >
+        <Crown size={28} />
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 800, fontSize: 15 }}>Exclusive Crowns</div>
+          <div style={{ fontSize: 12, opacity: 0.85 }}>10 titles, one holder each — see who&apos;s closing in</div>
+        </div>
+        <span style={{ fontSize: 20 }}>→</span>
+      </Link>
 
       {isAdmin && (
         <div style={{ marginBottom: 16 }}>

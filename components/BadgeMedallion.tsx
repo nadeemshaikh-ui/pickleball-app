@@ -41,6 +41,9 @@ import {
   Heart,
   MapPin,
   TrendingUp,
+  Crosshair,
+  KeyRound,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
 import type { Badge } from '@/lib/badges';
@@ -87,6 +90,9 @@ const ICONS: Record<string, LucideIcon> = {
   Heart,
   MapPin,
   TrendingUp,
+  Crosshair,
+  KeyRound,
+  ShieldCheck,
 };
 
 // Enamel-medallion art rendered as SVG — no external art asset needed.

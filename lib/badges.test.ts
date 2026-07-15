@@ -118,6 +118,16 @@ describe('computeBadges', () => {
     expect(computeBadges(base).map(b => b.id)).toEqual([]);
   });
 
+  it('awards the 5 new exclusive crowns from the optional isXxx inputs', () => {
+    const base = { gamesPlayed: 0, currentStreak: 0, mvpCount: 0, flight: 'Bronze' };
+    expect(computeBadges({ ...base, isIronThrone: true }).map(b => b.id)).toContain('iron_throne');
+    expect(computeBadges({ ...base, isHeadHoncho: true }).map(b => b.id)).toContain('head_honcho');
+    expect(computeBadges({ ...base, isUndisputed: true }).map(b => b.id)).toContain('undisputed');
+    expect(computeBadges({ ...base, isGatekeeper: true }).map(b => b.id)).toContain('the_gatekeeper');
+    expect(computeBadges({ ...base, isUntouchable: true }).map(b => b.id)).toContain('the_untouchable');
+    expect(computeBadges(base).map(b => b.id)).toEqual([]);
+  });
+
   it('awards crown badges only to the current holder', () => {
     const base = { gamesPlayed: 0, currentStreak: 0, mvpCount: 0, flight: 'Bronze' };
     expect(computeBadges({ ...base, isLadderChampion: true }).map(b => b.id)).toContain('ladder_champion');

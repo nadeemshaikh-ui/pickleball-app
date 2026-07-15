@@ -54,8 +54,8 @@ export const BADGE_CATALOG: Badge[] = [
   { id: 'unstoppable', label: 'Unstoppable', icon: 'Rocket', description: '10-game win streak' },
 
   // Streak crown — club-wide contestable record, not a personal quota
-  { id: 'streak_king', label: 'The Streak King', icon: 'Crown', description: 'Holds the club’s all-time win-streak record' },
-  { id: 'wooden_spoon', label: 'Wooden Spoon', icon: 'UtensilsCrossed', description: 'Holds the club’s all-time losing-streak record' },
+  { id: 'streak_king', label: 'The Streak King', icon: 'Crown', tier: 4, description: 'Holds the club’s all-time win-streak record' },
+  { id: 'wooden_spoon', label: 'Wooden Spoon', icon: 'UtensilsCrossed', tier: 4, description: 'Holds the club’s all-time losing-streak record' },
 
   // MVP tiers
   ...MVP_TIERS.map(t => ({ id: t.id, label: t.label, icon: t.icon, tier: t.tier, description: `${t.threshold}+ session MVP awards` })),
@@ -85,8 +85,8 @@ export const BADGE_CATALOG: Badge[] = [
   { id: 'rivalry_slayer', label: 'Rivalry Slayer', icon: 'Swords', description: 'Winning head-to-head record (10+ games, 70%+) against one rival' },
 
   // Ladder/leaderboard crowns — club-wide contestable, single current holder (see lib/badgeHolders.ts)
-  { id: 'ladder_champion', label: 'Ladder Champion', icon: 'Crown', description: 'Currently rung #1 on the ladder' },
-  { id: 'the_real_king', label: 'The Real King', icon: 'Sparkle', description: 'Currently #1 on the lifetime leaderboard' },
+  { id: 'ladder_champion', label: 'Ladder Champion', icon: 'Crown', tier: 4, description: 'Currently rung #1 on the ladder' },
+  { id: 'the_real_king', label: 'The Real King', icon: 'Sparkle', tier: 4, description: 'Currently #1 on the lifetime leaderboard' },
 
   // Dedication/loyalty and calendar flavor (from fetchLifetimeGameStats' date/format/roster tracking)
   { id: 'anniversary', label: 'Anniversary', icon: 'Cake', description: '1+ year since your first logged game' },
@@ -104,12 +104,19 @@ export const BADGE_CATALOG: Badge[] = [
   { id: 'one_and_only', label: 'One and Only', icon: 'Heart', description: '90%+ of games (min 15) with a single partner' },
 
   // Contestable crown — club-wide rotating record, synced alongside the other crowns (see lib/badgeHolders.ts)
-  { id: 'court_regular', label: 'Court Regular', icon: 'MapPin', description: 'Most sessions attended in the trailing 90 days' },
+  { id: 'court_regular', label: 'Court Regular', icon: 'MapPin', tier: 4, description: 'Most sessions attended in the trailing 90 days' },
 
   // Forward-only history (player_elo_snapshots / league_potm_history) — no backfill, see lib/leagueStats.ts
   { id: 'glow_up', label: 'Glow-Up', icon: 'TrendingUp', description: 'Gained 100+ rating points in the trailing 90 days' },
   { id: 'player_of_the_month', label: 'Player of the Month', icon: 'Sparkles', description: 'Won the monthly leaderboard at least once' },
   { id: 'three_peat', label: 'Three-Peat', icon: 'Award', description: 'Won Player of the Month 3 recorded months running' },
+
+  // Exclusive crowns, batch 2 — see lib/leagueStats.ts fetchCrownBoards for the standings all 10 exclusive crowns share
+  { id: 'iron_throne', label: 'The Iron Throne', icon: 'Crown', tier: 4, description: 'Highest current rating, club-wide' },
+  { id: 'head_honcho', label: 'Head Honcho', icon: 'Landmark', tier: 4, description: 'Most total career wins, club-wide' },
+  { id: 'undisputed', label: 'Undisputed', icon: 'Crosshair', tier: 4, description: 'Best current win rate, club-wide (min 10 games)' },
+  { id: 'the_gatekeeper', label: 'The Gatekeeper', icon: 'KeyRound', tier: 4, description: 'Most session MVP votes, club-wide' },
+  { id: 'the_untouchable', label: 'The Untouchable', icon: 'ShieldCheck', tier: 4, description: 'Longest active win streak, club-wide' },
 ];
 
 function findBadge(id: string): Badge {
@@ -166,6 +173,12 @@ export interface PlayerBadgeInput {
   hasGlowUp?: boolean;
   hasWonPotm?: boolean;
   hasThreePeat?: boolean;
+  // Optional — same fetchCurrentBadgeHolders() pass as isLadderChampion/isTheRealKing/isCourtRegular.
+  isIronThrone?: boolean;
+  isHeadHoncho?: boolean;
+  isUndisputed?: boolean;
+  isGatekeeper?: boolean;
+  isUntouchable?: boolean;
 }
 
 export const ALL_SESSION_FORMATS_COUNT = 5;
@@ -297,6 +310,11 @@ export async function buildBadgeInput(clubId: string, playerName: string, gamesP
     hasGlowUp,
     hasWonPotm: potmWinCount >= 1,
     hasThreePeat: threePeat,
+    isIronThrone: currentHolders.get('iron_throne')?.holderName === playerName,
+    isHeadHoncho: currentHolders.get('head_honcho')?.holderName === playerName,
+    isUndisputed: currentHolders.get('undisputed')?.holderName === playerName,
+    isGatekeeper: currentHolders.get('the_gatekeeper')?.holderName === playerName,
+    isUntouchable: currentHolders.get('the_untouchable')?.holderName === playerName,
   };
 }
 
@@ -369,6 +387,12 @@ export function computeBadges(input: PlayerBadgeInput): Badge[] {
   if (input.hasGlowUp) earned.push(findBadge('glow_up'));
   if (input.hasWonPotm) earned.push(findBadge('player_of_the_month'));
   if (input.hasThreePeat) earned.push(findBadge('three_peat'));
+
+  if (input.isIronThrone) earned.push(findBadge('iron_throne'));
+  if (input.isHeadHoncho) earned.push(findBadge('head_honcho'));
+  if (input.isUndisputed) earned.push(findBadge('undisputed'));
+  if (input.isGatekeeper) earned.push(findBadge('the_gatekeeper'));
+  if (input.isUntouchable) earned.push(findBadge('the_untouchable'));
 
   return earned;
 }
