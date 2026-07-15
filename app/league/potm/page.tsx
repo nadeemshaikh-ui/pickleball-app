@@ -3,21 +3,27 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Sparkles } from 'lucide-react';
-import { fetchPlayerOfTheMonthBoard, fetchYearlyLeaderboard, type RankedPlayer } from '@/lib/leagueStats';
+import { fetchPlayerOfTheMonthBoard, fetchYearlyLeaderboard, fetchWeeklyLeaderboard, type RankedPlayer } from '@/lib/leagueStats';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import Avatar from '@/components/Avatar';
 
+const PERIOD_LABEL: Record<'week' | 'month' | 'year', string> = { week: 'Week', month: 'Month', year: 'Year' };
+const PERIOD_FETCHER: Record<'week' | 'month' | 'year', (clubId: string) => Promise<RankedPlayer[]>> = {
+  week: fetchWeeklyLeaderboard,
+  month: fetchPlayerOfTheMonthBoard,
+  year: fetchYearlyLeaderboard,
+};
+
 export default function PlayerOfTheMonthPage() {
   const { currentClubId, loading: clubLoading } = useCurrentClub();
-  const [period, setPeriod] = useState<'month' | 'year'>('month');
+  const [period, setPeriod] = useState<'week' | 'month' | 'year'>('week');
   const [board, setBoard] = useState<RankedPlayer[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (clubLoading || !currentClubId) return;
     setLoading(true);
-    const fetcher = period === 'month' ? fetchPlayerOfTheMonthBoard : fetchYearlyLeaderboard;
-    fetcher(currentClubId)
+    PERIOD_FETCHER[period](currentClubId)
       .then(setBoard)
       .finally(() => setLoading(false));
   }, [currentClubId, clubLoading, period]);
@@ -31,14 +37,18 @@ export default function PlayerOfTheMonthPage() {
   return (
     <main className="page">
       <Link href="/league" className="text-link-btn">← League</Link>
-      <h1 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Sparkles size={22} /> Player of the {period === 'month' ? 'Month' : 'Year'}</h1>
+      <h1 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Sparkles size={22} /> Player of the {PERIOD_LABEL[period]}</h1>
+      {period === 'week' && (
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>Resets every Monday — every week's games also count toward the Monthly board.</p>
+      )}
 
       <div style={{ display: 'flex', gap: 6, marginTop: 12, marginBottom: 16 }}>
+        <button className={period === 'week' ? 'btn-primary' : 'btn-secondary'} style={{ minHeight: 32, padding: '4px 14px', fontSize: 13 }} onClick={() => setPeriod('week')}>Weekly</button>
         <button className={period === 'month' ? 'btn-primary' : 'btn-secondary'} style={{ minHeight: 32, padding: '4px 14px', fontSize: 13 }} onClick={() => setPeriod('month')}>Monthly</button>
         <button className={period === 'year' ? 'btn-primary' : 'btn-secondary'} style={{ minHeight: 32, padding: '4px 14px', fontSize: 13 }} onClick={() => setPeriod('year')}>Yearly</button>
       </div>
 
-      {ranked.length === 0 && <p className="card" style={{ color: 'var(--muted)', fontSize: 14 }}>No ranked players yet this {period}.</p>}
+      {ranked.length === 0 && <p className="card" style={{ color: 'var(--muted)', fontSize: 14 }}>No ranked players yet this {PERIOD_LABEL[period].toLowerCase()}.</p>}
 
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>

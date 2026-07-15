@@ -80,6 +80,85 @@ export async function fetchPlayerOfTheMonthBoard(clubId: string): Promise<Ranked
   return rankPlayers(data);
 }
 
+function startOfIsoWeek(d: Date): Date {
+  const day = d.getDay(); // 0=Sun..6=Sat
+  const diff = (day === 0 ? -6 : 1) - day; // days back to Monday
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + diff);
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+}
+
+function isoWeekKey(d: Date): string {
+  // Not full ISO-8601 week numbering (no year-boundary edge case handling) —
+  // good enough for a per-club recency key, not for cross-year comparisons.
+  const monday = startOfIsoWeek(d);
+  const jan1 = new Date(monday.getFullYear(), 0, 1);
+  const weekNum = Math.ceil(((monday.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7);
+  return `${monday.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+}
+
+// The Weekly League is the same underlying games as the Monthly League,
+// just windowed to the current calendar week (Monday-start) instead of the
+// current month — a live rounds+sessions scan since there's no weekly
+// matview (unlike month/year, which read pre-aggregated views). Cheap at
+// this club's data scale, same reasoning as fetchLifetimeGameStats.
+export async function fetchWeeklyLeaderboard(clubId: string): Promise<RankedPlayer[]> {
+  const since = startOfIsoWeek(new Date()).toISOString();
+  const { data, error } = await supabase
+    .from('rounds')
+    .select('team_a, team_b, score_a, score_b, sessions!inner(club_id, created_at)')
+    .eq('sessions.club_id', clubId)
+    .gte('sessions.created_at', since)
+    .not('score_a', 'is', null)
+    .not('score_b', 'is', null);
+  if (error) throw error;
+
+  type Row = { team_a: string[]; team_b: string[]; score_a: number; score_b: number };
+  const rows = data as unknown as Row[];
+  const stats = new Map<string, { games_played: number; wins: number; losses: number }>();
+  function get(name: string) {
+    let s = stats.get(name);
+    if (!s) {
+      s = { games_played: 0, wins: 0, losses: 0 };
+      stats.set(name, s);
+    }
+    return s;
+  }
+  for (const r of rows) {
+    const aWon = r.score_a > r.score_b;
+    for (const name of r.team_a) {
+      const s = get(name);
+      s.games_played++;
+      if (aWon) s.wins++;
+      else s.losses++;
+    }
+    for (const name of r.team_b) {
+      const s = get(name);
+      s.games_played++;
+      if (!aWon) s.wins++;
+      else s.losses++;
+    }
+  }
+  return rankPlayers([...stats.entries()].map(([name, s]) => ({ name, ...s })));
+}
+
+// Same best-effort forward-capture pattern as recordPotmProgress, just
+// windowed to the current week — called from the same "Refresh Stats Now"
+// trigger, upserts over the current week's row as the lead changes.
+export async function recordWeeklyProgress(clubId: string): Promise<void> {
+  const board = await fetchWeeklyLeaderboard(clubId);
+  const leader = board.find(p => !p.provisional);
+  if (!leader) return;
+  const { error } = await supabase
+    .from('league_weekly_history')
+    .upsert(
+      { club_id: clubId, period_key: isoWeekKey(new Date()), winner_name: leader.name, recorded_at: new Date().toISOString() },
+      { onConflict: 'club_id,period_key' }
+    );
+  if (error) throw error;
+}
+
 export async function fetchYearlyLeaderboard(clubId: string): Promise<RankedPlayer[]> {
   const { data, error } = await supabase.from('league_player_year_stats').select('*').eq('club_id', clubId);
   if (error) throw error;

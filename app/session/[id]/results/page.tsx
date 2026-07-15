@@ -15,6 +15,7 @@ import SessionDate from '@/components/SessionDate';
 import GroupHeader from '@/components/GroupHeader';
 import RecapImageTemplate from '@/components/RecapImageTemplate';
 import SquadVersusHero from '@/components/SquadVersusHero';
+import { fetchPredictionsForRounds, computePredictionAccuracy } from '@/lib/predictions';
 import { WhatsAppIcon } from '@/components/icons';
 import { preloadPlayerPhotos } from '@/lib/playerPhotos';
 import { fetchSessionDues, markDuePaid, type DueRow } from '@/lib/dues';
@@ -49,6 +50,7 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
   const [winnerBadges, setWinnerBadges] = useState<Badge[]>([]);
   const [winnerStreak, setWinnerStreak] = useState(0);
   const [winnerMvpCount, setWinnerMvpCount] = useState(0);
+  const [predictionAccuracy, setPredictionAccuracy] = useState<{ correct: number; total: number } | null>(null);
   const recapCaptureRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -71,6 +73,9 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
         if (own) {
           setOwnUserId(user.id);
           setOwnPlayerName(own.name);
+          fetchPredictionsForRounds(r.map(round => round.id))
+            .then(preds => setPredictionAccuracy(computePredictionAccuracy(r, preds, own.name)))
+            .catch(() => setPredictionAccuracy(null));
         }
       }
       const celebratedKey = `celebrated-${id}`;
@@ -203,6 +208,15 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
               goldScore={squadTotals.gold}
               blackScore={squadTotals.black}
             />
+          </div>
+        )}
+
+        {predictionAccuracy && predictionAccuracy.total > 0 && (
+          <div className="card" style={{ marginTop: 16, textAlign: 'center' }}>
+            <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4 }}>Your Picks Tonight</div>
+            <div style={{ fontSize: 20, fontWeight: 800, marginTop: 2 }}>
+              {predictionAccuracy.correct}/{predictionAccuracy.total} correct
+            </div>
           </div>
         )}
 

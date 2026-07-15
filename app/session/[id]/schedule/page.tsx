@@ -17,6 +17,8 @@ import { ChairIcon, WhatsAppIcon } from '@/components/icons';
 import { formatLabel } from '@/lib/formatLabel';
 import { computeRoundTimeRange } from '@/lib/roundTiming';
 import ScheduleImageTemplate from '@/components/ScheduleImageTemplate';
+import { getCurrentUser } from '@/lib/auth';
+import { submitPrediction, fetchPredictionsForRounds, type PredictionRow } from '@/lib/predictions';
 
 const FLIGHT_RANK: Record<string, number> = { Platinum: 4, Gold: 3, Silver: 2, Bronze: 1 };
 
@@ -34,18 +36,42 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
   const [imageShareError, setImageShareError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
   const [club, setClub] = useState<{ name: string; logo_url: string | null } | null>(null);
+  const [ownPlayerName, setOwnPlayerName] = useState<string | null>(null);
+  const [predictions, setPredictions] = useState<Map<string, PredictionRow[]>>(new Map());
+  const [predictingRoundId, setPredictingRoundId] = useState<string | null>(null);
   const tableCaptureRef = useRef<HTMLDivElement>(null);
 
   async function reload() {
-    const [s, r] = await Promise.all([getSession(id), getRounds(id)]);
+    const [s, r, user] = await Promise.all([getSession(id), getRounds(id), getCurrentUser()]);
     setSession(s);
     setRounds(r);
     setNameDrafts(s.players);
     getClubBranding(s.club_id).then(setClub).catch(() => setClub(null));
     listPlayers(s.club_id)
-      .then(players => setPlayersByName(new Map(players.map(p => [p.name, p]))))
+      .then(players => {
+        setPlayersByName(new Map(players.map(p => [p.name, p])));
+        setOwnPlayerName(user ? players.find(p => p.user_id === user.id)?.name ?? null : null);
+      })
       .catch(() => setPlayersByName(new Map()));
+    fetchPredictionsForRounds(r.map(round => round.id))
+      .then(setPredictions)
+      .catch(() => setPredictions(new Map()));
     preloadPlayerPhotos().catch(() => {});
+  }
+
+  async function handlePredict(roundId: string, team: 'a' | 'b') {
+    if (!session || !ownPlayerName) return;
+    setPredictingRoundId(roundId);
+    try {
+      await submitPrediction(roundId, session.club_id, ownPlayerName, team);
+      setPredictions(await fetchPredictionsForRounds(rounds.map(r => r.id)));
+    } catch {
+      // Most likely a duplicate pick (unique constraint) — silently
+      // refresh so the UI reflects whatever the DB actually has.
+      setPredictions(await fetchPredictionsForRounds(rounds.map(r => r.id)));
+    } finally {
+      setPredictingRoundId(null);
+    }
   }
 
   useEffect(() => {
@@ -268,6 +294,40 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
                         <div className="resting-badge">
                           <span className="stat-icon"><ChairIcon size={20} /></span>
                           Resting: {c.sitting_out.join(', ')}
+                        </div>
+                      )}
+                      {c.score_a === null && c.score_b === null && ownPlayerName && (
+                        <div style={{ marginTop: 8 }}>
+                          {predictions.get(c.id)?.some(p => p.predictor_name === ownPlayerName) ? (
+                            <div style={{ fontSize: 12, color: 'var(--muted)', textAlign: 'center' }}>
+                              You picked{' '}
+                              <strong>
+                                {predictions.get(c.id)!.find(p => p.predictor_name === ownPlayerName)!.picked_team === 'a'
+                                  ? c.team_a.join(' & ')
+                                  : c.team_b.join(' & ')}
+                              </strong>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: 11, color: 'var(--muted)', flexShrink: 0 }}>Who wins?</span>
+                              <button
+                                className="btn-secondary"
+                                style={{ flex: 1, minHeight: 30, fontSize: 12, padding: '4px 8px' }}
+                                disabled={predictingRoundId === c.id}
+                                onClick={() => handlePredict(c.id, 'a')}
+                              >
+                                {c.team_a.join(' & ')}
+                              </button>
+                              <button
+                                className="btn-secondary"
+                                style={{ flex: 1, minHeight: 30, fontSize: 12, padding: '4px 8px' }}
+                                disabled={predictingRoundId === c.id}
+                                onClick={() => handlePredict(c.id, 'b')}
+                              >
+                                {c.team_b.join(' & ')}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

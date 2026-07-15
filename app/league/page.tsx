@@ -12,6 +12,7 @@ import {
   syncCourtRegular,
   syncNewExclusiveCrowns,
   recordPotmProgress,
+  recordWeeklyProgress,
   MIN_GAMES_FOR_DUO_RANKING,
   MIN_GAMES_FOR_RIVALRY,
   type RankedPlayer,
@@ -79,6 +80,7 @@ export default function LeaguePage() {
       await syncCourtRegular(currentClubId);
       await syncNewExclusiveCrowns(currentClubId);
       await recordPotmProgress(currentClubId);
+      await recordWeeklyProgress(currentClubId);
       await load(currentClubId);
     } catch (e) {
       setRefreshError(e instanceof Error ? e.message : 'Refresh failed.');
