@@ -34,7 +34,7 @@ export default function ScheduleImageTemplate({
         {club && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
             {club.logo_url && (
-              <img src={club.logo_url} alt="" width={48} height={48} style={{ borderRadius: '50%', objectFit: 'cover', border: '2px solid #e5fa00' }} />
+              <img src={club.logo_url} alt="" width={64} height={64} crossOrigin="anonymous" style={{ borderRadius: '50%', objectFit: 'cover', border: '2px solid #e5fa00' }} />
             )}
             <div style={{ fontFamily: 'var(--font-display), sans-serif', fontSize: 28, fontWeight: 800, letterSpacing: 0.5 }}>
               {club.name.toUpperCase()}

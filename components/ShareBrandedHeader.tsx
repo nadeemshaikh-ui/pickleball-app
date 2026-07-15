@@ -25,8 +25,9 @@ export default function ShareBrandedHeader({ clubId }: { clubId: string | null |
         <img
           src={branding.logo_url}
           alt=""
-          width={48}
-          height={48}
+          width={64}
+          height={64}
+          crossOrigin="anonymous"
           style={{ borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--primary)', flexShrink: 0 }}
         />
       )}

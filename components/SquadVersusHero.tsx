@@ -50,15 +50,16 @@ function SquadSide({
         <img
           src={logoUrl}
           alt=""
-          width={56}
-          height={56}
+          width={72}
+          height={72}
+          crossOrigin="anonymous"
           style={{ borderRadius: '50%', objectFit: 'cover', border: `3px solid ${color}` }}
         />
       ) : (
         <div
           style={{
-            width: 56,
-            height: 56,
+            width: 72,
+            height: 72,
             borderRadius: '50%',
             background: color,
             display: 'flex',

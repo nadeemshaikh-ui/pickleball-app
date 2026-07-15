@@ -28,7 +28,7 @@ export default function RecapImageTemplate({
         {club && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
             {club.logo_url && (
-              <img src={club.logo_url} alt="" width={48} height={48} style={{ borderRadius: '50%', objectFit: 'cover', border: '2px solid #e5fa00' }} />
+              <img src={club.logo_url} alt="" width={64} height={64} crossOrigin="anonymous" style={{ borderRadius: '50%', objectFit: 'cover', border: '2px solid #e5fa00' }} />
             )}
             <div style={{ fontFamily: 'var(--font-display), sans-serif', fontSize: 28, fontWeight: 800, letterSpacing: 0.5 }}>
               {club.name.toUpperCase()}
@@ -123,7 +123,7 @@ function SquadResult({ label, logoUrl, score, color }: { label: string; logoUrl:
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 200 }}>
       {logoUrl ? (
-        <img src={logoUrl} alt="" width={72} height={72} style={{ borderRadius: '50%', objectFit: 'cover', border: `4px solid ${color}` }} />
+        <img src={logoUrl} alt="" width={96} height={96} crossOrigin="anonymous" style={{ borderRadius: '50%', objectFit: 'cover', border: `4px solid ${color}` }} />
       ) : (
         <div
           style={{

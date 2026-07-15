@@ -73,12 +73,19 @@ function SquadColumn({ label, logoUrl, players, color }: { label: string; logoUr
         }}
       >
         {logoUrl ? (
-          <img src={logoUrl} alt="" width={44} height={44} style={{ borderRadius: '50%', objectFit: 'cover', border: `2px solid ${color}` }} />
+          <img
+            src={logoUrl}
+            alt=""
+            width={72}
+            height={72}
+            crossOrigin="anonymous"
+            style={{ borderRadius: '50%', objectFit: 'cover', border: `2px solid ${color}` }}
+          />
         ) : (
           <div
             style={{
-              width: 44,
-              height: 44,
+              width: 72,
+              height: 72,
               borderRadius: '50%',
               background: color,
               display: 'flex',
@@ -86,6 +93,7 @@ function SquadColumn({ label, logoUrl, players, color }: { label: string; logoUr
               justifyContent: 'center',
               color: '#ffffff',
               fontWeight: 800,
+              fontSize: 24,
             }}
           >
             {label.charAt(0).toUpperCase()}

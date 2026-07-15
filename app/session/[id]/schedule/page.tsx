@@ -175,7 +175,7 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
           </div>
         )}
 
-        {session && session.players.length > 0 && (
+        {session && session.players.length > 0 && !(session.format === 'squad_rivalry' && session.squads) && (
           <div style={{ marginTop: 16 }}>
             <button
               className="text-link-btn"
@@ -186,28 +186,45 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
               <span>{showRoster ? 'Hide' : 'Show'}</span>
             </button>
             {showRoster && (
-              <div className="card" style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {[...session.players]
-                  .sort((x, y) => {
-                    const px = playersByName.get(x);
-                    const py = playersByName.get(y);
-                    const rankX = FLIGHT_RANK[flightForRating(px?.elo_rating ?? 1500)];
-                    const rankY = FLIGHT_RANK[flightForRating(py?.elo_rating ?? 1500)];
-                    if (rankX !== rankY) return rankY - rankX;
-                    return (py?.elo_rating ?? 1500) - (px?.elo_rating ?? 1500);
-                  })
-                  .map(name => {
-                    const p = playersByName.get(name);
-                    const flight = flightForRating(p?.elo_rating ?? 1500);
-                    return (
-                      <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <Avatar name={name} size={32} />
-                        <span style={{ flex: 1, fontWeight: 700, fontSize: 14 }}>{name}</span>
-                        <span style={{ fontSize: 12, color: 'var(--muted)' }}>{flight}</span>
-                        {p && <span style={{ fontSize: 11, color: 'var(--muted)' }} title="Skill rating — used to balance courts and flights">Rating {p.elo_rating}</span>}
-                      </div>
-                    );
-                  })}
+              <div className="card" style={{ marginTop: 8, overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
+                      <th style={{ padding: '6px 8px', fontSize: 12, color: 'var(--muted)' }}>Player</th>
+                      <th style={{ padding: '6px 8px', fontSize: 12, color: 'var(--muted)' }}>Flight</th>
+                      <th style={{ padding: '6px 8px', fontSize: 12, color: 'var(--muted)', textAlign: 'right' }}>Rating</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...session.players]
+                      .sort((x, y) => {
+                        const px = playersByName.get(x);
+                        const py = playersByName.get(y);
+                        const rankX = FLIGHT_RANK[flightForRating(px?.elo_rating ?? 1500)];
+                        const rankY = FLIGHT_RANK[flightForRating(py?.elo_rating ?? 1500)];
+                        if (rankX !== rankY) return rankY - rankX;
+                        return (py?.elo_rating ?? 1500) - (px?.elo_rating ?? 1500);
+                      })
+                      .map(name => {
+                        const p = playersByName.get(name);
+                        const flight = flightForRating(p?.elo_rating ?? 1500);
+                        return (
+                          <tr key={name} style={{ borderBottom: '1px solid var(--border)' }}>
+                            <td style={{ padding: '8px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Avatar name={name} size={28} />
+                                <span style={{ fontWeight: 700 }}>{name}</span>
+                              </div>
+                            </td>
+                            <td style={{ padding: '8px', color: 'var(--muted)' }}>{flight}</td>
+                            <td style={{ padding: '8px', textAlign: 'right', color: 'var(--muted)' }} title="Skill rating — used to balance courts and flights">
+                              {p ? p.elo_rating : '—'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

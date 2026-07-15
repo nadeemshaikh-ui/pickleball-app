@@ -7,7 +7,12 @@ import html2canvas from 'html2canvas';
 // which throws "not allowed by the user agent or platform" even though
 // canShare() said yes.
 export async function renderElementToImage(element: HTMLElement, filename: string): Promise<File> {
-  const canvas = await html2canvas(element, { backgroundColor: '#e5fa00', scale: 2 });
+  // useCORS: true — without it, html2canvas silently drops any <img> whose
+  // source is a different origin (every uploaded logo, since those are
+  // Supabase Storage URLs, not this app's own origin) instead of rendering
+  // it or throwing, which is why logos were vanishing from shared images
+  // with no visible error.
+  const canvas = await html2canvas(element, { backgroundColor: '#e5fa00', scale: 2, useCORS: true });
   const blob: Blob = await new Promise((resolve, reject) =>
     canvas.toBlob(b => (b ? resolve(b) : reject(new Error('Failed to render image'))), 'image/png')
   );
