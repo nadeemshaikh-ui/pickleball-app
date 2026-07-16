@@ -27,3 +27,16 @@ test('badge gallery marks Hot Streak as earned, not locked', async ({ page }) =>
   const opacity = await hotStreakCard.evaluate(el => getComputedStyle(el).opacity);
   expect(Number(opacity)).toBeGreaterThan(0.9); // earned badges render full-opacity, locked ones dim to 0.4
 });
+
+// Real gap this session: the badge gallery gained 3 new sections
+// (Crowns, Trajectory, and the 10 dedication/calendar badges added to
+// Dedication & Calendar) that the E2E suite never actually loaded on a
+// live page — only lib/badgeGallerySections.test.ts checked the section
+// data was well-formed, not that it renders. This confirms the live page.
+test('badge gallery renders the Crowns, Dedication & Calendar, and Trajectory sections', async ({ page }) => {
+  await page.goto('/league/badges');
+  await expect(page.getByRole('heading', { name: 'Badge Gallery' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Crowns' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Dedication & Calendar' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Trajectory' })).toBeVisible();
+});

@@ -485,7 +485,7 @@ export default function LeagueStatsPage() {
         >
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }} onClick={e => e.stopPropagation()}>
             <div ref={shareCardRef}>
-              <ShareableBadgeCard badge={shareCardBadge} playerName={ownPlayerName ?? ''} photoUrl={ownPhotoUrl} />
+              <ShareableBadgeCard badge={shareCardBadge} playerName={ownPlayerName ?? ''} photoUrl={ownPhotoUrl} clubId={currentClubId} />
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button

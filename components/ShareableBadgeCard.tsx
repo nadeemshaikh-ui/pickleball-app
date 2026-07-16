@@ -1,10 +1,32 @@
+import { useEffect, useState } from 'react';
 import type { Badge } from '@/lib/badges';
+import { getClubBranding } from '@/lib/clubs';
 import BadgeMedallion from './BadgeMedallion';
 
 // Branded share card for a single badge — rendered off-screen or in a modal,
 // then captured with renderElementToImage/shareCachedImage. Sized 4:5
 // (Instagram-portrait-friendly) but reads fine as a WhatsApp image too.
-export default function ShareableBadgeCard({ badge, playerName, photoUrl }: { badge: Badge; playerName: string; photoUrl: string | null }) {
+// Self-fetches club branding off clubId (same pattern as ShareBrandedHeader)
+// so the card reads as "this club's" achievement, not a generic wordmark —
+// flagged as a branding gap last session, closed here.
+export default function ShareableBadgeCard({
+  badge,
+  playerName,
+  photoUrl,
+  clubId,
+}: {
+  badge: Badge;
+  playerName: string;
+  photoUrl: string | null;
+  clubId: string | null | undefined;
+}) {
+  const [branding, setBranding] = useState<{ name: string; logo_url: string | null } | null>(null);
+
+  useEffect(() => {
+    if (!clubId) return;
+    getClubBranding(clubId).then(setBranding).catch(() => setBranding(null));
+  }, [clubId]);
+
   return (
     <div
       style={{
@@ -22,8 +44,20 @@ export default function ShareableBadgeCard({ badge, playerName, photoUrl }: { ba
         boxSizing: 'border-box',
       }}
     >
-      <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', opacity: 0.7 }}>
-        Pickleball Session
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {branding?.logo_url && (
+          <img
+            src={branding.logo_url}
+            alt=""
+            width={22}
+            height={22}
+            crossOrigin="anonymous"
+            style={{ borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #0b1220' }}
+          />
+        )}
+        <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', opacity: 0.7 }}>
+          {branding?.name ?? 'Pickleball Session'}
+        </div>
       </div>
 
       {photoUrl ? (
