@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Trophy, Plus, Trash2, Copy } from 'lucide-react';
+import { Trophy, Plus, Trash2, Copy, Sparkles } from 'lucide-react';
 import { fetchTournament, watchUrlFor, type TournamentRow } from '@/lib/tournaments';
 import {
   fetchTournamentTeams,
@@ -14,9 +14,20 @@ import {
   type TournamentTeamRow,
 } from '@/lib/tournamentTeams';
 import { fetchStages, generateNextStage, type TournamentStageRow, type StageType } from '@/lib/tournamentStages';
+import { drawMysteryPairs } from '@/lib/mysteryPartner';
 import { listPlayers, type PlayerRow } from '@/lib/players';
 import { isCurrentUserAdmin } from '@/lib/auth';
 import { useCurrentClub } from '@/lib/useCurrentClub';
+
+// Between-pair delay while a draw streams in — no Supabase Realtime channel
+// here (the rest of the app deliberately polls instead of using Realtime,
+// see app/session/[id]/leaderboard/page.tsx's reasoning: cheaper to build
+// and run for a handful of concurrent viewers). The same watchable, streamed
+// reveal is achieved by pacing each pair's DB write and having every viewer
+// of this page — including the admin doing the draw — poll tournament_teams
+// on the same interval the rest of the app already uses.
+const MYSTERY_DRAW_PAIR_DELAY_MS = 1200;
+const TEAMS_POLL_INTERVAL_MS = 4000;
 
 const STAGE_TYPE_LABELS: Record<StageType, string> = {
   league: 'League (round-robin)',
@@ -47,6 +58,11 @@ export default function TournamentDetailPage() {
   const [groupCount, setGroupCount] = useState(2);
   const [doubleHeader, setDoubleHeader] = useState(false);
 
+  const [mysteryPool, setMysteryPool] = useState<Set<string>>(new Set());
+  const [byePlayer, setByePlayer] = useState('');
+  const [drawing, setDrawing] = useState(false);
+  const [drawProgress, setDrawProgress] = useState<{ done: number; total: number } | null>(null);
+
   async function load(clubId: string, id: string) {
     const [t, tm, st, pl] = await Promise.all([fetchTournament(id), fetchTournamentTeams(id), fetchStages(id), listPlayers(clubId)]);
     setTournament(t);
@@ -72,6 +88,17 @@ export default function TournamentDetailPage() {
     }
     init();
   }, [currentClubId, clubLoading, tournamentId]);
+
+  // Lets anyone with this page open watch a Mystery Partner draw stream in
+  // live, not just the admin who triggered it — polling rather than a
+  // Realtime subscription, matching this app's existing convention.
+  useEffect(() => {
+    if (!tournamentId || stages.length > 0) return;
+    const interval = setInterval(() => {
+      fetchTournamentTeams(tournamentId).then(setTeams).catch(() => {});
+    }, TEAMS_POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [tournamentId, stages.length]);
 
   async function handleAddTeam() {
     if (!currentClubId || !teamName.trim() || !player1 || !player2 || player1 === player2) return;
@@ -129,6 +156,45 @@ export default function TournamentDetailPage() {
       setError(e instanceof Error ? e.message : 'Failed to update seed.');
     } finally {
       setBusy(false);
+    }
+  }
+
+  function toggleMysteryPoolPlayer(name: string) {
+    setMysteryPool(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+    setByePlayer('');
+  }
+
+  async function handleMysteryDraw() {
+    const pool = [...mysteryPool];
+    if (pool.length < 2) return;
+    setError(null);
+    setDrawing(true);
+    try {
+      const pairs = drawMysteryPairs(pool, byePlayer || undefined);
+      setDrawProgress({ done: 0, total: pairs.length });
+      const existingCount = teams.length;
+      for (let i = 0; i < pairs.length; i++) {
+        await createTournamentTeam({
+          tournamentId,
+          name: `Mystery Pair ${existingCount + i + 1}`,
+          playerNames: pairs[i].players,
+        });
+        setTeams(await fetchTournamentTeams(tournamentId));
+        setDrawProgress({ done: i + 1, total: pairs.length });
+        if (i < pairs.length - 1) await new Promise(resolve => setTimeout(resolve, MYSTERY_DRAW_PAIR_DELAY_MS));
+      }
+      setMysteryPool(new Set());
+      setByePlayer('');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Mystery Partner draw failed partway through — check the Teams list above for what did get created.');
+    } finally {
+      setDrawing(false);
+      setDrawProgress(null);
     }
   }
 
@@ -225,6 +291,65 @@ export default function TournamentDetailPage() {
           </div>
         )}
       </div>
+
+      {isAdmin && (
+        <>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Sparkles size={18} /> Mystery Partner Draw</h2>
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+            <p style={{ fontSize: 12, color: 'var(--muted)' }}>
+              Pick a pool of players — they&apos;ll be randomly paired into teams. Pairs stream in one at a time so anyone with this page open can
+              watch the reveal.
+            </p>
+            {(() => {
+              const alreadyOnATeam = new Set(teams.flatMap(t => t.player_names));
+              const candidates = players.filter(p => !alreadyOnATeam.has(p.name));
+              return (
+                <>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {candidates.map(p => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className={mysteryPool.has(p.name) ? 'btn-primary' : 'btn-secondary'}
+                        onClick={() => toggleMysteryPoolPlayer(p.name)}
+                        disabled={drawing}
+                        style={{ minHeight: 32, padding: '4px 10px', fontSize: 13 }}
+                      >
+                        {p.name}
+                      </button>
+                    ))}
+                    {candidates.length === 0 && <p style={{ fontSize: 13, color: 'var(--muted)' }}>Every registered player is already on a team.</p>}
+                  </div>
+
+                  {mysteryPool.size > 0 && mysteryPool.size % 2 !== 0 && (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                      Odd pool ({mysteryPool.size}) — who sits out this draw?
+                      <select value={byePlayer} onChange={e => setByePlayer(e.target.value)} disabled={drawing}>
+                        <option value="">Choose a bye…</option>
+                        {[...mysteryPool].map(name => <option key={name} value={name}>{name}</option>)}
+                      </select>
+                    </label>
+                  )}
+
+                  <button
+                    className="btn-primary"
+                    onClick={handleMysteryDraw}
+                    disabled={
+                      drawing ||
+                      mysteryPool.size < 2 ||
+                      (mysteryPool.size % 2 !== 0 && !byePlayer)
+                    }
+                  >
+                    {drawing && drawProgress
+                      ? `Drawing… ${drawProgress.done}/${drawProgress.total} pairs revealed`
+                      : 'Start Draw'}
+                  </button>
+                </>
+              );
+            })()}
+          </div>
+        </>
+      )}
 
       <h2>Stages</h2>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>

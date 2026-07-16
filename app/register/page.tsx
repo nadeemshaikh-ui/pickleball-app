@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Trophy } from 'lucide-react';
 import { getCurrentUser, signOut } from '@/lib/auth';
 import { getOwnPlayer, upsertOwnPlayer, listPlayers, type PlayerRow } from '@/lib/players';
 import { uploadPlayerPhoto } from '@/lib/db';
@@ -130,6 +131,16 @@ export default function RegisterPage() {
     <main className="page">
       <h1>Profile</h1>
 
+      <Link
+        href={`/players/${user.id}`}
+        className="card"
+        style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, textDecoration: 'none', color: 'inherit' }}
+      >
+        <Trophy size={20} />
+        <span style={{ fontWeight: 700, flex: 1 }}>My Stats Across Clubs</span>
+        <span style={{ fontSize: 18 }}>→</span>
+      </Link>
+
       <h2>My Profile</h2>
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {photoUrl && (
@@ -188,19 +199,30 @@ export default function RegisterPage() {
       <h2>Club Directory ({directory.length})</h2>
       <div className="card">
         {directory.length === 0 && <p style={{ color: 'var(--muted)', fontSize: 14 }}>Nobody's registered yet.</p>}
-        {directory.map(p => (
-          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0' }}>
-            {p.photo_url ? (
-              <img src={p.photo_url} alt="" width={32} height={32} style={{ borderRadius: '50%', objectFit: 'cover' }} />
-            ) : (
-              <span style={{ width: 32, height: 32, borderRadius: '50%', background: '#eee', display: 'inline-block' }} />
-            )}
-            <span>
-              {p.name}{p.nickname && ` (${p.nickname})`}
-              {p.paddle && <span style={{ color: 'var(--muted)', fontSize: 12 }}> · {p.paddle}</span>}
-            </span>
-          </div>
-        ))}
+        {directory.map(p => {
+          const row = (
+            <>
+              {p.photo_url ? (
+                <img src={p.photo_url} alt="" width={32} height={32} style={{ borderRadius: '50%', objectFit: 'cover' }} />
+              ) : (
+                <span style={{ width: 32, height: 32, borderRadius: '50%', background: '#eee', display: 'inline-block' }} />
+              )}
+              <span>
+                {p.name}{p.nickname && ` (${p.nickname})`}
+                {p.paddle && <span style={{ color: 'var(--muted)', fontSize: 12 }}> · {p.paddle}</span>}
+              </span>
+            </>
+          );
+          return p.user_id ? (
+            <Link key={p.id} href={`/players/${p.user_id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', color: 'inherit', textDecoration: 'none' }}>
+              {row}
+            </Link>
+          ) : (
+            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0' }}>
+              {row}
+            </div>
+          );
+        })}
       </div>
 
       <h2>Display</h2>
