@@ -13,10 +13,28 @@ test('lifetime stats shows the hot streak badge for a real 5-win streak', async 
   await expect(row).toBeVisible({ timeout: 10000 });
   await row.click();
 
-  // The expanded row's Personal Bests section should show the streak, and
-  // the badge medallion row (rendered on the collapsed card itself) should
-  // include the Hot Streak badge for anyone on a 5+ win streak.
-  await expect(page.getByText(/longest-ever win streak/i)).toBeVisible();
+  // The expanded row's Personal Bests section shows a "Best streak" value —
+  // this test previously checked for "longest-ever win streak" text that
+  // doesn't exist anywhere on the page (stale copy — app/league/stats/
+  // page.tsx:421 has always said "Best streak", never that phrase).
+  //
+  // Asserts >= 5, not exactly 5: E2E Tester's real cumulative streak across
+  // every fixture this suite seeds (not just the dedicated 5-win streak
+  // session) is currently 7 — other fixtures also give this player wins, so
+  // hardcoding "5" would break again the next time any fixture changes.
+  // What actually matters is proving hot_streak_5 is earnable (>=5), not
+  // pinning an incidental cumulative total.
+  //
+  // getByText(exact: true) finds the small label div itself precisely — a
+  // substring `.filter({ hasText })` on 'div' matches every ancestor whose
+  // concatenated text happens to contain "Best streak" too (the whole
+  // stats-grid container, the card, etc.), which is how the previous
+  // attempt at this fix grabbed the wrong, much-larger element.
+  const bestStreakLabel = row.getByText('Best streak', { exact: true });
+  await expect(bestStreakLabel).toBeVisible();
+  const containerText = await bestStreakLabel.locator('..').innerText();
+  const bestStreak = Number(containerText.replace('Best streak', '').trim());
+  expect(bestStreak).toBeGreaterThanOrEqual(5);
 });
 
 test('badge gallery marks Hot Streak as earned, not locked', async ({ page }) => {
