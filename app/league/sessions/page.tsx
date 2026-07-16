@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { listSessions, type SessionRow } from '@/lib/db';
@@ -8,7 +8,7 @@ import { listPlayers, type PlayerRow } from '@/lib/players';
 import { formatLabel } from '@/lib/formatLabel';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 
-export default function SessionHistoryPage() {
+function SessionHistoryContent() {
   const { currentClubId, loading: clubLoading } = useCurrentClub();
   const searchParams = useSearchParams();
   const [sessions, setSessions] = useState<SessionRow[]>([]);
@@ -75,5 +75,15 @@ export default function SessionHistoryPage() {
         ))}
       </div>
     </main>
+  );
+}
+
+// useSearchParams() requires a Suspense boundary for Next's static-generation
+// pass (build failed without this: "should be wrapped in a suspense boundary").
+export default function SessionHistoryPage() {
+  return (
+    <Suspense fallback={<main className="page"><p>Loading…</p></main>}>
+      <SessionHistoryContent />
+    </Suspense>
   );
 }
