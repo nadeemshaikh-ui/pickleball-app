@@ -21,6 +21,7 @@ import {
   type AuctionPlayerPublicRow,
 } from '@/lib/auctionPlayers';
 import { fetchAuctionTeams, createAuctionTeam, uploadAuctionTeamLogo, type AuctionTeamRow } from '@/lib/auctionTeams';
+import { updateAuctionStatus, relistAuctionPlayer } from '@/lib/auctionBidding';
 import { formatRupees } from '@/lib/auctionMoney';
 import { listPlayers, type PlayerRow } from '@/lib/players';
 import { isCurrentUserAdmin } from '@/lib/auth';
@@ -214,6 +215,32 @@ export default function AuctionDetailPage() {
     }
   }
 
+  async function handleStatusChange(status: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      await updateAuctionStatus(auctionId, status);
+      setAuction(await fetchAuction(auctionId));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update auction status.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRelist(auctionPlayerId: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      await relistAuctionPlayer(auctionPlayerId);
+      setPoolPlayers(await fetchAuctionPlayersPublic(auctionId));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to relist player.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleSharePool() {
     if (!poolCaptureRef.current) return;
     setImageShareError(null);
@@ -247,6 +274,28 @@ export default function AuctionDetailPage() {
       </p>
 
       {error && <p style={{ color: 'var(--danger)', marginBottom: 12, fontWeight: 600 }}>{error}</p>}
+
+      <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        {isAdmin ? (
+          <select value={auction.status} onChange={e => handleStatusChange(e.target.value)} disabled={busy}>
+            <option value="draft">Draft</option>
+            <option value="registration_open">Registration Open</option>
+            <option value="registration_closed">Registration Closed</option>
+            <option value="active">Active</option>
+            <option value="completed">Completed</option>
+          </select>
+        ) : (
+          <span style={{ fontSize: 13, textTransform: 'capitalize', fontWeight: 700 }}>{auction.status.replace('_', ' ')}</span>
+        )}
+        {auction.status === 'active' && (
+          <Link href={`/league/auctions/${auctionId}/bid`} className="btn-primary">
+            Go to Live Bidding
+          </Link>
+        )}
+        <Link href={`/league/auctions/${auctionId}/rosters`} className="btn-secondary">
+          Final Rosters
+        </Link>
+      </div>
 
       <h2>Categories</h2>
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
@@ -303,9 +352,16 @@ export default function AuctionDetailPage() {
             ) : (
               <span style={{ fontSize: 12, color: 'var(--muted)' }}>{categoryName(p.category_id)}</span>
             )}
-            <span style={{ fontSize: 12, fontWeight: 700 }}>{formatRupees(categoryPrice(p.category_id))}</span>
+            <span style={{ fontSize: 12, fontWeight: 700 }}>
+              {formatRupees(p.status === 'sold' && p.sold_price !== null ? p.sold_price : categoryPrice(p.category_id))}
+            </span>
             <span style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'capitalize' }}>{p.status}</span>
-            {isAdmin && (
+            {isAdmin && p.status === 'unsold' && (
+              <button className="text-link-btn" disabled={busy} onClick={() => handleRelist(p.id)}>
+                Relist
+              </button>
+            )}
+            {isAdmin && p.status === 'pooled' && (
               <button className="icon-btn" aria-label="Remove from pool" disabled={busy} onClick={() => handleRemoveFromPool(p.id)}>
                 <Trash2 size={14} />
               </button>

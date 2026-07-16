@@ -17,6 +17,9 @@ export interface AuctionPlayerPublicRow {
   sold_price: number | null;
   winning_team_id: string | null;
   created_at: string;
+  current_bid_amount: number | null;
+  current_bid_team_id: string | null;
+  lot_closes_at: string | null;
 }
 
 export interface AuctionPlayerContact {
@@ -35,15 +38,26 @@ export async function fetchAuctionPlayersPublic(auctionId: string): Promise<Auct
 }
 
 // Only returns a row for players the caller is allowed to see contact info
-// for (club admin, or the player themselves) — auction_players' own RLS
-// enforces this; a non-admin, non-self caller simply gets `null` back, not
-// an error, since the row is invisible to them rather than access-denied.
+// for (club admin, or the player themselves) — auction_player_contacts' own
+// restrictive RLS enforces this (auction_players itself is broadly
+// readable by every club member so Realtime works, but contact info lives
+// in this separate table specifically so it stays gated). A non-admin,
+// non-self caller simply gets `null` back, not an error, since the row is
+// invisible to them rather than access-denied.
 export async function fetchAuctionPlayerContact(auctionId: string, playerName: string): Promise<AuctionPlayerContact | null> {
-  const { data, error } = await supabase
-    .from('auction_players')
-    .select('whatsapp_number, instagram_handle')
+  const { data: playerRow, error: playerError } = await supabase
+    .from('auction_players_public')
+    .select('id')
     .eq('auction_id', auctionId)
     .eq('player_name', playerName)
+    .maybeSingle();
+  if (playerError) throw playerError;
+  if (!playerRow) return null;
+
+  const { data, error } = await supabase
+    .from('auction_player_contacts')
+    .select('whatsapp_number, instagram_handle')
+    .eq('auction_player_id', playerRow.id)
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;

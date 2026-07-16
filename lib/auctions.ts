@@ -9,6 +9,9 @@ export interface AuctionRow {
   min_roster_size: number;
   created_by: string;
   created_at: string;
+  current_lot_player_id: string | null;
+  soft_close_seconds: number;
+  min_increment: number;
 }
 
 const DEFAULT_PURSE_AMOUNT = 1_00_00_000; // ₹1Cr per team, organizer-editable via updateAuction
