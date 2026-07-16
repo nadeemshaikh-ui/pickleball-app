@@ -79,6 +79,7 @@ export const BADGE_CATALOG: Badge[] = [
   { id: 'perfectionist', label: 'Perfectionist', icon: 'CheckCircle2', description: 'Went undefeated in a full session (3+ games)' },
   { id: 'night_owl', label: 'Night Owl', icon: 'Moon', description: '10+ sessions started at 8pm or later' },
   { id: 'rung_climber', label: 'Rung Climber', icon: 'ArrowUpDown', description: '10+ ladder challenge wins' },
+  { id: 'giant_slayer', label: 'Giant Slayer', icon: 'Swords', description: 'Won a ladder challenge as the lower-ranked side' },
 
   // Head-to-head flavor — same fetchRivalriesForPlayer data H2H page uses
   { id: 'nemesis', label: 'Nemesis', icon: 'Swords', description: 'Losing head-to-head record (5+ games) against one rival' },
@@ -102,6 +103,7 @@ export const BADGE_CATALOG: Badge[] = [
 
   { id: 'founding_five', label: 'Founding Five', icon: 'Flag', description: 'One of the first 5 players to join the club' },
   { id: 'one_and_only', label: 'One and Only', icon: 'Heart', description: '90%+ of games (min 15) with a single partner' },
+  { id: 'regulars_regular', label: "The Regular's Regular", icon: 'CalendarCheck', description: '80%+ session attendance in a completed quarter' },
 
   // Contestable crown — club-wide rotating record, synced alongside the other crowns (see lib/badgeHolders.ts)
   { id: 'court_regular', label: 'Court Regular', icon: 'MapPin', tier: 4, description: 'Most sessions attended in the trailing 90 days' },
@@ -147,6 +149,7 @@ export interface PlayerBadgeInput {
   perfectSessions?: number;
   nightSessions?: number;
   ladderWins?: number;
+  giantSlayerWins?: number;
   isLadderChampion?: boolean;
   isTheRealKing?: boolean;
   // Optional — call sites without a fetchRivalriesForPlayer() pass omit these.
@@ -165,6 +168,8 @@ export interface PlayerBadgeInput {
   iplFinalSessions?: number;
   // Optional — call sites without a fetchFoundingFiveNames() pass omit this.
   isFoundingFive?: boolean;
+  // Optional — call sites without a fetchQuarterlyRegulars() pass omit this.
+  isRegularsRegular?: boolean;
   // Derived from the same duo data as hasPowerDuo/isClubTopDuo, just a different ratio.
   isOneAndOnly?: boolean;
   // Optional — call sites without a fetchCurrentBadgeHolders() pass omit this (same as isLadderChampion/isTheRealKing).
@@ -203,6 +208,7 @@ export async function buildBadgeInput(clubId: string, playerName: string, gamesP
       fetchEloBaseline,
       fetchPotmWinCount,
       hasThreePeat: fetchHasThreePeat,
+      fetchQuarterlyRegulars,
     },
     { fetchStreakRecords },
     { flightForRating },
@@ -227,7 +233,7 @@ export async function buildBadgeInput(clubId: string, playerName: string, gamesP
   const ONE_AND_ONLY_MIN_GAMES = 15;
   const ONE_AND_ONLY_MIN_SHARE = 0.9;
 
-  const [mvpCounts, streaks, streakRecords, duos, gameStats, rivalries, ownRivalries, ladderStandings, currentHolders, foundingFive, eloBaseline, potmWinCount, threePeat] =
+  const [mvpCounts, streaks, streakRecords, duos, gameStats, rivalries, ownRivalries, ladderStandings, currentHolders, foundingFive, eloBaseline, potmWinCount, threePeat, quarterlyRegulars] =
     await Promise.all([
     fetchMvpCounts(clubId),
     fetchStreaks(clubId),
@@ -242,6 +248,7 @@ export async function buildBadgeInput(clubId: string, playerName: string, gamesP
     fetchEloBaseline(clubId, playerName),
     fetchPotmWinCount(clubId, playerName),
     fetchHasThreePeat(clubId, playerName),
+    fetchQuarterlyRegulars(clubId),
   ]);
 
   const winStreakRecordHolder = streakRecords.find(r => r.streakType === 'win')?.holderName;
@@ -290,6 +297,7 @@ export async function buildBadgeInput(clubId: string, playerName: string, gamesP
     perfectSessions: gs?.perfectSessions ?? 0,
     nightSessions: gs?.nightSessions ?? 0,
     ladderWins: ladderStandings.find(s => s.player_name === playerName)?.wins ?? 0,
+    giantSlayerWins: ladderStandings.find(s => s.player_name === playerName)?.giant_slayer_wins ?? 0,
     isLadderChampion: currentHolders.get('ladder_champion')?.holderName === playerName,
     isTheRealKing: currentHolders.get('the_real_king')?.holderName === playerName,
     hasLosingRivalry,
@@ -305,6 +313,7 @@ export async function buildBadgeInput(clubId: string, playerName: string, gamesP
     diwaliSessions: gs?.diwaliSessions ?? 0,
     iplFinalSessions: gs?.iplFinalSessions ?? 0,
     isFoundingFive: foundingFive.has(playerName),
+    isRegularsRegular: quarterlyRegulars.has(playerName),
     isOneAndOnly,
     isCourtRegular: currentHolders.get('court_regular')?.holderName === playerName,
     hasGlowUp,
@@ -363,6 +372,7 @@ export function computeBadges(input: PlayerBadgeInput): Badge[] {
   if ((input.perfectSessions ?? 0) >= 1) earned.push(findBadge('perfectionist'));
   if ((input.nightSessions ?? 0) >= 10) earned.push(findBadge('night_owl'));
   if ((input.ladderWins ?? 0) >= 10) earned.push(findBadge('rung_climber'));
+  if ((input.giantSlayerWins ?? 0) >= 1) earned.push(findBadge('giant_slayer'));
   if (input.isLadderChampion) earned.push(findBadge('ladder_champion'));
   if (input.isTheRealKing) earned.push(findBadge('the_real_king'));
 
@@ -381,6 +391,7 @@ export function computeBadges(input: PlayerBadgeInput): Badge[] {
   if ((input.iplFinalSessions ?? 0) >= 1) earned.push(findBadge('ipl_widows_revenge'));
 
   if (input.isFoundingFive) earned.push(findBadge('founding_five'));
+  if (input.isRegularsRegular) earned.push(findBadge('regulars_regular'));
   if (input.isOneAndOnly) earned.push(findBadge('one_and_only'));
   if (input.isCourtRegular) earned.push(findBadge('court_regular'));
 

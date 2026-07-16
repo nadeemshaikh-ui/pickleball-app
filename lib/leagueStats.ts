@@ -323,6 +323,46 @@ export async function fetchSessionCounts90Days(clubId: string): Promise<Map<stri
   return counts;
 }
 
+const QUARTERLY_REGULAR_MIN_SESSIONS = 8; // floor so a 1-session quarter can't trivially "count" as 100%
+const QUARTERLY_REGULAR_MIN_SHARE = 0.8;
+
+function quarterKey(dateStr: string): string {
+  const d = new Date(dateStr);
+  const q = Math.floor(d.getUTCMonth() / 3) + 1;
+  return `${d.getUTCFullYear()}-Q${q}`;
+}
+
+// One-time earned fact (like founding_five/anniversary), not a rotating
+// crown: did this player ever clear an 80%+ attendance share in a completed
+// calendar quarter with enough real sessions to mean something. Only
+// considers quarters that have fully elapsed — the in-progress quarter is
+// excluded since a share computed mid-quarter isn't a fair read.
+export async function fetchQuarterlyRegulars(clubId: string): Promise<Set<string>> {
+  const { data, error } = await supabase.from('sessions').select('created_at, players').eq('club_id', clubId);
+  if (error) throw error;
+
+  const currentQuarter = quarterKey(new Date().toISOString());
+  const byQuarter = new Map<string, { players: string[] }[]>();
+  for (const row of data as { created_at: string; players: string[] }[]) {
+    const q = quarterKey(row.created_at);
+    if (q === currentQuarter) continue;
+    (byQuarter.get(q) ?? byQuarter.set(q, []).get(q)!).push(row);
+  }
+
+  const regulars = new Set<string>();
+  for (const sessions of byQuarter.values()) {
+    if (sessions.length < QUARTERLY_REGULAR_MIN_SESSIONS) continue;
+    const attendance = new Map<string, number>();
+    for (const s of sessions) {
+      for (const name of s.players) attendance.set(name, (attendance.get(name) ?? 0) + 1);
+    }
+    for (const [name, count] of attendance) {
+      if (count / sessions.length >= QUARTERLY_REGULAR_MIN_SHARE) regulars.add(name);
+    }
+  }
+  return regulars;
+}
+
 // Same rotating-crown shape as syncTheRealKing — whoever's attended the
 // most distinct sessions in the trailing 90 days holds "Court Regular"
 // until someone overtakes them. Reads directly off sessions.players (no

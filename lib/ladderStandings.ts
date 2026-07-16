@@ -8,6 +8,7 @@ export interface LadderStandingRow {
   enrolled: boolean;
   wins: number;
   losses: number;
+  giant_slayer_wins: number;
   last_moved_at: string | null;
   created_at: string;
 }

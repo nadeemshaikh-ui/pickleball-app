@@ -102,12 +102,20 @@ describe('computeBadges', () => {
     expect(computeBadges(base).map(b => b.id)).toEqual([]);
   });
 
-  it('awards Founding Five/One and Only/Court Regular from their optional inputs', () => {
+  it('awards Founding Five/One and Only/Court Regular/Regular\'s Regular from their optional inputs', () => {
     const base = { gamesPlayed: 0, currentStreak: 0, mvpCount: 0, flight: 'Bronze' };
     expect(computeBadges({ ...base, isFoundingFive: true }).map(b => b.id)).toContain('founding_five');
     expect(computeBadges({ ...base, isOneAndOnly: true }).map(b => b.id)).toContain('one_and_only');
     expect(computeBadges({ ...base, isCourtRegular: true }).map(b => b.id)).toContain('court_regular');
+    expect(computeBadges({ ...base, isRegularsRegular: true }).map(b => b.id)).toContain('regulars_regular');
     expect(computeBadges(base).map(b => b.id)).toEqual([]);
+  });
+
+  it('awards Giant Slayer from 1+ ladder wins as the lower-ranked side', () => {
+    const base = { gamesPlayed: 0, currentStreak: 0, mvpCount: 0, flight: 'Bronze' };
+    expect(computeBadges({ ...base, giantSlayerWins: 1 }).map(b => b.id)).toContain('giant_slayer');
+    expect(computeBadges({ ...base, giantSlayerWins: 0 }).map(b => b.id)).not.toContain('giant_slayer');
+    expect(computeBadges(base).map(b => b.id)).not.toContain('giant_slayer');
   });
 
   it('awards Glow-Up/Player of the Month/Three-Peat from the optional forward-only history inputs', () => {
