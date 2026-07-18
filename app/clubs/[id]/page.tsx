@@ -222,7 +222,7 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           <Link href="/setup" className="btn-primary" style={{ textAlign: 'center' }}>Start Session</Link>
           <Link href="/league" className="btn-secondary" style={{ textAlign: 'center' }}>League</Link>
-          <Link href="/league/tournaments" className="btn-secondary" style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <Link href="/tournaments" className="btn-secondary" style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
             <Trophy size={15} /> Tournaments
           </Link>
           <Link href="/league/auctions" className="btn-secondary" style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>

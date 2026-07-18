@@ -113,7 +113,6 @@ export default function LeaguePage() {
   const exploreLinks = [
     { href: '/league/stats', label: 'Lifetime Stats', icon: BarChart3 },
     { href: '/league/ladder', label: 'Ladder League', icon: ListOrdered },
-    { href: '/league/tournaments', label: 'Tournaments', icon: Trophy },
     { href: '/league/auctions', label: 'Auctions', icon: Gavel },
     { href: '/league/wrapped', label: 'Your Wrapped', icon: Gift },
     { href: '/league/badges', label: 'Badge Gallery', icon: Award },

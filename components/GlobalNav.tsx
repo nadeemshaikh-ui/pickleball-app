@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Trophy, Users, User, Plus } from 'lucide-react';
+import { Home, Trophy, Medal, Users, User, Plus } from 'lucide-react';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 
 // Session pages have their own bottom nav (SessionNav) — don't stack two
@@ -25,6 +25,7 @@ export default function GlobalNav() {
   const sideTabs = [
     { href: '/', label: 'Home', icon: Home },
     { href: '/league', label: 'League', icon: Trophy },
+    { href: '/tournaments', label: 'Tourneys', icon: Medal },
   ];
   const rightTabs = [
     { href: '/clubs', label: 'Clubs', icon: Users },
@@ -65,14 +66,15 @@ export default function GlobalNav() {
               flexDirection: 'column',
               alignItems: 'center',
               gap: 2,
-              padding: '10px 12px 6px',
-              fontSize: 11,
+              padding: '10px 4px 6px',
+              fontSize: 10,
               fontWeight: 700,
               color: active ? 'var(--primary, #1a1a1a)' : 'var(--muted)',
               flex: 1,
+              minWidth: 0,
             }}
           >
-            <Icon size={22} />
+            <Icon size={19} />
             {tab.label}
           </Link>
         );
@@ -88,14 +90,14 @@ export default function GlobalNav() {
           alignItems: 'center',
           gap: 2,
           flex: '0 0 auto',
-          padding: '0 8px',
+          padding: '0 4px',
           transform: 'translateY(-10px)',
         }}
       >
         <span
           style={{
-            width: 52,
-            height: 52,
+            width: 46,
+            height: 46,
             borderRadius: '50%',
             background: 'var(--primary, #1a1a1a)',
             display: 'flex',
@@ -104,9 +106,9 @@ export default function GlobalNav() {
             boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
           }}
         >
-          <Plus size={26} color="white" />
+          <Plus size={22} color="white" />
         </span>
-        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary, #1a1a1a)' }}>New Session</span>
+        <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--primary, #1a1a1a)', whiteSpace: 'nowrap' }}>New Session</span>
       </Link>
 
       {rightTabs.map(tab => {
@@ -122,14 +124,15 @@ export default function GlobalNav() {
               flexDirection: 'column',
               alignItems: 'center',
               gap: 2,
-              padding: '10px 12px 6px',
-              fontSize: 11,
+              padding: '10px 4px 6px',
+              fontSize: 10,
               fontWeight: 700,
               color: active ? 'var(--primary, #1a1a1a)' : 'var(--muted)',
               flex: 1,
+              minWidth: 0,
             }}
           >
-            <Icon size={22} />
+            <Icon size={19} />
             {tab.label}
           </Link>
         );
