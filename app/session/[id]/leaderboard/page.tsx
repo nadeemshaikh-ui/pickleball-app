@@ -2,7 +2,8 @@
 
 import { use, useEffect, useRef, useState } from 'react';
 import { getSession, getRounds, type SessionRow } from '@/lib/db';
-import { computeLeaderboard, computeSquadTotals, type PlayerStats } from '@/lib/analytics';
+import { computeLeaderboard, computeSquadTotalsN, type PlayerStats } from '@/lib/analytics';
+import SquadStandingsCard from '@/components/SquadStandingsCard';
 import { shareElementAsImage } from '@/lib/shareImage';
 import SessionNav from '@/components/SessionNav';
 import Avatar from '@/components/Avatar';
@@ -20,7 +21,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
   const { id } = use(params);
   const [session, setSession] = useState<SessionRow | null>(null);
   const [leaderboard, setLeaderboard] = useState<PlayerStats[]>([]);
-  const [squadTotals, setSquadTotals] = useState<{ gold: number; black: number } | null>(null);
+  const [squadTotals, setSquadTotals] = useState<Map<string, number> | null>(null);
   const [gamesCompleted, setGamesCompleted] = useState(0);
   const [gamesTotal, setGamesTotal] = useState(0);
   const [imageShareError, setImageShareError] = useState<string | null>(null);
@@ -36,8 +37,8 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
       setLeaderboard(computeLeaderboard(rounds));
       setGamesTotal(rounds.length);
       setGamesCompleted(rounds.filter(r => r.score_a !== null).length);
-      if (s.format === 'squad_rivalry' && s.squads) {
-        setSquadTotals(computeSquadTotals(rounds, s.squads));
+      if (s.format === 'squad_rivalry' && s.squads_v2) {
+        setSquadTotals(computeSquadTotalsN(rounds, s.squads_v2));
       }
     }
 
@@ -90,16 +91,21 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
           {gamesCompleted} of {gamesTotal} games played — updates live
         </p>
 
-        {squadTotals && (
+        {squadTotals && session?.squads_v2 && session.squads_v2.length === 2 && (
           <div className="card" style={{ marginTop: 16 }}>
             <SquadVersusHero
-              goldLabel={session?.squad_gold_label || 'Gold'}
-              blackLabel={session?.squad_black_label || 'Black'}
-              goldLogoUrl={session?.squad_gold_logo_url ?? null}
-              blackLogoUrl={session?.squad_black_logo_url ?? null}
-              goldScore={squadTotals.gold}
-              blackScore={squadTotals.black}
+              goldLabel={session.squad_gold_label || session.squads_v2[0].label || 'Gold'}
+              blackLabel={session.squad_black_label || session.squads_v2[1].label || 'Black'}
+              goldLogoUrl={session.squad_gold_logo_url}
+              blackLogoUrl={session.squad_black_logo_url}
+              goldScore={squadTotals.get(session.squads_v2[0].id) ?? 0}
+              blackScore={squadTotals.get(session.squads_v2[1].id) ?? 0}
             />
+          </div>
+        )}
+        {squadTotals && session?.squads_v2 && session.squads_v2.length > 2 && (
+          <div className="card" style={{ marginTop: 16 }}>
+            <SquadStandingsCard squads={session.squads_v2} totalsByTeam={squadTotals} />
           </div>
         )}
 

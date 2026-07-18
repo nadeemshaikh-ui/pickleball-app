@@ -161,17 +161,31 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
           </p>
         )}
 
-        {session && session.format === 'squad_rivalry' && session.squads && (
+        {session && session.format === 'squad_rivalry' && session.squads_v2 && session.squads_v2.length === 2 && (
           <div style={{ marginTop: 16 }}>
             <SquadLineupCard
-              goldLabel={session.squad_gold_label || 'Gold'}
-              blackLabel={session.squad_black_label || 'Black'}
+              goldLabel={session.squad_gold_label || session.squads_v2[0].label || 'Gold'}
+              blackLabel={session.squad_black_label || session.squads_v2[1].label || 'Black'}
               goldLogoUrl={session.squad_gold_logo_url}
               blackLogoUrl={session.squad_black_logo_url}
-              goldPlayers={session.squads.gold}
-              blackPlayers={session.squads.black}
+              goldPlayers={session.squads_v2[0].players}
+              blackPlayers={session.squads_v2[1].players}
               filename={`squad-lineup-${id}.png`}
             />
+          </div>
+        )}
+        {session && session.format === 'squad_rivalry' && session.squads_v2 && session.squads_v2.length > 2 && (
+          <div className="card" style={{ marginTop: 16, display: 'grid', gridTemplateColumns: `repeat(${Math.min(session.squads_v2.length, 4)}, 1fr)`, gap: 12 }}>
+            {session.squads_v2.map(squad => (
+              <div key={squad.id}>
+                <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>
+                  {squad.label ?? squad.id} ({squad.players.length})
+                </div>
+                {squad.players.map(p => (
+                  <div key={p} style={{ fontSize: 13, padding: '2px 0' }}>{p}</div>
+                ))}
+              </div>
+            ))}
           </div>
         )}
 

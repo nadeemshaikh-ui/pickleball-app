@@ -1,6 +1,8 @@
 import { Trophy, Zap } from 'lucide-react';
 import type { RoundRow, SessionRow } from '@/lib/db';
-import { computeSquadTotals, type PlayerStats } from '@/lib/analytics';
+import { computeSquadTotalsN, type PlayerStats } from '@/lib/analytics';
+
+const RECAP_SQUAD_COLORS = ['#d4af37', '#121a2f', '#2563eb', '#dc2626', '#059669', '#7c3aed'];
 import { findBiggestBlowout } from '@/lib/gameStats';
 
 export default function RecapImageTemplate({
@@ -20,7 +22,7 @@ export default function RecapImageTemplate({
   const blowoutWinner = blowout && blowout.score_a! > blowout.score_b! ? blowout.team_a : blowout?.team_b;
 
   const rankColor = (i: number) => (i === 0 ? '#e5c100' : i === 1 ? '#c0c0c0' : '#b06a3a');
-  const squadTotals = session.format === 'squad_rivalry' && session.squads ? computeSquadTotals(rounds, session.squads) : null;
+  const squadTotals = session.format === 'squad_rivalry' && session.squads_v2 ? computeSquadTotalsN(rounds, session.squads_v2) : null;
 
   return (
     <div style={{ width: 1080, background: '#e5fa00', padding: 32, fontFamily: 'var(--font-body), Arial, sans-serif' }}>
@@ -48,11 +50,26 @@ export default function RecapImageTemplate({
         </div>
       </div>
 
-      {squadTotals && (
+      {squadTotals && session.squads_v2 && session.squads_v2.length === 2 && (
         <div style={{ background: '#ffffff', border: '3px solid #121a2f', borderTop: 'none', padding: '28px 32px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 28 }}>
-          <SquadResult label={session.squad_gold_label || 'Gold'} logoUrl={session.squad_gold_logo_url} score={squadTotals.gold} color="#d4af37" />
+          <SquadResult label={session.squad_gold_label || session.squads_v2[0].label || 'Gold'} logoUrl={session.squad_gold_logo_url} score={squadTotals.get(session.squads_v2[0].id) ?? 0} color="#d4af37" />
           <div style={{ fontFamily: 'var(--font-display), sans-serif', fontSize: 36, color: '#121a2f' }}>VS</div>
-          <SquadResult label={session.squad_black_label || 'Black'} logoUrl={session.squad_black_logo_url} score={squadTotals.black} color="#121a2f" />
+          <SquadResult label={session.squad_black_label || session.squads_v2[1].label || 'Black'} logoUrl={session.squad_black_logo_url} score={squadTotals.get(session.squads_v2[1].id) ?? 0} color="#121a2f" />
+        </div>
+      )}
+      {squadTotals && session.squads_v2 && session.squads_v2.length > 2 && (
+        <div style={{ background: '#ffffff', border: '3px solid #121a2f', borderTop: 'none', padding: '28px 32px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 24 }}>
+          {[...session.squads_v2]
+            .sort((a, b) => (squadTotals.get(b.id) ?? 0) - (squadTotals.get(a.id) ?? 0))
+            .map((squad, i) => (
+              <SquadResult
+                key={squad.id}
+                label={squad.label ?? squad.id}
+                logoUrl={squad.logoUrl ?? null}
+                score={squadTotals.get(squad.id) ?? 0}
+                color={RECAP_SQUAD_COLORS[i % RECAP_SQUAD_COLORS.length]}
+              />
+            ))}
         </div>
       )}
 

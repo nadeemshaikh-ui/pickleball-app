@@ -14,7 +14,7 @@ import {
   type Squads,
 } from '@/lib/shuffle';
 import { generateInitialKingOfCourtRound } from '@/lib/kingOfCourt';
-import type { SquadSet } from '@/lib/squads';
+import { generateSquadRivalryScheduleN, squadIdFor, type SquadSet } from '@/lib/squads';
 import type { StageConfig } from '@/lib/teamChampionship';
 import { createSession, insertRounds, uploadPlayerPhoto, uploadSquadLogo, getMostRecentSession } from '@/lib/db';
 import { saveRoster, loadRoster } from '@/lib/savedRoster';
@@ -32,6 +32,7 @@ import InfoModal from '@/components/InfoModal';
 import { displayName } from '@/lib/displayNamePref';
 
 const MIN_GAMES_FOR_NEMESIS_ALERT = 3;
+const SQUAD_CHIP_COLORS = ['#d4af37', '#1a1a1a', '#2563eb', '#dc2626', '#059669', '#7c3aed'];
 
 type Format = 'scramble' | 'squad_rivalry' | 'court_blocks' | 'fixed_partners' | 'king_of_court' | 'team_championship';
 
@@ -137,7 +138,12 @@ export default function SetupPage() {
   const [squadGoldLogoFile, setSquadGoldLogoFile] = useState<File | null>(null);
   const [squadBlackLogoFile, setSquadBlackLogoFile] = useState<File | null>(null);
   // 0 = gold, 1 = black, null = unassigned, indexed by player.
-  const [manualSquadAssignment, setManualSquadAssignment] = useState<(0 | 1 | null)[]>([]);
+  // Widened from (0|1|null)[] to (number|null)[] to support N squads —
+  // team_championship's own usage (always exactly 2 teams) is unaffected,
+  // it just always passes squadCount=2 to cycleSquadPlayer below.
+  const [manualSquadAssignment, setManualSquadAssignment] = useState<(number | null)[]>([]);
+  const [squadCount, setSquadCount] = useState(2);
+  const [squadLabels, setSquadLabels] = useState<string[]>([]);
 
   const [partnerMode, setPartnerMode] = useState<'auto' | 'manual'>('auto');
   // Team index (0-based), null = unassigned, indexed by player.
@@ -360,12 +366,12 @@ export default function SetupPage() {
     setRosterNotice('Loaded your saved roster — edit any name below, or add new players.');
   }
 
-  function cycleSquadPlayer(playerIndex: number) {
+  function cycleSquadPlayer(playerIndex: number, squadCountForCycle: number) {
     setManualSquadAssignment(prev => {
       const copy = [...prev];
       while (copy.length <= playerIndex) copy.push(null);
       const current = copy[playerIndex];
-      copy[playerIndex] = current === null ? 0 : current === 0 ? 1 : null;
+      copy[playerIndex] = current === null ? 0 : current + 1 < squadCountForCycle ? current + 1 : null;
       return copy;
     });
   }
@@ -500,20 +506,25 @@ export default function SetupPage() {
     }
 
     let manualSquads: Squads | undefined;
+    let manualSquadsN: SquadSet | undefined;
     if (format === 'squad_rivalry' && squadMode === 'manual') {
       const assignment = manualSquadAssignment.length ? manualSquadAssignment : Array(playerCount).fill(null);
       if (trimmed.some((_, i) => assignment[i] === undefined || assignment[i] === null)) {
-        setError('Assign every player to Gold or Black.');
+        setError('Assign every player to a squad.');
         return;
       }
-      const gold: string[] = [];
-      const black: string[] = [];
-      trimmed.forEach((name, i) => (assignment[i] === 0 ? gold : black).push(name));
-      if (gold.length !== black.length) {
-        setError('Squads must be evenly split — Gold and Black need the same number of players.');
+      const buckets: string[][] = Array.from({ length: squadCount }, () => []);
+      trimmed.forEach((name, i) => buckets[assignment[i] as number].push(name));
+      const sizes = buckets.map(b => b.length);
+      if (Math.max(...sizes) - Math.min(...sizes) > 1) {
+        setError('Squads must be balanced within 1 player of each other.');
         return;
       }
-      manualSquads = { gold, black };
+      if (squadCount === 2) {
+        manualSquads = { gold: buckets[0], black: buckets[1] };
+      } else {
+        manualSquadsN = buckets.map((players, i) => ({ id: squadIdFor(i), label: squadLabels[i]?.trim() || undefined, players }));
+      }
     }
 
     let manualTeams: [string, string][] | undefined;
@@ -587,6 +598,8 @@ export default function SetupPage() {
               squadBlackLogoFile ? uploadSquadLogo(squadBlackLogoFile) : Promise.resolve(null),
             ])
           : [null, null];
+      const squadRivalryLabel1 = format === 'squad_rivalry' ? squadLabels[0]?.trim() || null : null;
+      const squadRivalryLabel2 = format === 'squad_rivalry' ? squadLabels[1]?.trim() || null : null;
 
       const baseOptions = {
         clubId: currentClubId,
@@ -602,10 +615,10 @@ export default function SetupPage() {
         isLadder,
         kingOfCourtFixedPairs: format === 'king_of_court' ? kingOfCourtFixedPairs : null,
         venue: venue.trim() || null,
-        squadGoldLabel: format === 'squad_rivalry' ? squadGoldLabel.trim() || null : null,
-        squadBlackLabel: format === 'squad_rivalry' ? squadBlackLabel.trim() || null : null,
-        squadGoldLogoUrl,
-        squadBlackLogoUrl,
+        squadGoldLabel: squadCount === 2 ? squadRivalryLabel1 : null,
+        squadBlackLabel: squadCount === 2 ? squadRivalryLabel2 : null,
+        squadGoldLogoUrl: squadCount === 2 ? squadGoldLogoUrl : null,
+        squadBlackLogoUrl: squadCount === 2 ? squadBlackLogoUrl : null,
         storylines,
         bookerUpiVpa: bookerUpiVpa.trim() || null,
       };
@@ -626,13 +639,32 @@ export default function SetupPage() {
           roundsPerBlock: null,
         });
         await insertRounds(sessionId, rounds);
-      } else if (format === 'squad_rivalry') {
+      } else if (format === 'squad_rivalry' && squadCount === 2) {
         const { squads, rounds } = generateSquadRivalrySchedule(trimmed, courtCount, roundCount, seed, lockedPairs, manualSquads);
+        // Dual-write: squads (legacy 2-key shape) for every existing reader,
+        // squadsV2 (the same data, N-squad shape) so this session is
+        // readable by the same code path N>2 sessions use, going forward.
+        const squadsV2: SquadSet = [
+          { id: 'gold', label: squadRivalryLabel1 ?? undefined, logoUrl: squadGoldLogoUrl, players: squads.gold },
+          { id: 'black', label: squadRivalryLabel2 ?? undefined, logoUrl: squadBlackLogoUrl, players: squads.black },
+        ];
         sessionId = await createSession({
           ...baseOptions,
           format: 'squad_rivalry',
           roundCount,
           squads,
+          squadsV2,
+          roundsPerBlock: null,
+        });
+        await insertRounds(sessionId, rounds);
+      } else if (format === 'squad_rivalry') {
+        const { squads: squadsV2, rounds } = generateSquadRivalryScheduleN(trimmed, squadCount, courtCount, roundCount, seed, lockedPairs, manualSquadsN);
+        sessionId = await createSession({
+          ...baseOptions,
+          format: 'squad_rivalry',
+          roundCount,
+          squads: null,
+          squadsV2,
           roundsPerBlock: null,
         });
         await insertRounds(sessionId, rounds);
@@ -1002,42 +1034,61 @@ export default function SetupPage() {
 
       {format === 'squad_rivalry' && (
         <>
+          <h2>How Many Squads?</h2>
+          <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Decrease squad count"
+              disabled={squadCount <= 2}
+              onClick={() => setSquadCount(n => Math.max(2, n - 1))}
+            >
+              −
+            </button>
+            <span style={{ minWidth: 24, textAlign: 'center', fontWeight: 700 }}>{squadCount}</span>
+            <button type="button" className="icon-btn" aria-label="Increase squad count" onClick={() => setSquadCount(n => n + 1)}>
+              +
+            </button>
+            <span style={{ fontSize: 12, color: 'var(--muted)' }}>squads — 2 is the classic Gold vs Black setup</span>
+          </div>
+
           <h2>Name Your Squads (optional)</h2>
           <div className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-            <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-              <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>Squad 1</label>
-              <input
-                value={squadGoldLabel}
-                onChange={e => setSquadGoldLabel(e.target.value)}
-                placeholder="Gold"
-                aria-label="Squad 1 name"
-                style={{ width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
-              />
-              <input
-                type="file"
-                accept="image/*"
-                aria-label="Squad 1 logo"
-                onChange={e => setSquadGoldLogoFile(e.target.files?.[0] ?? null)}
-                style={{ width: '100%', boxSizing: 'border-box', maxWidth: '100%', marginTop: 6, fontSize: 12 }}
-              />
-            </div>
-            <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-              <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>Squad 2</label>
-              <input
-                value={squadBlackLabel}
-                onChange={e => setSquadBlackLabel(e.target.value)}
-                placeholder="Black"
-                aria-label="Squad 2 name"
-                style={{ width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
-              />
-              <input
-                type="file"
-                accept="image/*"
-                aria-label="Squad 2 logo"
-                onChange={e => setSquadBlackLogoFile(e.target.files?.[0] ?? null)}
-                style={{ width: '100%', boxSizing: 'border-box', maxWidth: '100%', marginTop: 6, fontSize: 12 }}
-              />
-            </div>
+            {Array.from({ length: squadCount }, (_, i) => i).map(i => (
+              <div key={i} style={{ flex: '1 1 200px', minWidth: 0 }}>
+                <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>Squad {i + 1}</label>
+                <input
+                  value={squadLabels[i] ?? ''}
+                  onChange={e => setSquadLabels(prev => {
+                    const copy = [...prev];
+                    while (copy.length <= i) copy.push('');
+                    copy[i] = e.target.value;
+                    return copy;
+                  })}
+                  placeholder={i === 0 ? 'Gold' : i === 1 ? 'Black' : `Squad ${i + 1}`}
+                  aria-label={`Squad ${i + 1} name`}
+                  style={{ width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+                />
+                {i === 0 && (
+                  <input
+                    type="file"
+                    accept="image/*"
+                    aria-label="Squad 1 logo"
+                    onChange={e => setSquadGoldLogoFile(e.target.files?.[0] ?? null)}
+                    style={{ width: '100%', boxSizing: 'border-box', maxWidth: '100%', marginTop: 6, fontSize: 12 }}
+                  />
+                )}
+                {i === 1 && (
+                  <input
+                    type="file"
+                    accept="image/*"
+                    aria-label="Squad 2 logo"
+                    onChange={e => setSquadBlackLogoFile(e.target.files?.[0] ?? null)}
+                    style={{ width: '100%', boxSizing: 'border-box', maxWidth: '100%', marginTop: 6, fontSize: 12 }}
+                  />
+                )}
+              </div>
+            ))}
           </div>
 
           <h2>Who Picks the Squads?</h2>
@@ -1054,18 +1105,17 @@ export default function SetupPage() {
 
           {squadMode === 'manual' && (
             <div className="card" style={{ marginTop: 12 }}>
-              <strong>Tap a player to cycle Unassigned → {squadGoldLabel.trim() || 'Gold'} → {squadBlackLabel.trim() || 'Black'}</strong>
+              <strong>Tap a player to cycle through squads, then Unassigned</strong>
               {(() => {
                 const trimmedNames = names.map(n => n.trim());
                 const indexed = trimmedNames.map((name, playerIndex) => ({ name, playerIndex })).filter(p => p.name);
                 const unassigned = indexed.filter(p => (manualSquadAssignment[p.playerIndex] ?? null) === null);
-                const goldTeam = indexed.filter(p => manualSquadAssignment[p.playerIndex] === 0);
-                const blackTeam = indexed.filter(p => manualSquadAssignment[p.playerIndex] === 1);
+                const squadLabelFor = (i: number) => squadLabels[i]?.trim() || (i === 0 ? 'Gold' : i === 1 ? 'Black' : `Squad ${i + 1}`);
                 const chip = (p: { name: string; playerIndex: number }, bg: string, color: string) => (
                   <button
                     key={p.playerIndex}
                     type="button"
-                    onClick={() => cycleSquadPlayer(p.playerIndex)}
+                    onClick={() => cycleSquadPlayer(p.playerIndex, squadCount)}
                     style={{ minHeight: 40, padding: '6px 14px', borderRadius: 999, border: '1px solid var(--border)', background: bg, color, fontSize: 13, fontWeight: 700 }}
                   >
                     {p.name}
@@ -1081,24 +1131,24 @@ export default function SetupPage() {
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{unassigned.map(p => chip(p, 'white', 'var(--foreground)'))}</div>
                       </div>
                     )}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 14 }}>
-                      <div>
-                        <div style={{ fontSize: 12, fontWeight: 800, color: '#8a6d10', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6, borderBottom: '2px solid #d4af37', paddingBottom: 4 }}>
-                          {squadGoldLabel.trim() || 'Gold'} ({goldTeam.length})
-                        </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{goldTeam.map(p => chip(p, '#d4af37', 'white'))}</div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--foreground)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6, borderBottom: '2px solid #1a1a1a', paddingBottom: 4 }}>
-                          {squadBlackLabel.trim() || 'Black'} ({blackTeam.length})
-                        </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{blackTeam.map(p => chip(p, '#1a1a1a', 'white'))}</div>
-                      </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(squadCount, 4)}, 1fr)`, gap: 12, marginTop: 14 }}>
+                      {Array.from({ length: squadCount }, (_, i) => i).map(i => {
+                        const squadPlayers = indexed.filter(p => manualSquadAssignment[p.playerIndex] === i);
+                        const color = SQUAD_CHIP_COLORS[i % SQUAD_CHIP_COLORS.length];
+                        return (
+                          <div key={i}>
+                            <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--foreground)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6, borderBottom: `2px solid ${color}`, paddingBottom: 4 }}>
+                              {squadLabelFor(i)} ({squadPlayers.length})
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{squadPlayers.map(p => chip(p, color, 'white'))}</div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </>
                 );
               })()}
-              <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 10 }}>Every player needs a squad, split evenly.</p>
+              <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 10 }}>Every player needs a squad, balanced within 1 of each other.</p>
             </div>
           )}
         </>
@@ -1143,7 +1193,7 @@ export default function SetupPage() {
                 <button
                   key={p.playerIndex}
                   type="button"
-                  onClick={() => cycleSquadPlayer(p.playerIndex)}
+                  onClick={() => cycleSquadPlayer(p.playerIndex, 2)}
                   style={{ minHeight: 40, padding: '6px 14px', borderRadius: 999, border: '1px solid var(--border)', background: bg, color, fontSize: 13, fontWeight: 700 }}
                 >
                   {p.name}

@@ -20,7 +20,8 @@ import { getDisplayNamePref } from '@/lib/displayNamePref';
 import { getCurrentUser, isCurrentUserAdmin } from '@/lib/auth';
 import ConfirmModal from '@/components/ConfirmModal';
 import SquadVersusHero from '@/components/SquadVersusHero';
-import { computeSquadTotals } from '@/lib/analytics';
+import SquadStandingsCard from '@/components/SquadStandingsCard';
+import { computeSquadTotalsN } from '@/lib/analytics';
 
 export default function PlayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -255,15 +256,18 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
     <>
       <main className="page">
         {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
-        {session && session.format === 'squad_rivalry' && session.squads && (
+        {session && session.format === 'squad_rivalry' && session.squads_v2 && session.squads_v2.length === 2 && (
           <SquadVersusHero
-            goldLabel={session.squad_gold_label || 'Gold'}
-            blackLabel={session.squad_black_label || 'Black'}
+            goldLabel={session.squad_gold_label || session.squads_v2[0].label || 'Gold'}
+            blackLabel={session.squad_black_label || session.squads_v2[1].label || 'Black'}
             goldLogoUrl={session.squad_gold_logo_url}
             blackLogoUrl={session.squad_black_logo_url}
-            goldScore={computeSquadTotals(rounds, session.squads).gold}
-            blackScore={computeSquadTotals(rounds, session.squads).black}
+            goldScore={computeSquadTotalsN(rounds, session.squads_v2).get(session.squads_v2[0].id) ?? 0}
+            blackScore={computeSquadTotalsN(rounds, session.squads_v2).get(session.squads_v2[1].id) ?? 0}
           />
+        )}
+        {session && session.format === 'squad_rivalry' && session.squads_v2 && session.squads_v2.length > 2 && (
+          <SquadStandingsCard squads={session.squads_v2} totalsByTeam={computeSquadTotalsN(rounds, session.squads_v2)} />
         )}
         <h1>Live Scoring</h1>
         <p style={{ color: 'var(--muted)', marginTop: 4 }}>

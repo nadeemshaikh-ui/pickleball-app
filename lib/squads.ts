@@ -49,7 +49,7 @@ export interface SquadRivalryScheduleN {
 // get them, exactly as today. Squads beyond 2 get a plain generated id;
 // nothing historical depends on those names since they've never existed.
 const LEGACY_SQUAD_IDS = ['gold', 'black'];
-function squadIdFor(index: number): string {
+export function squadIdFor(index: number): string {
   return LEGACY_SQUAD_IDS[index] ?? `squad${index + 1}`;
 }
 
