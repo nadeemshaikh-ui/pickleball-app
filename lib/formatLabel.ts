@@ -12,5 +12,7 @@ export function formatLabel(format: Format): string {
       return 'Fixed Partners';
     case 'king_of_court':
       return 'King of the Court';
+    case 'team_championship':
+      return 'Team Championship';
   }
 }

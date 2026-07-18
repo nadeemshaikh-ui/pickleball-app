@@ -14,6 +14,8 @@ import {
   type Squads,
 } from '@/lib/shuffle';
 import { generateInitialKingOfCourtRound } from '@/lib/kingOfCourt';
+import type { SquadSet } from '@/lib/squads';
+import type { StageConfig } from '@/lib/teamChampionship';
 import { createSession, insertRounds, uploadPlayerPhoto, uploadSquadLogo, getMostRecentSession } from '@/lib/db';
 import { saveRoster, loadRoster } from '@/lib/savedRoster';
 import { getPlayerPhoto, savePlayerPhoto, preloadPlayerPhotos } from '@/lib/playerPhotos';
@@ -31,7 +33,7 @@ import { displayName } from '@/lib/displayNamePref';
 
 const MIN_GAMES_FOR_NEMESIS_ALERT = 3;
 
-type Format = 'scramble' | 'squad_rivalry' | 'court_blocks' | 'fixed_partners' | 'king_of_court';
+type Format = 'scramble' | 'squad_rivalry' | 'court_blocks' | 'fixed_partners' | 'king_of_court' | 'team_championship';
 
 const FORMAT_INFO: Record<Format, { label: string; summary: string; example: string }> = {
   scramble: {
@@ -58,6 +60,11 @@ const FORMAT_INFO: Record<Format, { label: string; summary: string; example: str
     label: 'King of the Court — winners climb, losers drop',
     summary: 'Courts are ranked, Court 1 is the top. Win your court and you rise a court next round; lose and you drop a court. The winner on Court 1 defends their spot, the loser on the bottom court stays put. Needs exactly enough players to fill every court (4 per court) — no bench in this format yet. Round 2 onward is generated live as scores come in, not pre-made.',
     example: "Example: 2 courts, 8 players. Win Court 2 and you rise to Court 1 next round; lose Court 1 and you drop to Court 2. Whoever's on Court 1 at the end is the night's king.",
+  },
+  team_championship: {
+    label: 'Team Championship — 2 teams, captain-picked pairings, tiered scoring',
+    summary: 'Two fixed teams face off across multiple stages of rounds — you (the captain/organizer) enter each round\'s pairings by hand instead of the app shuffling them, since real tournaments usually have pairings pre-agreed. Each stage can be worth a different number of points per win, and an optional live Rapid Fire finale (first to a target rally-point score) adds a bonus at the end.',
+    example: 'Example: Home vs Challengers, 15 rounds split into 3 stages worth 1/2/3 points per win. You enter round 1\'s pairings as agreed, then round 2\'s, and so on — the app tallies stage-weighted standings and (optionally) runs a live Rapid Fire scoreboard after the last round.',
   },
 };
 
@@ -135,6 +142,19 @@ export default function SetupPage() {
   const [partnerMode, setPartnerMode] = useState<'auto' | 'manual'>('auto');
   // Team index (0-based), null = unassigned, indexed by player.
   const [manualPartnerAssignment, setManualPartnerAssignment] = useState<(number | null)[]>([]);
+
+  // Team Championship — reuses manualSquadAssignment/cycleSquadPlayer (the
+  // exact same 2-way split infra squad_rivalry's manual mode already uses)
+  // for the Home/Challengers roster split, since it's structurally
+  // identical. squadGoldLabel/squadBlackLabel double as the team names for
+  // this format too, to avoid duplicating the same 2-label-input UI.
+  const [stageRows, setStageRows] = useState<{ label: string; rounds: number; pointsPerWin: number }[]>([
+    { label: 'Stage 1', rounds: 5, pointsPerWin: 1 },
+  ]);
+  const [enableRapidFire, setEnableRapidFire] = useState(false);
+  const [rapidFireTarget, setRapidFireTarget] = useState(31);
+  const [rapidFireRotateEvery, setRapidFireRotateEvery] = useState(3);
+  const [rapidFireBonus, setRapidFireBonus] = useState(10);
 
   const [lockedPairs, setLockedPairs] = useState<LockedPair[]>([]);
   const [skillBalanced, setSkillBalanced] = useState(false);
@@ -513,6 +533,41 @@ export default function SetupPage() {
       manualTeams = teams.map(t => [t[0]!, t[1]!] as [string, string]);
     }
 
+    let teamChampionshipTeams: SquadSet | undefined;
+    let teamChampionshipStages: StageConfig[] | undefined;
+    if (format === 'team_championship') {
+      const assignment = manualSquadAssignment.length ? manualSquadAssignment : Array(playerCount).fill(null);
+      if (trimmed.some((_, i) => assignment[i] === undefined || assignment[i] === null)) {
+        setError('Assign every player to a team.');
+        return;
+      }
+      const teamOne: string[] = [];
+      const teamTwo: string[] = [];
+      trimmed.forEach((name, i) => (assignment[i] === 0 ? teamOne : teamTwo).push(name));
+      if (teamOne.length !== teamTwo.length) {
+        setError('Teams must be evenly split — Team 1 and Team 2 need the same number of players.');
+        return;
+      }
+      teamChampionshipTeams = [
+        { id: 'team1', label: squadGoldLabel.trim() || 'Team 1', logoUrl: null, players: teamOne },
+        { id: 'team2', label: squadBlackLabel.trim() || 'Team 2', logoUrl: null, players: teamTwo },
+      ];
+      if (stageRows.length === 0 || stageRows.some(r => !Number.isFinite(r.rounds) || r.rounds < 1 || !Number.isFinite(r.pointsPerWin) || r.pointsPerWin < 1)) {
+        setError('Every stage needs at least 1 round and a points-per-win of at least 1.');
+        return;
+      }
+      let cursor = 1;
+      teamChampionshipStages = stageRows.map(r => {
+        const stage = { stageLabel: r.label.trim() || 'Stage', roundStart: cursor, roundEnd: cursor + r.rounds - 1, pointsPerWin: r.pointsPerWin };
+        cursor += r.rounds;
+        return stage;
+      });
+      if (enableRapidFire && (!Number.isFinite(rapidFireTarget) || rapidFireTarget < 1 || !Number.isFinite(rapidFireRotateEvery) || rapidFireRotateEvery < 1 || !Number.isFinite(rapidFireBonus) || rapidFireBonus < 1)) {
+        setError('Rapid Fire target points, rotation, and bonus must all be positive numbers.');
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       const seed = `${Date.now()}`;
@@ -601,6 +656,23 @@ export default function SetupPage() {
           roundsPerBlock: null,
         });
         await insertRounds(sessionId, [{ roundNumber: 1, courts, sittingOutPerCourt: courts.map(() => []) }]);
+      } else if (format === 'team_championship') {
+        const totalRounds = teamChampionshipStages!.reduce((sum, s) => sum + (s.roundEnd - s.roundStart + 1), 0);
+        sessionId = await createSession({
+          ...baseOptions,
+          format: 'team_championship',
+          roundCount: totalRounds,
+          squads: null,
+          roundsPerBlock: null,
+          squadsV2: teamChampionshipTeams,
+          stageConfig: teamChampionshipStages,
+          rapidFireConfig: enableRapidFire
+            ? { targetPoints: rapidFireTarget, rotateEveryNPoints: rapidFireRotateEvery, bonusPoints: rapidFireBonus }
+            : null,
+        });
+        // No insertRounds call — pairings are entered by hand, round by
+        // round, on a screen that doesn't exist yet (Phase 4 of the locked
+        // plan). The session is created with zero rounds until then.
       } else {
         const { rounds } = generateCourtBlocksSchedule(trimmed, courtCount, roundsPerBlock, blockCount, seed, manualAssignments);
         sessionId = await createSession({
@@ -1029,6 +1101,166 @@ export default function SetupPage() {
               <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 10 }}>Every player needs a squad, split evenly.</p>
             </div>
           )}
+        </>
+      )}
+
+      {format === 'team_championship' && (
+        <>
+          <h2>Name Your Teams</h2>
+          <div className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+            <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+              <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>Team 1</label>
+              <input
+                value={squadGoldLabel}
+                onChange={e => setSquadGoldLabel(e.target.value)}
+                placeholder="Home Team"
+                aria-label="Team 1 name"
+                style={{ width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+              />
+            </div>
+            <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+              <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>Team 2</label>
+              <input
+                value={squadBlackLabel}
+                onChange={e => setSquadBlackLabel(e.target.value)}
+                placeholder="Challengers"
+                aria-label="Team 2 name"
+                style={{ width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+              />
+            </div>
+          </div>
+
+          <h2>Split Players Into Teams</h2>
+          <div className="card">
+            <strong>Tap a player to cycle Unassigned → {squadGoldLabel.trim() || 'Team 1'} → {squadBlackLabel.trim() || 'Team 2'}</strong>
+            {(() => {
+              const trimmedNames = names.map(n => n.trim());
+              const indexed = trimmedNames.map((name, playerIndex) => ({ name, playerIndex })).filter(p => p.name);
+              const unassigned = indexed.filter(p => (manualSquadAssignment[p.playerIndex] ?? null) === null);
+              const teamOne = indexed.filter(p => manualSquadAssignment[p.playerIndex] === 0);
+              const teamTwo = indexed.filter(p => manualSquadAssignment[p.playerIndex] === 1);
+              const chip = (p: { name: string; playerIndex: number }, bg: string, color: string) => (
+                <button
+                  key={p.playerIndex}
+                  type="button"
+                  onClick={() => cycleSquadPlayer(p.playerIndex)}
+                  style={{ minHeight: 40, padding: '6px 14px', borderRadius: 999, border: '1px solid var(--border)', background: bg, color, fontSize: 13, fontWeight: 700 }}
+                >
+                  {p.name}
+                </button>
+              );
+              return (
+                <>
+                  {unassigned.length > 0 && (
+                    <div style={{ marginTop: 10 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>
+                        Unassigned
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{unassigned.map(p => chip(p, 'white', 'var(--foreground)'))}</div>
+                    </div>
+                  )}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 14 }}>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--foreground)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6, borderBottom: '2px solid var(--primary, #1a1a1a)', paddingBottom: 4 }}>
+                        {squadGoldLabel.trim() || 'Team 1'} ({teamOne.length})
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{teamOne.map(p => chip(p, 'var(--primary, #1a1a1a)', 'white'))}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--foreground)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6, borderBottom: '2px solid var(--muted)', paddingBottom: 4 }}>
+                        {squadBlackLabel.trim() || 'Team 2'} ({teamTwo.length})
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{teamTwo.map(p => chip(p, 'var(--muted)', 'white'))}</div>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+            <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 10 }}>Every player needs a team, split evenly.</p>
+          </div>
+
+          <h2>Stages</h2>
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>
+              Each stage is a block of rounds worth its own points-per-win — e.g. 5 rounds at 1pt, then 5 at 2pt, then 5 at 3pt.
+            </p>
+            {stageRows.map((row, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <input
+                  value={row.label}
+                  onChange={e => setStageRows(prev => prev.map((r, idx) => (idx === i ? { ...r, label: e.target.value } : r)))}
+                  placeholder={`Stage ${i + 1}`}
+                  aria-label={`Stage ${i + 1} name`}
+                  style={{ flex: '1 1 140px', minHeight: 40 }}
+                />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                  Rounds
+                  <input
+                    type="number"
+                    min={1}
+                    value={row.rounds}
+                    onChange={e => setStageRows(prev => prev.map((r, idx) => (idx === i ? { ...r, rounds: Number(e.target.value) } : r)))}
+                    style={{ width: 64 }}
+                  />
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                  Points/win
+                  <input
+                    type="number"
+                    min={1}
+                    value={row.pointsPerWin}
+                    onChange={e => setStageRows(prev => prev.map((r, idx) => (idx === i ? { ...r, pointsPerWin: Number(e.target.value) } : r)))}
+                    style={{ width: 64 }}
+                  />
+                </label>
+                {stageRows.length > 1 && (
+                  <button type="button" className="icon-btn" aria-label={`Remove ${row.label}`} onClick={() => setStageRows(prev => prev.filter((_, idx) => idx !== i))}>
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ alignSelf: 'flex-start' }}
+              onClick={() => setStageRows(prev => [...prev, { label: `Stage ${prev.length + 1}`, rounds: 5, pointsPerWin: prev.length + 1 }])}
+            >
+              + Add Stage
+            </button>
+            <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>
+              Total rounds: {stageRows.reduce((sum, r) => sum + (Number.isFinite(r.rounds) ? r.rounds : 0), 0)}
+            </p>
+          </div>
+
+          <h2>Rapid Fire Finale (optional)</h2>
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <input type="checkbox" checked={enableRapidFire} onChange={e => setEnableRapidFire(e.target.checked)} />
+              <span>Add a live Rapid Fire finale after the last round</span>
+            </label>
+            {enableRapidFire && (
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                  Target points
+                  <input type="number" min={1} value={rapidFireTarget} onChange={e => setRapidFireTarget(Number(e.target.value))} style={{ width: 70 }} />
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                  Rotate every
+                  <input type="number" min={1} value={rapidFireRotateEvery} onChange={e => setRapidFireRotateEvery(Number(e.target.value))} style={{ width: 70 }} />
+                  points
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                  Bonus points
+                  <input type="number" min={1} value={rapidFireBonus} onChange={e => setRapidFireBonus(Number(e.target.value))} style={{ width: 70 }} />
+                </label>
+              </div>
+            )}
+          </div>
+
+          <p style={{ fontSize: 12, color: 'var(--muted)' }}>
+            Round pairings aren&apos;t generated automatically for this format — you&apos;ll enter each round&apos;s pairings by hand after setup.
+          </p>
         </>
       )}
 

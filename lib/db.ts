@@ -1,7 +1,9 @@
 import { supabase } from './supabase';
 import type { ScrambleRound, Squads } from './shuffle';
+import type { SquadSet } from './squads';
+import type { StageConfig, RapidFireConfig } from './teamChampionship';
 
-export type Format = 'scramble' | 'squad_rivalry' | 'court_blocks' | 'fixed_partners' | 'king_of_court';
+export type Format = 'scramble' | 'squad_rivalry' | 'court_blocks' | 'fixed_partners' | 'king_of_court' | 'team_championship';
 
 const MAX_SQUAD_LOGO_BYTES = 5 * 1024 * 1024;
 
@@ -48,6 +50,9 @@ export interface SessionRow {
   squad_black_logo_url: string | null;
   storylines: string[] | null;
   booker_upi_vpa: string | null;
+  squads_v2: SquadSet | null;
+  stage_config: StageConfig[] | null;
+  rapid_fire_config: RapidFireConfig | null;
 }
 
 export interface RoundRow {
@@ -90,6 +95,13 @@ export interface CreateSessionOptions {
   squadBlackLogoUrl: string | null;
   storylines: string[];
   bookerUpiVpa: string | null;
+  // Team Championship only — optional so every other format's existing
+  // createSession call sites need no changes. All three null means "not a
+  // Team Championship session," matching how squad/roundsPerBlock etc.
+  // already null out for formats that don't use them.
+  squadsV2?: SquadSet | null;
+  stageConfig?: StageConfig[] | null;
+  rapidFireConfig?: RapidFireConfig | null;
 }
 
 export async function createSession(options: CreateSessionOptions): Promise<string> {
@@ -119,6 +131,9 @@ export async function createSession(options: CreateSessionOptions): Promise<stri
     squad_black_logo_url: options.squadBlackLogoUrl,
     storylines: options.storylines,
     booker_upi_vpa: options.bookerUpiVpa,
+    squads_v2: options.squadsV2 ?? null,
+    stage_config: options.stageConfig ?? null,
+    rapid_fire_config: options.rapidFireConfig ?? null,
     status: 'in_progress',
   });
   if (error) throw error;
