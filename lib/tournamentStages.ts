@@ -1,7 +1,14 @@
 import { supabase } from './supabase';
 import { fetchTournamentTeams, orderedTeamIds } from './tournamentTeams';
 import { fetchStageMatches, type TournamentMatchRow } from './tournamentMatches';
-import { computeStandings, computeIndividualStandings, type StandingsRow, type IndividualStandingRow } from './tournamentStandings';
+import {
+  computeStandings,
+  computeIndividualStandings,
+  computeCombinedStandings,
+  type StandingsRow,
+  type IndividualStandingRow,
+  type CombinedStandingRow,
+} from './tournamentStandings';
 import {
   generateLeagueFixtures,
   generateGroupFixtures,
@@ -16,6 +23,13 @@ const BRACKET_STAGE_TYPES: StageType[] = ['knockout', 'page_playoff', 'simple_se
 export interface StageConfig {
   groupCount?: number;
   advancePerGroup?: number;
+  // Advancement rule for a league/group stage. 'per_group' (default, backward
+  // compatible) cuts the top advancePerGroup from EACH group independently.
+  // 'combined' ranks every team across all groups together by win % and
+  // cuts to a single flat advanceCount — the KINK format's actual rule
+  // (e.g. a flat top-8 across 3 uneven groups, not N-per-group).
+  advanceMode?: 'per_group' | 'combined';
+  advanceCount?: number; // used when advanceMode === 'combined'
   doubleHeader?: boolean;
   individualScoring?: boolean;
   pointsPerWin?: number;
@@ -23,6 +37,7 @@ export interface StageConfig {
 
 export interface LeagueGroupResults {
   standings: StandingsRow[];
+  combinedStandings?: CombinedStandingRow[]; // present when advanceMode === 'combined'
   individualStandings?: IndividualStandingRow[];
   advancingTeamIds: string[];
 }
@@ -107,10 +122,20 @@ async function freezeStageResults(stage: TournamentStageRow): Promise<LeagueGrou
     results = computeBracketResult(matches);
   } else {
     const standings = computeStandings(matches, teams, { pointsPerWin: stage.config.pointsPerWin });
-    const advancePerGroup = stage.config.advancePerGroup ?? standings.length;
-    const advancingTeamIds = standings.filter(s => s.rank <= advancePerGroup).map(s => s.teamId);
     const individualStandings = stage.config.individualScoring ? computeIndividualStandings(matches, teams) : undefined;
-    results = { standings, individualStandings, advancingTeamIds };
+
+    let advancingTeamIds: string[];
+    let combinedStandings: ReturnType<typeof computeCombinedStandings> | undefined;
+    if (stage.config.advanceMode === 'combined') {
+      combinedStandings = computeCombinedStandings(matches, teams);
+      const advanceCount = stage.config.advanceCount ?? combinedStandings.length;
+      advancingTeamIds = combinedStandings.filter(s => s.rank <= advanceCount).map(s => s.teamId);
+    } else {
+      const advancePerGroup = stage.config.advancePerGroup ?? standings.length;
+      advancingTeamIds = standings.filter(s => s.rank <= advancePerGroup).map(s => s.teamId);
+    }
+
+    results = { standings, combinedStandings, individualStandings, advancingTeamIds };
   }
 
   const { error } = await supabase

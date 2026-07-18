@@ -9,6 +9,7 @@ export interface TournamentRow {
   created_by: string;
   created_at: string;
   completed_at: string | null;
+  registration_open: boolean;
 }
 
 function generateShareToken(): string {

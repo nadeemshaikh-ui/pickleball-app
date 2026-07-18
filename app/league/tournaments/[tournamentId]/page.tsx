@@ -3,8 +3,15 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Trophy, Plus, Trash2, Copy, Sparkles } from 'lucide-react';
+import { Trophy, Plus, Trash2, Copy, Sparkles, UserPlus, KeyRound } from 'lucide-react';
 import { fetchTournament, watchUrlFor, type TournamentRow } from '@/lib/tournaments';
+import {
+  fetchTournamentRegistrations,
+  withdrawTournamentRegistration,
+  setTournamentRegistrationOpen,
+  type TournamentRegistrationRow,
+} from '@/lib/tournamentRegistration';
+import { fetchCourtScorerCodes, createCourtScorerCode, type CourtScorerCodeRow } from '@/lib/tournamentScorers';
 import {
   fetchTournamentTeams,
   createTournamentTeam,
@@ -57,18 +64,76 @@ export default function TournamentDetailPage() {
   const [stageName, setStageName] = useState('');
   const [groupCount, setGroupCount] = useState(2);
   const [doubleHeader, setDoubleHeader] = useState(false);
+  const [advanceMode, setAdvanceMode] = useState<'per_group' | 'combined'>('per_group');
+  const [advancePerGroup, setAdvancePerGroup] = useState(2);
+  const [advanceCount, setAdvanceCount] = useState(8);
 
   const [mysteryPool, setMysteryPool] = useState<Set<string>>(new Set());
   const [byePlayer, setByePlayer] = useState('');
   const [drawing, setDrawing] = useState(false);
   const [drawProgress, setDrawProgress] = useState<{ done: number; total: number } | null>(null);
 
+  const [registrations, setRegistrations] = useState<TournamentRegistrationRow[]>([]);
+  const [scorerCodes, setScorerCodes] = useState<CourtScorerCodeRow[]>([]);
+  const [newCourtLabel, setNewCourtLabel] = useState('');
+
   async function load(clubId: string, id: string) {
-    const [t, tm, st, pl] = await Promise.all([fetchTournament(id), fetchTournamentTeams(id), fetchStages(id), listPlayers(clubId)]);
+    const [t, tm, st, pl, reg, codes] = await Promise.all([
+      fetchTournament(id),
+      fetchTournamentTeams(id),
+      fetchStages(id),
+      listPlayers(clubId),
+      fetchTournamentRegistrations(id),
+      fetchCourtScorerCodes(id),
+    ]);
     setTournament(t);
     setTeams(tm);
     setStages(st);
     setPlayers(pl);
+    setRegistrations(reg);
+    setScorerCodes(codes);
+  }
+
+  async function handleToggleRegistration() {
+    if (!tournament) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await setTournamentRegistrationOpen(tournament.id, !tournament.registration_open);
+      setTournament({ ...tournament, registration_open: !tournament.registration_open });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update registration status.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleWithdrawRegistration(registrationId: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      await withdrawTournamentRegistration(registrationId);
+      setRegistrations(prev => prev.map(r => (r.id === registrationId ? { ...r, status: 'withdrawn' } : r)));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to withdraw registration.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleCreateScorerCode() {
+    if (!tournament || !newCourtLabel.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await createCourtScorerCode(tournament.id, newCourtLabel.trim());
+      setNewCourtLabel('');
+      setScorerCodes(await fetchCourtScorerCodes(tournament.id));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create scorer code.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   useEffect(() => {
@@ -207,7 +272,9 @@ export default function TournamentDetailPage() {
       await generateNextStage(tournamentId, lastStage?.id ?? null, stageType, stageName.trim(), {
         groupCount,
         doubleHeader,
-        advancePerGroup: stageType === 'group' ? 2 : undefined,
+        advanceMode: stageType === 'group' ? advanceMode : undefined,
+        advancePerGroup: stageType === 'group' && advanceMode === 'per_group' ? advancePerGroup : undefined,
+        advanceCount: stageType === 'group' && advanceMode === 'combined' ? advanceCount : undefined,
       });
       setStageName('');
       setStages(await fetchStages(tournamentId));
@@ -240,6 +307,47 @@ export default function TournamentDetailPage() {
       <h1 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Trophy size={22} /> {tournament.name}</h1>
 
       {error && <p style={{ color: 'var(--danger)', marginBottom: 12, fontWeight: 600 }}>{error}</p>}
+
+      <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><UserPlus size={18} /> Registrations ({registrations.filter(r => r.status !== 'withdrawn').length})</h2>
+      <div className="card" style={{ marginBottom: 16 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: registrations.length > 0 ? 10 : 0, cursor: 'pointer' }}>
+          <input type="checkbox" checked={tournament.registration_open} onChange={handleToggleRegistration} disabled={busy} />
+          Registration open — anyone with the spectator link can sign up
+        </label>
+        {registrations.filter(r => r.status !== 'withdrawn').map(r => (
+          <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderTop: '1px solid var(--border)' }}>
+            <span style={{ flex: 1, fontSize: 13 }}>{r.registrant_name}{r.partner_name ? ` & ${r.partner_name}` : ''}</span>
+            <button className="btn-secondary" style={{ minHeight: 28, padding: '3px 10px', fontSize: 12 }} onClick={() => handleWithdrawRegistration(r.id)} disabled={busy}>
+              Withdraw
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><KeyRound size={18} /> Court Scorer Codes</h2>
+      <div className="card" style={{ marginBottom: 16 }}>
+        <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 10px' }}>
+          Share a code with whoever&apos;s running a court — they can enter scores for that court without an account.
+        </p>
+        {scorerCodes.map(c => (
+          <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: '1px solid var(--border)' }}>
+            <span style={{ flex: 1, fontSize: 13, fontWeight: 700 }}>{c.court_label}</span>
+            <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: 1 }}>{c.code}</span>
+          </div>
+        ))}
+        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+          <input
+            value={newCourtLabel}
+            onChange={e => setNewCourtLabel(e.target.value)}
+            placeholder="Court name (e.g. Court 1)"
+            aria-label="Court label"
+            style={{ flex: 1, minHeight: 40, padding: '8px 10px', fontSize: 14, border: '1px solid var(--border)', borderRadius: 8 }}
+          />
+          <button className="btn-secondary" onClick={handleCreateScorerCode} disabled={busy || !newCourtLabel.trim()}>
+            Generate code
+          </button>
+        </div>
+      </div>
 
       <h2>Teams</h2>
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
@@ -370,10 +478,30 @@ export default function TournamentDetailPage() {
             {Object.entries(STAGE_TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
           {stageType === 'group' && (
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-              Number of groups
-              <input type="number" min={2} value={groupCount} onChange={e => setGroupCount(Number(e.target.value))} style={{ width: 60 }} />
-            </label>
+            <>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                Number of groups
+                <input type="number" min={2} value={groupCount} onChange={e => setGroupCount(Number(e.target.value))} style={{ width: 60 }} />
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                Who advances
+                <select value={advanceMode} onChange={e => setAdvanceMode(e.target.value as 'per_group' | 'combined')}>
+                  <option value="per_group">Top N from each group</option>
+                  <option value="combined">Flat top N across all groups combined</option>
+                </select>
+              </label>
+              {advanceMode === 'per_group' ? (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                  Advance per group
+                  <input type="number" min={1} value={advancePerGroup} onChange={e => setAdvancePerGroup(Number(e.target.value))} style={{ width: 60 }} />
+                </label>
+              ) : (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                  Total advancing (e.g. 8 for a top-8 combined cut)
+                  <input type="number" min={2} value={advanceCount} onChange={e => setAdvanceCount(Number(e.target.value))} style={{ width: 60 }} />
+                </label>
+              )}
+            </>
           )}
           {(stageType === 'league' || stageType === 'group') && (
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>

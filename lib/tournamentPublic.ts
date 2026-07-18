@@ -35,8 +35,15 @@ export interface PublicMatch {
   status: 'scheduled' | 'in_progress' | 'completed';
 }
 
+export interface PublicRegistration {
+  id: string;
+  registrantName: string;
+  partnerName: string | null;
+  status: 'registered' | 'waitlisted' | 'withdrawn';
+}
+
 export interface PublicTournamentData {
-  tournament: { id: string; name: string; status: string };
+  tournament: { id: string; name: string; status: string; registrationOpen: boolean };
   teams: PublicTeam[];
   stages: {
     id: string;
@@ -47,7 +54,8 @@ export interface PublicTournamentData {
     status: string;
     results: LeagueGroupResults | BracketResults | null;
   }[];
-  matches: PublicMatch[];
+  matches: (PublicMatch & { courtLabel: string | null })[];
+  registrations: PublicRegistration[];
 }
 
 // Cheap defense-in-depth against silent drift between this hand-maintained
