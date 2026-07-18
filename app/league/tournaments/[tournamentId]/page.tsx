@@ -25,6 +25,7 @@ import { drawMysteryPairs } from '@/lib/mysteryPartner';
 import { listPlayers, type PlayerRow } from '@/lib/players';
 import { isCurrentUserAdmin } from '@/lib/auth';
 import { useCurrentClub } from '@/lib/useCurrentClub';
+import { StageWizard } from '@/components/tournaments/StageWizard';
 
 // Between-pair delay while a draw streams in — no Supabase Realtime channel
 // here (the rest of the app deliberately polls instead of using Realtime,
@@ -471,48 +472,26 @@ export default function TournamentDetailPage() {
       </div>
 
       {isAdmin && teams.length >= 2 && (
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ fontWeight: 700 }}>Generate Next Stage</div>
-          <input type="text" placeholder="Stage name (e.g. 'Group Stage', 'Semifinals')" value={stageName} onChange={e => setStageName(e.target.value)} />
-          <select value={stageType} onChange={e => setStageType(e.target.value as StageType)}>
-            {Object.entries(STAGE_TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-          </select>
-          {stageType === 'group' && (
-            <>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                Number of groups
-                <input type="number" min={2} value={groupCount} onChange={e => setGroupCount(Number(e.target.value))} style={{ width: 60 }} />
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                Who advances
-                <select value={advanceMode} onChange={e => setAdvanceMode(e.target.value as 'per_group' | 'combined')}>
-                  <option value="per_group">Top N from each group</option>
-                  <option value="combined">Flat top N across all groups combined</option>
-                </select>
-              </label>
-              {advanceMode === 'per_group' ? (
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                  Advance per group
-                  <input type="number" min={1} value={advancePerGroup} onChange={e => setAdvancePerGroup(Number(e.target.value))} style={{ width: 60 }} />
-                </label>
-              ) : (
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                  Total advancing (e.g. 8 for a top-8 combined cut)
-                  <input type="number" min={2} value={advanceCount} onChange={e => setAdvanceCount(Number(e.target.value))} style={{ width: 60 }} />
-                </label>
-              )}
-            </>
-          )}
-          {(stageType === 'league' || stageType === 'group') && (
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-              <input type="checkbox" checked={doubleHeader} onChange={e => setDoubleHeader(e.target.checked)} />
-              Double Header (every matchup played twice)
-            </label>
-          )}
-          <button className="btn-primary" onClick={handleGenerateStage} disabled={busy || !stageName.trim()}>
-            Generate Stage
-          </button>
-        </div>
+        <StageWizard
+          teams={teams}
+          stages={stages}
+          stageName={stageName}
+          onStageNameChange={setStageName}
+          stageType={stageType}
+          onStageTypeChange={setStageType}
+          groupCount={groupCount}
+          onGroupCountChange={setGroupCount}
+          doubleHeader={doubleHeader}
+          onDoubleHeaderChange={setDoubleHeader}
+          advanceMode={advanceMode}
+          onAdvanceModeChange={setAdvanceMode}
+          advancePerGroup={advancePerGroup}
+          onAdvancePerGroupChange={setAdvancePerGroup}
+          advanceCount={advanceCount}
+          onAdvanceCountChange={setAdvanceCount}
+          busy={busy}
+          onGenerate={handleGenerateStage}
+        />
       )}
     </main>
   );
