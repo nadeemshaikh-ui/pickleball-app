@@ -247,6 +247,19 @@ export async function updateRoundScore(
   if (error) throw error;
 }
 
+// Team Championship's manual pairing editor — every other format only ever
+// changes a round's score (players are locked in at generation time), so
+// this is new: lets a captain override which players are on a round's
+// teams after auto-generation. Resets score to null since a re-paired
+// round hasn't been played under its new pairing yet.
+export async function updateRoundTeams(roundId: string, teamA: [string, string], teamB: [string, string]): Promise<void> {
+  const { error } = await supabase
+    .from('rounds')
+    .update({ team_a: teamA, team_b: teamB, score_a: null, score_b: null })
+    .eq('id', roundId);
+  if (error) throw error;
+}
+
 export async function markSessionCompleted(sessionId: string): Promise<void> {
   const { error } = await supabase.from('sessions').update({ status: 'completed' }).eq('id', sessionId);
   if (error) throw error;
