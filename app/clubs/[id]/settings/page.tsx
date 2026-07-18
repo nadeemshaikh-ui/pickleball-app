@@ -6,11 +6,15 @@ import { UserPlus, Share2, AlertTriangle, Code2, AlertOctagon } from 'lucide-rea
 import {
   listMyClubs,
   listPendingJoinRequests,
-  resolveJoinRequest,
+  approveJoinRequest,
+  rejectJoinRequest,
   updateClubBranding,
   updateClubUpiVpa,
+  updateClubDescription,
   listClubMembers,
   setDangerZoneAccess,
+  removeMember,
+  restoreMember,
   resetClubData,
   type ClubRow,
   type JoinRequestRow,
@@ -40,16 +44,21 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoFile2, setLogoFile2] = useState<File | null>(null);
   const [upiVpa, setUpiVpa] = useState('');
+  const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
   const [savingUpi, setSavingUpi] = useState(false);
+  const [savingDescription, setSavingDescription] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
   const [upiSavedMsg, setUpiSavedMsg] = useState<string | null>(null);
+  const [descriptionSavedMsg, setDescriptionSavedMsg] = useState<string | null>(null);
   const [imageShareError, setImageShareError] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetMsg, setResetMsg] = useState<string | null>(null);
   const [devMode, setDevMode] = useState(false);
+  const [memberActionError, setMemberActionError] = useState<string | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<{ userId: string; name: string } | null>(null);
   const inviteCaptureRef = useRef<HTMLDivElement>(null);
 
   async function load() {
@@ -60,6 +69,7 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
       setClub(mine.club);
       setName(mine.club.name);
       setUpiVpa(mine.club.upi_vpa ?? '');
+      setDescription(mine.club.description ?? '');
     }
     if (mine?.role === 'admin') {
       const [req, memberRows, playerRows, user, errorRows] = await Promise.all([
@@ -70,7 +80,7 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
         fetchRecentErrorsForClub(id).catch(() => []),
       ]);
       setPending(req);
-      setMemberCount(memberRows.length);
+      setMemberCount(memberRows.filter(m => !m.removed_at).length);
       setMembers(memberRows);
       setMemberNames(new Map(playerRows.filter(p => p.user_id).map(p => [p.user_id as string, p.name])));
       setOwnUserId(user?.id ?? null);
@@ -87,6 +97,30 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
       if (userId === ownUserId) setOwnDangerZoneAccess(!current);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to update access.');
+    }
+  }
+
+  async function handleConfirmRemove() {
+    if (!removeTarget) return;
+    setMemberActionError(null);
+    try {
+      await removeMember(id, removeTarget.userId);
+      setMembers(prev => prev.map(m => (m.user_id === removeTarget.userId ? { ...m, removed_at: new Date().toISOString() } : m)));
+      setMemberCount(c => Math.max(0, c - 1));
+      setRemoveTarget(null);
+    } catch (e) {
+      setMemberActionError(e instanceof Error ? e.message : 'Failed to remove member.');
+    }
+  }
+
+  async function handleRestore(userId: string) {
+    setMemberActionError(null);
+    try {
+      await restoreMember(id, userId);
+      setMembers(prev => prev.map(m => (m.user_id === userId ? { ...m, removed_at: null, removed_by: null } : m)));
+      setMemberCount(c => c + 1);
+    } catch (e) {
+      setMemberActionError(e instanceof Error ? e.message : 'Failed to restore member.');
     }
   }
 
@@ -113,6 +147,19 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
     }
   }
 
+  async function handleSaveDescription() {
+    setSavingDescription(true);
+    setDescriptionSavedMsg(null);
+    try {
+      await updateClubDescription(id, description.trim() || null);
+      setDescriptionSavedMsg('Saved.');
+    } catch (e) {
+      setDescriptionSavedMsg(e instanceof Error ? e.message : 'Failed to save.');
+    } finally {
+      setSavingDescription(false);
+    }
+  }
+
   async function handleSaveUpi() {
     setSavingUpi(true);
     setUpiSavedMsg(null);
@@ -127,9 +174,18 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
   }
 
   async function handleResolve(request: JoinRequestRow, decision: 'approved' | 'rejected') {
-    await resolveJoinRequest(request, decision);
-    setPending(prev => prev.filter(r => r.id !== request.id));
-    if (decision === 'approved') setMemberCount(c => c + 1);
+    setError(null);
+    try {
+      if (decision === 'approved') {
+        await approveJoinRequest(request.id);
+      } else {
+        await rejectJoinRequest(request.id);
+      }
+      setPending(prev => prev.filter(r => r.id !== request.id));
+      if (decision === 'approved') setMemberCount(c => c + 1);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to resolve request.');
+    }
   }
 
   async function handleResetClub() {
@@ -204,6 +260,26 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
         </button>
       </div>
 
+      <h2>About</h2>
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div>
+          <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>
+            Shown on the club dashboard everyone sees
+          </label>
+          <textarea
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            placeholder="What is this club about? Who's it for?"
+            rows={3}
+            style={{ width: '100%', padding: '10px 12px', fontSize: 15, border: '1px solid var(--border)', borderRadius: 8, resize: 'vertical' }}
+          />
+        </div>
+        {descriptionSavedMsg && <p style={{ color: 'var(--dark)', fontWeight: 700, fontSize: 13 }}>{descriptionSavedMsg}</p>}
+        <button className="btn-primary" onClick={handleSaveDescription} disabled={savingDescription}>
+          {savingDescription ? 'Saving…' : 'Save Description'}
+        </button>
+      </div>
+
       <h2>Dues Payment</h2>
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div>
@@ -241,11 +317,22 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
       </div>
 
       <h2>Pending Join Requests ({pending.length})</h2>
+      {error && <p style={{ color: 'var(--danger)', fontWeight: 600 }}>{error}</p>}
       <div className="card">
         {pending.length === 0 && <p style={{ color: 'var(--muted)', fontSize: 14 }}>No pending requests.</p>}
         {pending.map(r => (
-          <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
-            <span style={{ flex: 1, fontSize: 13, color: 'var(--muted)' }}>Requested {new Date(r.requested_at).toLocaleDateString()}</span>
+          <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+            {r.photo_url ? (
+              <img src={r.photo_url} alt="" width={36} height={36} style={{ borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+            ) : (
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--border)', flexShrink: 0 }} />
+            )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{r.name ?? 'Unnamed player'}</div>
+              <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                {[r.dominant_hand, r.paddle, r.playing_since_year ? `since ${r.playing_since_year}` : null].filter(Boolean).join(' · ') || `Requested ${new Date(r.requested_at).toLocaleDateString()}`}
+              </div>
+            </div>
             <button className="btn-primary" style={{ minHeight: 32, padding: '4px 12px', fontSize: 13 }} onClick={() => handleResolve(r, 'approved')}>
               Approve
             </button>
@@ -257,22 +344,61 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
       </div>
 
       <h2>Members</h2>
+      {memberActionError && <p style={{ color: 'var(--danger)', fontWeight: 600 }}>{memberActionError}</p>}
       <div className="card">
         <p style={{ fontSize: 14, marginBottom: 10 }}>{memberCount} member{memberCount === 1 ? '' : 's'}</p>
-        {members.filter(m => m.role === 'admin').map(m => (
-          <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
-            <span style={{ flex: 1, fontSize: 13 }}>{memberNames.get(m.user_id) ?? 'Unknown'}</span>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={m.danger_zone_access}
-                onChange={() => handleToggleDangerZone(m.user_id, m.danger_zone_access)}
-              />
-              Danger Zone access
-            </label>
+        {members.filter(m => !m.removed_at).map(m => (
+          <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+            <span style={{ flex: 1, fontSize: 13 }}>
+              {memberNames.get(m.user_id) ?? 'Unknown'}
+              {m.role === 'admin' && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, color: 'var(--primary)' }}>ADMIN</span>}
+            </span>
+            {m.role === 'admin' && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={m.danger_zone_access}
+                  onChange={() => handleToggleDangerZone(m.user_id, m.danger_zone_access)}
+                />
+                Danger Zone
+              </label>
+            )}
+            {m.user_id !== ownUserId && (
+              <button
+                className="btn-secondary"
+                style={{ minHeight: 28, padding: '3px 10px', fontSize: 12, borderColor: 'var(--danger)', color: 'var(--danger)' }}
+                onClick={() => setRemoveTarget({ userId: m.user_id, name: memberNames.get(m.user_id) ?? 'this member' })}
+              >
+                Remove
+              </button>
+            )}
           </div>
         ))}
+
+        {members.some(m => m.removed_at) && (
+          <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+            <p style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 6 }}>Removed</p>
+            {members.filter(m => m.removed_at).map(m => (
+              <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
+                <span style={{ flex: 1, fontSize: 13, color: 'var(--muted)' }}>{memberNames.get(m.user_id) ?? 'Unknown'}</span>
+                <button className="btn-secondary" style={{ minHeight: 28, padding: '3px 10px', fontSize: 12 }} onClick={() => handleRestore(m.user_id)}>
+                  Restore
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      {removeTarget && (
+        <ConfirmModal
+          title="Remove member?"
+          message={`${removeTarget.name} will lose access to this club. Their match history and stats stay intact and can be restored later.`}
+          confirmLabel="Remove"
+          onConfirm={handleConfirmRemove}
+          onCancel={() => setRemoveTarget(null)}
+        />
+      )}
 
       <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Code2 size={18} /> Developer Mode</h2>
       <div className="card">

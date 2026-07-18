@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCurrentClub } from '@/lib/useCurrentClub';
@@ -9,9 +10,24 @@ import CreateClubStep from '@/components/onboarding/CreateClubStep';
 export default function NewClubPage() {
   const router = useRouter();
   const { setCurrentClubId, user, loading: clubLoading } = useCurrentClub();
+  const [pending, setPending] = useState(false);
 
   if (clubLoading) return <main className="page"><p>Loading…</p></main>;
   if (!user) return <SignInGate message="Sign in to create a club." />;
+
+  if (pending) {
+    return (
+      <main className="page">
+        <Link href="/clubs" className="text-link-btn">← Clubs</Link>
+        <h1>Request Sent</h1>
+        <div className="card">
+          <p style={{ margin: 0 }}>
+            You already have a club, so a new one needs approval — we&apos;ll let you know once it&apos;s reviewed.
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="page">
@@ -23,6 +39,7 @@ export default function NewClubPage() {
             setCurrentClubId(clubId);
             router.push(`/clubs/${clubId}/settings`);
           }}
+          onRequestPending={() => setPending(true)}
         />
       </div>
       <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>

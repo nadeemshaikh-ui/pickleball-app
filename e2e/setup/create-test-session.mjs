@@ -340,7 +340,7 @@ async function ensureJoinRequestFixture() {
     await admin.from('club_members').delete().eq('club_id', TEST_CLUB_ID).eq('user_id', requester.id); // reset for re-run
   }
   await admin.from('club_join_requests').delete().eq('club_id', TEST_CLUB_ID).eq('user_id', requester.id);
-  const { error } = await admin.from('club_join_requests').insert({ club_id: TEST_CLUB_ID, user_id: requester.id, status: 'pending' });
+  const { error } = await admin.from('club_join_requests').insert({ club_id: TEST_CLUB_ID, user_id: requester.id, status: 'pending', name: 'E2E Requester' });
   if (error) throw error;
   return requester;
 }
@@ -391,7 +391,7 @@ async function ensurePendingOnlyUser() {
     pendingUser = data.user;
   }
   await admin.from('club_join_requests').delete().eq('club_id', RESET_TEST_CLUB_ID).eq('user_id', pendingUser.id);
-  const { error } = await admin.from('club_join_requests').insert({ club_id: RESET_TEST_CLUB_ID, user_id: pendingUser.id, status: 'pending' });
+  const { error } = await admin.from('club_join_requests').insert({ club_id: RESET_TEST_CLUB_ID, user_id: pendingUser.id, status: 'pending', name: 'E2E Pending' });
   if (error) throw error;
   return pendingUser;
 }

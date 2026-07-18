@@ -9,6 +9,7 @@ export interface ClubRow {
   created_by: string;
   created_at: string;
   upi_vpa: string | null;
+  description: string | null;
 }
 
 // Name + logo only — for the branded header stamped onto every shared
@@ -36,6 +37,11 @@ export async function updateClubUpiVpa(clubId: string, upiVpa: string | null): P
   if (error) throw error;
 }
 
+export async function updateClubDescription(clubId: string, description: string | null): Promise<void> {
+  const { error } = await supabase.from('clubs').update({ description }).eq('id', clubId);
+  if (error) throw error;
+}
+
 export async function getClubUpiVpa(clubId: string): Promise<string | null> {
   const { data, error } = await supabase.from('clubs').select('upi_vpa').eq('id', clubId).maybeSingle();
   if (error) throw error;
@@ -48,6 +54,17 @@ export interface ClubMembership {
   club: ClubRow;
 }
 
+export interface JoinRequestProfile {
+  name: string;
+  nickname: string | null;
+  photoUrl: string | null;
+  bio: string | null;
+  dominantHand: 'right' | 'left' | 'ambidextrous' | null;
+  paddle: string | null;
+  playingSinceYear: number | null;
+  signatureShot: string | null;
+}
+
 export interface JoinRequestRow {
   id: string;
   club_id: string;
@@ -55,6 +72,14 @@ export interface JoinRequestRow {
   status: 'pending' | 'approved' | 'rejected';
   requested_at: string;
   resolved_at: string | null;
+  name: string | null;
+  nickname: string | null;
+  photo_url: string | null;
+  bio: string | null;
+  dominant_hand: 'right' | 'left' | 'ambidextrous' | null;
+  paddle: string | null;
+  playing_since_year: number | null;
+  signature_shot: string | null;
 }
 
 function randomJoinCode(): string {
@@ -93,7 +118,7 @@ export async function listMyClubs(): Promise<ClubMembership[]> {
 
   const { data, error } = await supabase
     .from('club_members')
-    .select('club_id, role, club:clubs(id, name, logo_url, logo_url_2, join_code, created_by, created_at, upi_vpa)')
+    .select('club_id, role, club:clubs(id, name, logo_url, logo_url_2, join_code, created_by, created_at, upi_vpa, description)')
     .eq('user_id', userData.user.id);
   if (error) throw error;
   const rows = data as unknown as { club_id: string; role: 'admin' | 'member'; club: ClubRow }[];
@@ -112,28 +137,72 @@ export async function listMyClubs(): Promise<ClubMembership[]> {
   }));
 }
 
-// Creates the club, then self-inserts the creator as its admin — the two
-// inserts are separate calls (not a transaction) because the second one's
-// RLS check depends on clubs.created_by already being visible, which it is
-// once the first insert commits under autocommit.
-export async function createClub(name: string, logoFile: File | null): Promise<ClubRow> {
+export type CreateClubResult = { status: 'created'; club: ClubRow } | { status: 'pending_approval' };
+
+// A signed-in user's first-ever club is created instantly via the
+// create_own_club RPC; a 2nd+ club from the same account is queued for
+// super-admin approval instead (see club_creation_requests). The RPC
+// derives the "already has a club?" check and the actual inserts
+// server-side so this can't be bypassed from the client.
+export async function createClub(name: string, logoFile: File | null): Promise<CreateClubResult> {
   const user = (await supabase.auth.getUser()).data.user;
   if (!user) throw new Error('Must be signed in to create a club.');
   const logoUrl = logoFile ? await uploadClubLogo(logoFile) : null;
+  const joinCode = randomJoinCode();
 
-  const { data: club, error } = await supabase
-    .from('clubs')
-    .insert({ name, logo_url: logoUrl, join_code: randomJoinCode(), created_by: user.id })
-    .select()
-    .single();
+  const { data, error } = await supabase.rpc('create_own_club', { p_name: name, p_logo_url: logoUrl, p_join_code: joinCode });
   if (error) throw error;
 
-  const { error: memberError } = await supabase
-    .from('club_members')
-    .insert({ club_id: club.id, user_id: user.id, role: 'admin', danger_zone_access: true });
-  if (memberError) throw memberError;
+  if (data.status === 'pending_approval') return { status: 'pending_approval' };
 
-  return club as ClubRow;
+  const { data: club, error: fetchError } = await supabase.from('clubs').select('*').eq('id', data.club_id).single();
+  if (fetchError) throw fetchError;
+  return { status: 'created', club: club as ClubRow };
+}
+
+export interface ClubCreationRequestRow {
+  id: string;
+  user_id: string;
+  requested_name: string;
+  requested_logo_url: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  requested_at: string;
+  resolved_at: string | null;
+}
+
+export async function listMyPendingClubCreationRequests(): Promise<ClubCreationRequestRow[]> {
+  const user = (await supabase.auth.getUser()).data.user;
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from('club_creation_requests')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('status', 'pending')
+    .order('requested_at', { ascending: true });
+  if (error) throw error;
+  return data as ClubCreationRequestRow[];
+}
+
+// Super-admin only at the DB level (RLS) — every club creation request
+// across the whole platform, not just the caller's own.
+export async function listPendingClubCreationRequests(): Promise<ClubCreationRequestRow[]> {
+  const { data, error } = await supabase
+    .from('club_creation_requests')
+    .select('*')
+    .eq('status', 'pending')
+    .order('requested_at', { ascending: true });
+  if (error) throw error;
+  return data as ClubCreationRequestRow[];
+}
+
+export async function approveClubCreationRequest(requestId: string): Promise<void> {
+  const { error } = await supabase.rpc('approve_club_creation_request', { p_request_id: requestId });
+  if (error) throw error;
+}
+
+export async function rejectClubCreationRequest(requestId: string): Promise<void> {
+  const { error } = await supabase.rpc('reject_club_creation_request', { p_request_id: requestId });
+  if (error) throw error;
 }
 
 // Joining by code is instant — no admin approval needed, matches "anyone
@@ -160,11 +229,31 @@ export async function searchClubsByName(query: string): Promise<ClubRow[]> {
   return data as ClubRow[];
 }
 
-export async function requestToJoinClub(clubId: string): Promise<void> {
-  const user = (await supabase.auth.getUser()).data.user;
-  if (!user) throw new Error('Must be signed in to request to join a club.');
-  const { error } = await supabase.from('club_join_requests').insert({ club_id: clubId, user_id: user.id });
-  if (error && error.code !== '23505') throw error; // duplicate request is a silent no-op, not an error
+// Profile is collected before the request is sent (see ProfileStep's
+// onSubmit mode) and staged on the request row itself — players rows are
+// club-scoped and a pending requester isn't a member yet, so there's
+// nowhere else to put it. approve_join_request() materializes it into a
+// real players row once an admin approves.
+//
+// Via RPC, not a direct client upsert: club_join_requests only grants
+// self-INSERT via RLS (no self-UPDATE), and carries a UNIQUE (club_id,
+// user_id) constraint with no pending-only scoping, so a plain insert can
+// never resubmit after a rejection or refresh a resubmission's profile —
+// it just silently 23505s. request_to_join_club() does the upsert
+// server-side, refusing to clobber an already-approved row back to pending.
+export async function requestToJoinClub(clubId: string, profile: JoinRequestProfile): Promise<void> {
+  const { error } = await supabase.rpc('request_to_join_club', {
+    p_club_id: clubId,
+    p_name: profile.name,
+    p_nickname: profile.nickname,
+    p_photo_url: profile.photoUrl,
+    p_bio: profile.bio,
+    p_dominant_hand: profile.dominantHand,
+    p_paddle: profile.paddle,
+    p_playing_since_year: profile.playingSinceYear,
+    p_signature_shot: profile.signatureShot,
+  });
+  if (error) throw error;
 }
 
 // The requester's own view of their pending requests — powers the
@@ -194,21 +283,18 @@ export async function listPendingJoinRequests(clubId: string): Promise<JoinReque
   return data as JoinRequestRow[];
 }
 
-// Admin-only at the DB level (RLS) — approving also adds the membership row;
-// rejecting just marks the request resolved.
-export async function resolveJoinRequest(request: JoinRequestRow, decision: 'approved' | 'rejected'): Promise<void> {
-  const { error } = await supabase
-    .from('club_join_requests')
-    .update({ status: decision, resolved_at: new Date().toISOString() })
-    .eq('id', request.id);
+// Admin-only at the DB level (RLS + a raise inside the function itself).
+// approve_join_request materializes the staged profile into a real players
+// row and adds the membership row in one transaction; reject just marks the
+// request resolved. Replaces the old direct-update resolveJoinRequest.
+export async function approveJoinRequest(requestId: string): Promise<void> {
+  const { error } = await supabase.rpc('approve_join_request', { p_request_id: requestId });
   if (error) throw error;
+}
 
-  if (decision === 'approved') {
-    const { error: memberError } = await supabase
-      .from('club_members')
-      .insert({ club_id: request.club_id, user_id: request.user_id, role: 'member' });
-    if (memberError && memberError.code !== '23505') throw memberError;
-  }
+export async function rejectJoinRequest(requestId: string): Promise<void> {
+  const { error } = await supabase.rpc('reject_join_request', { p_request_id: requestId });
+  if (error) throw error;
 }
 
 export async function updateClubBranding(clubId: string, name: string, logoFile: File | null, logoFile2: File | null = null): Promise<void> {
@@ -228,16 +314,47 @@ export interface ClubMemberRow {
   role: 'admin' | 'member';
   joined_at: string;
   danger_zone_access: boolean;
+  removed_at: string | null;
+  removed_by: string | null;
 }
 
 export async function listClubMembers(clubId: string): Promise<ClubMemberRow[]> {
   const { data, error } = await supabase
     .from('club_members')
-    .select('user_id, role, joined_at, danger_zone_access')
+    .select('user_id, role, joined_at, danger_zone_access, removed_at, removed_by')
     .eq('club_id', clubId)
     .order('joined_at');
   if (error) throw error;
   return data;
+}
+
+// Admin-only at the DB level (RLS + a raise inside the function itself).
+// Revokes access (is_club_member/is_club_admin both exclude removed rows)
+// without deleting the member's players row or any match history — their
+// stats stay intact as history, just off the active roster/leaderboard.
+export async function removeMember(clubId: string, userId: string): Promise<void> {
+  const { error } = await supabase.rpc('remove_club_member', { p_club_id: clubId, p_target_user_id: userId });
+  if (error) throw error;
+}
+
+export async function restoreMember(clubId: string, userId: string): Promise<void> {
+  const { error } = await supabase.rpc('restore_club_member', { p_club_id: clubId, p_target_user_id: userId });
+  if (error) throw error;
+}
+
+// The leaderboard/crown-board matviews are untracked (live-only) and keyed
+// by player name, not user_id — rather than editing them blind, removed
+// members are stripped from active rankings client-side by name. Their
+// history stays reachable via their player profile page and match history.
+export async function fetchRemovedMemberNames(clubId: string): Promise<Set<string>> {
+  const [{ data: removed, error: removedError }, { data: players, error: playersError }] = await Promise.all([
+    supabase.from('club_members').select('user_id').eq('club_id', clubId).not('removed_at', 'is', null),
+    supabase.from('players').select('user_id, name').eq('club_id', clubId),
+  ]);
+  if (removedError) throw removedError;
+  if (playersError) throw playersError;
+  const removedUserIds = new Set((removed ?? []).map(m => m.user_id));
+  return new Set((players ?? []).filter(p => p.user_id && removedUserIds.has(p.user_id)).map(p => p.name));
 }
 
 export async function setDangerZoneAccess(clubId: string, userId: string, access: boolean): Promise<void> {
@@ -264,7 +381,7 @@ export interface SuperAdminClubRow extends ClubRow {
 export async function listAllClubsForSuperAdmin(): Promise<SuperAdminClubRow[]> {
   const [{ data: clubs, error: clubsError }, { data: members, error: membersError }] = await Promise.all([
     supabase.from('clubs').select('*').order('created_at'),
-    supabase.from('club_members').select('club_id'),
+    supabase.from('club_members').select('club_id').is('removed_at', null),
   ]);
   if (clubsError) throw clubsError;
   if (membersError) throw membersError;

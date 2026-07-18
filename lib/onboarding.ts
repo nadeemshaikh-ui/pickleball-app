@@ -18,7 +18,7 @@ export async function markOnboardingComplete(userId: string): Promise<void> {
   if (error && error.code !== '23505') throw error; // duplicate insert is a no-op, not an error
 }
 
-export type OnboardingStep = 'branch' | 'create-club' | 'join-club' | 'profile' | 'tour' | 'done';
+export type OnboardingStep = 'branch' | 'create-club' | 'join-club' | 'join-request-profile' | 'profile' | 'tour' | 'done';
 
 // Pure — decides which step a signed-in user with no completed-onboarding
 // row should land on first. Someone who already belongs to a club (they

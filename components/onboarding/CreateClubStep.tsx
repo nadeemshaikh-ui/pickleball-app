@@ -3,7 +3,14 @@
 import { useState } from 'react';
 import { createClub } from '@/lib/clubs';
 
-export default function CreateClubStep({ onDone }: { onDone: (clubId: string) => void }) {
+interface CreateClubStepProps {
+  onDone: (clubId: string) => void;
+  // Fires instead of onDone when this account already has a club — creation
+  // was queued for super-admin approval rather than happening instantly.
+  onRequestPending?: () => void;
+}
+
+export default function CreateClubStep({ onDone, onRequestPending }: CreateClubStepProps) {
   const [name, setName] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -17,8 +24,12 @@ export default function CreateClubStep({ onDone }: { onDone: (clubId: string) =>
     setSubmitting(true);
     setError(null);
     try {
-      const club = await createClub(name.trim(), logoFile);
-      onDone(club.id);
+      const result = await createClub(name.trim(), logoFile);
+      if (result.status === 'pending_approval') {
+        onRequestPending?.();
+      } else {
+        onDone(result.club.id);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create club.');
       setSubmitting(false);

@@ -46,6 +46,9 @@ export default function ClubsPage() {
                 Switch
               </button>
             )}
+            <Link href={`/clubs/${m.club_id}`} className="text-link-btn">
+              View
+            </Link>
             {m.role === 'admin' && (
               <Link href={`/clubs/${m.club_id}/settings`} className="text-link-btn">
                 Settings

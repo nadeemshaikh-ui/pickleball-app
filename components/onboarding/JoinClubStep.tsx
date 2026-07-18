@@ -1,14 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { joinClubByCode, searchClubsByName, requestToJoinClub, type ClubRow } from '@/lib/clubs';
+import { joinClubByCode, searchClubsByName, type ClubRow } from '@/lib/clubs';
 
 interface JoinClubStepProps {
   onJoined: (clubId: string) => void;
-  onRequestSent?: (clubName: string) => void;
+  // Fires when the user picks "Request to Join" — the request itself isn't
+  // submitted here. The parent wizard collects a profile first (a pending
+  // requester isn't a club member yet, so there's no players row to attach
+  // one to), then submits the request with the profile attached.
+  onRequestStart?: (club: ClubRow) => void;
 }
 
-export default function JoinClubStep({ onJoined, onRequestSent }: JoinClubStepProps) {
+export default function JoinClubStep({ onJoined, onRequestStart }: JoinClubStepProps) {
   const [code, setCode] = useState('');
   const [codeSubmitting, setCodeSubmitting] = useState(false);
   const [codeError, setCodeError] = useState<string | null>(null);
@@ -45,10 +49,9 @@ export default function JoinClubStep({ onJoined, onRequestSent }: JoinClubStepPr
     }
   }
 
-  async function handleRequest(club: ClubRow) {
-    await requestToJoinClub(club.id);
+  function handleRequest(club: ClubRow) {
     setRequestedIds(prev => new Set(prev).add(club.id));
-    onRequestSent?.(club.name);
+    onRequestStart?.(club);
   }
 
   return (

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import { markOnboardingComplete, getInitialStep, type OnboardingStep } from '@/lib/onboarding';
+import { requestToJoinClub, type ClubRow } from '@/lib/clubs';
 import BranchStep from '@/components/onboarding/BranchStep';
 import CreateClubStep from '@/components/onboarding/CreateClubStep';
 import JoinClubStep from '@/components/onboarding/JoinClubStep';
@@ -14,14 +15,17 @@ import DoneStep from '@/components/onboarding/DoneStep';
 
 // 5 dots: branch, the create/join sub-step, profile, tour, done — so filling
 // in a club name or searching for one actually advances the bar instead of
-// looking stuck on step 1.
+// looking stuck on step 1. join-request-profile shares the profile dot —
+// it's the same "fill in your info" moment, just for a club that hasn't
+// approved membership yet.
 const DOT_COUNT = 5;
 function dotIndexFor(step: OnboardingStep): number {
   switch (step) {
     case 'branch': return 0;
     case 'create-club':
     case 'join-club': return 1;
-    case 'profile': return 2;
+    case 'profile':
+    case 'join-request-profile': return 2;
     case 'tour': return 3;
     case 'done': return 4;
   }
@@ -32,6 +36,7 @@ export default function OnboardingPage() {
   const { clubs, currentClubId, setCurrentClubId, loading: clubLoading } = useCurrentClub();
   const [step, setStep] = useState<OnboardingStep | null>(null);
   const [activeClubId, setActiveClubId] = useState<string | null>(null);
+  const [pendingRequestClub, setPendingRequestClub] = useState<ClubRow | null>(null);
 
   // Decide the starting step once club membership has loaded. Someone who
   // already belongs to a club (closed the tab mid-wizard last time) skips
@@ -93,6 +98,7 @@ export default function OnboardingPage() {
             setActiveClubId(clubId);
             setStep('profile');
           }}
+          onRequestPending={finishPendingRequest}
         />
       )}
 
@@ -103,7 +109,20 @@ export default function OnboardingPage() {
             setActiveClubId(clubId);
             setStep('profile');
           }}
-          onRequestSent={finishPendingRequest}
+          onRequestStart={club => {
+            setPendingRequestClub(club);
+            setStep('join-request-profile');
+          }}
+        />
+      )}
+
+      {step === 'join-request-profile' && pendingRequestClub && (
+        <ProfileStep
+          clubId={pendingRequestClub.id}
+          onSubmit={async fields => {
+            await requestToJoinClub(pendingRequestClub.id, fields);
+            await finishPendingRequest();
+          }}
         />
       )}
 

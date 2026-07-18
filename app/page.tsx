@@ -9,7 +9,14 @@ import { getOwnPlayer } from '@/lib/players';
 import { fetchLifetimeLeaderboard, fetchStreaks, type LifetimePlayerStats } from '@/lib/leagueStats';
 import { fetchStreakRecords } from '@/lib/streakRecords';
 import { fetchPendingChallenges } from '@/lib/challenges';
-import { listPendingJoinRequests, listMyPendingJoinRequests, type JoinRequestRow, type ClubRow } from '@/lib/clubs';
+import {
+  listPendingJoinRequests,
+  listMyPendingJoinRequests,
+  listMyPendingClubCreationRequests,
+  type JoinRequestRow,
+  type ClubRow,
+  type ClubCreationRequestRow,
+} from '@/lib/clubs';
 import { computeBadges, buildBadgeInput, type Badge } from '@/lib/badges';
 import SignInGate from '@/components/SignInGate';
 import { Flame, Crown, Zap, Bell } from 'lucide-react';
@@ -24,6 +31,7 @@ export default function HomePage() {
   const [pendingChallengeCount, setPendingChallengeCount] = useState(0);
   const [pendingJoinRequests, setPendingJoinRequests] = useState<JoinRequestRow[]>([]);
   const [myPendingRequests, setMyPendingRequests] = useState<(JoinRequestRow & { club: ClubRow })[]>([]);
+  const [myPendingClubCreationRequests, setMyPendingClubCreationRequests] = useState<ClubCreationRequestRow[]>([]);
   const [dashboardLoading, setDashboardLoading] = useState(true);
   const [ownStats, setOwnStats] = useState<LifetimePlayerStats | null>(null);
   const [rank, setRank] = useState<number | null>(null);
@@ -47,6 +55,7 @@ export default function HomePage() {
   useEffect(() => {
     if (checkingOnboarding || !user || currentClubId) return;
     listMyPendingJoinRequests().then(setMyPendingRequests).catch(() => setMyPendingRequests([]));
+    listMyPendingClubCreationRequests().then(setMyPendingClubCreationRequests).catch(() => setMyPendingClubCreationRequests([]));
   }, [checkingOnboarding, user, currentClubId]);
 
   useEffect(() => {
@@ -54,16 +63,32 @@ export default function HomePage() {
       setDashboardLoading(false);
       return;
     }
+    // ClubSwitcher (in the global header) can change currentClubId without
+    // unmounting this page — without a staleness guard, a slow response for
+    // the club the user just switched AWAY from could resolve after the
+    // effect re-ran, see own=null for that stale club, and wrongly
+    // force-navigate a user looking at a perfectly valid club.
+    let cancelled = false;
     async function load() {
       setDashboardLoading(true);
       try {
         const own = await getOwnPlayer(currentClubId!, user!.id);
+        if (cancelled) return;
+        if (!own) {
+          // Member with no player row yet — pre-existing account from before
+          // onboarding shipped, or any other edge case that slipped past it.
+          // getInitialStep(hasClub=true) routes straight to ProfileStep, and
+          // upsertOwnPlayer is idempotent, so this is a safe one-way fallback.
+          router.replace('/onboarding');
+          return;
+        }
         const [streaks, records, challenges, leaderboard] = await Promise.all([
           fetchStreaks(currentClubId!),
           fetchStreakRecords(currentClubId!),
           fetchPendingChallenges(currentClubId!, own?.name ?? ''),
           fetchLifetimeLeaderboard(currentClubId!),
         ]);
+        if (cancelled) return;
         if (own) {
           setStreak(streaks.get(own.name) ?? 0);
           const winRecordHolder = records.find(r => r.streakType === 'win')?.holderName;
@@ -83,10 +108,13 @@ export default function HomePage() {
           setPendingJoinRequests([]);
         }
       } finally {
-        setDashboardLoading(false);
+        if (!cancelled) setDashboardLoading(false);
       }
     }
     load();
+    return () => {
+      cancelled = true;
+    };
   }, [checkingOnboarding, user, currentClubId, isCurrentClubAdmin]);
 
   if (clubLoading || checkingOnboarding) return <main className="page"><p>Loading…</p></main>;
@@ -94,7 +122,7 @@ export default function HomePage() {
 
   return (
     <main className="page">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+      <Link href={currentClubId ? `/clubs/${currentClubId}` : '/clubs'} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, color: 'inherit', textDecoration: 'none' }}>
         {currentClub?.logo_url && (
           <img src={currentClub.logo_url} alt="" width={36} height={36} style={{ borderRadius: '50%', objectFit: 'cover' }} />
         )}
@@ -108,17 +136,25 @@ export default function HomePage() {
             )}
           </h1>
         </div>
-      </div>
+      </Link>
 
       {!currentClubId && (
         <div className="card" style={{ marginBottom: 12 }}>
-          {myPendingRequests.length > 0 ? (
-            myPendingRequests.map(r => (
-              <p key={r.id} style={{ margin: 0 }}>
-                <Bell size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                Your request to join <strong>{r.club.name}</strong> is pending — we&apos;ll let you in once the admin approves you.
-              </p>
-            ))
+          {myPendingRequests.length > 0 || myPendingClubCreationRequests.length > 0 ? (
+            <>
+              {myPendingRequests.map(r => (
+                <p key={r.id} style={{ margin: 0 }}>
+                  <Bell size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+                  Your request to join <strong>{r.club.name}</strong> is pending — we&apos;ll let you in once the admin approves you.
+                </p>
+              ))}
+              {myPendingClubCreationRequests.map(r => (
+                <p key={r.id} style={{ margin: 0 }}>
+                  <Bell size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+                  Your request to create <strong>{r.requested_name}</strong> is pending super-admin review.
+                </p>
+              ))}
+            </>
           ) : (
             <p style={{ margin: 0, color: 'var(--muted)' }}>
               You&apos;re not in a club yet. <Link href="/clubs">Create or join one</Link> to start a session.
@@ -148,6 +184,18 @@ export default function HomePage() {
 
           <Link href="/league/stats" style={{ display: 'block', textAlign: 'right', fontSize: 12, color: 'var(--muted)', marginTop: 10 }}>
             View full stats →
+          </Link>
+        </div>
+      )}
+
+      {!dashboardLoading && !ownStats && currentClubId && (
+        <div className="card" style={{ marginBottom: 12 }}>
+          <p style={{ margin: 0, fontWeight: 700 }}>You&apos;re in!</p>
+          <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: 13 }}>
+            Play your first session to start tracking stats, streaks, and badges.
+          </p>
+          <Link href="/setup" className="btn-primary" style={{ display: 'inline-block', marginTop: 10 }}>
+            Start a session
           </Link>
         </div>
       )}

@@ -1,7 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { isSuperAdmin, listAllClubsForSuperAdmin, resetClubData, type SuperAdminClubRow } from '@/lib/clubs';
+import {
+  isSuperAdmin,
+  listAllClubsForSuperAdmin,
+  resetClubData,
+  listPendingClubCreationRequests,
+  approveClubCreationRequest,
+  rejectClubCreationRequest,
+  type SuperAdminClubRow,
+  type ClubCreationRequestRow,
+} from '@/lib/clubs';
 import { listPlayers, type PlayerRow } from '@/lib/players';
 import { fetchRecentErrorsAllClubs, type AppErrorRow } from '@/lib/errorLog';
 import ConfirmModal from '@/components/ConfirmModal';
@@ -17,6 +26,9 @@ export default function SuperAdminPage() {
   const [resetting, setResetting] = useState(false);
   const [resetMsg, setResetMsg] = useState<string | null>(null);
   const [errors, setErrors] = useState<AppErrorRow[]>([]);
+  const [creationRequests, setCreationRequests] = useState<ClubCreationRequestRow[]>([]);
+  const [creationError, setCreationError] = useState<string | null>(null);
+  const [creationLoadError, setCreationLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -25,10 +37,38 @@ export default function SuperAdminPage() {
       if (ok) {
         setClubs(await listAllClubsForSuperAdmin());
         setErrors(await fetchRecentErrorsAllClubs().catch(() => []));
+        try {
+          setCreationRequests(await listPendingClubCreationRequests());
+        } catch (e) {
+          // Don't fold a broken query/policy into "zero pending requests" —
+          // that's indistinguishable from the real empty state and a super
+          // admin would never notice requests are stuck.
+          setCreationLoadError(e instanceof Error ? e.message : 'Failed to load club creation requests.');
+        }
       }
       setLoading(false);
     })();
   }, []);
+
+  async function handleResolveCreation(request: ClubCreationRequestRow, decision: 'approved' | 'rejected') {
+    setCreationError(null);
+    try {
+      if (decision === 'approved') {
+        await approveClubCreationRequest(request.id);
+      } else {
+        await rejectClubCreationRequest(request.id);
+      }
+      // Remove immediately on RPC success — before the club-list refresh,
+      // so a refresh failure can't leave an already-resolved request
+      // showing as pending and re-clickable.
+      setCreationRequests(prev => prev.filter(r => r.id !== request.id));
+      if (decision === 'approved') {
+        setClubs(await listAllClubsForSuperAdmin());
+      }
+    } catch (e) {
+      setCreationError(e instanceof Error ? e.message : 'Failed to resolve request.');
+    }
+  }
 
   async function toggleExpand(clubId: string) {
     if (expandedClubId === clubId) {
@@ -65,6 +105,30 @@ export default function SuperAdminPage() {
 
   return (
     <main className="page">
+      {(creationRequests.length > 0 || creationLoadError) && (
+        <>
+          <h1>Pending Club Creation Requests ({creationRequests.length})</h1>
+          {creationLoadError && <p style={{ color: 'var(--danger)', fontWeight: 600, marginBottom: 8 }}>Couldn&apos;t load: {creationLoadError}</p>}
+          {creationError && <p style={{ color: 'var(--danger)', fontWeight: 600, marginBottom: 8 }}>{creationError}</p>}
+          <div className="card" style={{ padding: 0, marginBottom: 20 }}>
+            {creationRequests.map(r => (
+              <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>{r.requested_name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)' }}>Requested {new Date(r.requested_at).toLocaleDateString()} — this account already has a club</div>
+                </div>
+                <button className="btn-primary" style={{ minHeight: 32, padding: '4px 12px', fontSize: 13 }} onClick={() => handleResolveCreation(r, 'approved')}>
+                  Approve
+                </button>
+                <button className="btn-secondary" style={{ minHeight: 32, padding: '4px 12px', fontSize: 13 }} onClick={() => handleResolveCreation(r, 'rejected')}>
+                  Reject
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
       <h1>All Clubs ({clubs.length})</h1>
       <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>
         Super admin view — every club on the platform, regardless of your own membership. Tap a club to see its roster and reset its data.

@@ -414,6 +414,25 @@ export async function fetchEloBaseline(clubId: string, playerName: string): Prom
   return data?.elo_rating ?? null;
 }
 
+export interface EloSnapshot {
+  eloRating: number;
+  recordedAt: string;
+}
+
+// Full forward-only history for the player profile page's rating-over-time
+// graph — unlike fetchEloBaseline, not windowed to 90 days, since a career
+// chart should show everything that's been recorded.
+export async function fetchEloHistory(clubId: string, playerName: string): Promise<EloSnapshot[]> {
+  const { data, error } = await supabase
+    .from('player_elo_snapshots')
+    .select('elo_rating, recorded_at')
+    .eq('club_id', clubId)
+    .eq('player_name', playerName)
+    .order('recorded_at', { ascending: true });
+  if (error) throw error;
+  return (data as { elo_rating: number; recorded_at: string }[]).map(r => ({ eloRating: r.elo_rating, recordedAt: r.recorded_at }));
+}
+
 function currentMonthKey(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;

@@ -67,6 +67,14 @@ export async function fetchFoundingFiveNames(clubId: string): Promise<Set<string
   return new Set((data as { name: string }[]).map(p => p.name));
 }
 
+// For the single-club player profile page — looked up by the players.id
+// roster/leaderboard rows already carry, not by user_id.
+export async function getPlayerById(clubId: string, playerId: string): Promise<PlayerRow | null> {
+  const { data, error } = await supabase.from('players').select('*').eq('club_id', clubId).eq('id', playerId).maybeSingle();
+  if (error) throw error;
+  return data as PlayerRow | null;
+}
+
 // A user_id can now have one player row per club (unique per club_id+user_id,
 // not globally) — so "my player" only makes sense scoped to a specific club.
 export async function getOwnPlayer(clubId: string, userId: string): Promise<PlayerRow | null> {

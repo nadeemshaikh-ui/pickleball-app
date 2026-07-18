@@ -4,8 +4,18 @@ import { useEffect, useState } from 'react';
 import { getOwnPlayer, upsertOwnPlayer } from '@/lib/players';
 import { uploadPlayerPhoto } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import type { JoinRequestProfile } from '@/lib/clubs';
 
-export default function ProfileStep({ clubId, onDone }: { clubId: string; onDone: () => void }) {
+interface ProfileStepProps {
+  clubId: string;
+  onDone?: () => void;
+  // When provided, called with the collected fields instead of writing
+  // directly to `players` (e.g. the join-request flow, where club
+  // membership doesn't exist yet — the caller decides where the fields go).
+  onSubmit?: (fields: JoinRequestProfile) => Promise<void>;
+}
+
+export default function ProfileStep({ clubId, onDone, onSubmit }: ProfileStepProps) {
   const [name, setName] = useState('');
   const [nickname, setNickname] = useState('');
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -61,11 +71,7 @@ export default function ProfileStep({ clubId, onDone }: { clubId: string; onDone
     setError(null);
     setSaving(true);
     try {
-      const user = await getCurrentUser();
-      if (!user) throw new Error('Not signed in.');
-      await upsertOwnPlayer({
-        clubId,
-        userId: user.id,
+      const fields: JoinRequestProfile = {
         name: trimmed,
         nickname: nickname.trim() || null,
         photoUrl,
@@ -74,8 +80,15 @@ export default function ProfileStep({ clubId, onDone }: { clubId: string; onDone
         paddle: paddle.trim() || null,
         playingSinceYear: playingSinceYear ? Number(playingSinceYear) : null,
         signatureShot: signatureShot.trim() || null,
-      });
-      onDone();
+      };
+      if (onSubmit) {
+        await onSubmit(fields);
+      } else {
+        const user = await getCurrentUser();
+        if (!user) throw new Error('Not signed in.');
+        await upsertOwnPlayer({ clubId, userId: user.id, ...fields });
+      }
+      onDone?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Save failed — that name might already be taken.');
       setSaving(false);
