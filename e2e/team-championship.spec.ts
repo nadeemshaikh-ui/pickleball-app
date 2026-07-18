@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test';
 
+// Uses the member fixture (already onboarded, matches member-permissions.spec.ts)
+// rather than the default user.json — that session gets stuck re-showing
+// the profile onboarding step on every /setup visit in this environment,
+// an unrelated pre-existing fixture issue.
+test.use({ storageState: 'e2e/.auth/member.json' });
+
 // End-to-end coverage for the Team Championship format (see memory
 // project_pickleball_team_championship_plan): create a session with 2
 // manually-split teams, generate suggested round pairings, and confirm the
@@ -10,14 +16,6 @@ import { test, expect } from '@playwright/test';
 
 test('Team Championship: create, split teams, generate pairings, view results', async ({ page }) => {
   await page.goto('/setup');
-
-  // Defensive: if this stored auth session hasn't completed onboarding
-  // (unrelated to Team Championship), finish it before proceeding.
-  const continueButton = page.getByRole('button', { name: 'Continue' });
-  if (await continueButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await continueButton.click();
-    await page.goto('/setup');
-  }
 
   await page.getByLabel('Number of courts').fill('1');
   await page.getByLabel('Number of players').fill('4');
@@ -63,5 +61,5 @@ test('Team Championship: create, split teams, generate pairings, view results', 
   await expect(page.getByRole('heading', { name: 'Results' })).toBeVisible();
   await expect(page.getByText('Session 1')).toBeVisible();
   await expect(page.getByText(/League total/)).toBeVisible();
-  await expect(page.getByText('Total')).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Total', exact: true })).toBeVisible();
 });
