@@ -44,3 +44,21 @@ export async function recordScoreWithCode(matchId: string, scoreA: number, score
   });
   if (error) throw error;
 }
+
+// Admin-only toggle — companion to per-court scorer codes for club nights
+// where anyone with the /watch link is already trusted.
+export async function setTournamentSelfScore(tournamentId: string, enabled: boolean): Promise<void> {
+  const { error } = await supabase.rpc('set_tournament_self_score', { p_tournament_id: tournamentId, p_enabled: enabled });
+  if (error) throw error;
+}
+
+// Anon-reachable, gated server-side by the tournament's self_score_enabled
+// flag — no code required once an admin has turned this on.
+export async function recordScoreSelf(matchId: string, scoreA: number, scoreB: number): Promise<void> {
+  const { error } = await supabase.rpc('record_tournament_match_score_self', {
+    p_match_id: matchId,
+    p_score_a: scoreA,
+    p_score_b: scoreB,
+  });
+  if (error) throw error;
+}

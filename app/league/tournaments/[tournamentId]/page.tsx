@@ -11,7 +11,7 @@ import {
   setTournamentRegistrationOpen,
   type TournamentRegistrationRow,
 } from '@/lib/tournamentRegistration';
-import { fetchCourtScorerCodes, createCourtScorerCode, type CourtScorerCodeRow } from '@/lib/tournamentScorers';
+import { fetchCourtScorerCodes, createCourtScorerCode, setTournamentSelfScore, type CourtScorerCodeRow } from '@/lib/tournamentScorers';
 import {
   fetchTournamentTeams,
   createTournamentTeam,
@@ -117,6 +117,20 @@ export default function TournamentDetailPage() {
       setRegistrations(prev => prev.map(r => (r.id === registrationId ? { ...r, status: 'withdrawn' } : r)));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to withdraw registration.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleToggleSelfScore() {
+    if (!tournament) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await setTournamentSelfScore(tournament.id, !tournament.self_score_enabled);
+      setTournament({ ...tournament, self_score_enabled: !tournament.self_score_enabled });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update self-score setting.');
     } finally {
       setBusy(false);
     }
@@ -330,6 +344,10 @@ export default function TournamentDetailPage() {
         <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 10px' }}>
           Share a code with whoever&apos;s running a court — they can enter scores for that court without an account.
         </p>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 10, cursor: 'pointer' }}>
+          <input type="checkbox" checked={tournament.self_score_enabled} onChange={handleToggleSelfScore} disabled={busy} />
+          Let anyone self-score — no code needed. Unlike court codes, this covers every match (not just one court) and can only be turned off, not revoked per person.
+        </label>
         {scorerCodes.map(c => (
           <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: '1px solid var(--border)' }}>
             <span style={{ flex: 1, fontSize: 13, fontWeight: 700 }}>{c.court_label}</span>

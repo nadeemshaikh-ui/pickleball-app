@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { Trophy, UserPlus } from 'lucide-react';
 import { fetchPublicTournament, type PublicTournamentData } from '@/lib/tournamentPublic';
 import { registerForTournament } from '@/lib/tournamentRegistration';
+import { recordScoreSelf } from '@/lib/tournamentScorers';
 import { computeStandings, type StandingsRow } from '@/lib/tournamentStandings';
 import type { LeagueGroupResults } from '@/lib/tournamentStages';
 import TournamentStandingsTable from '@/components/TournamentStandingsTable';
@@ -30,6 +31,10 @@ export default function WatchTournamentPage() {
   const [registering, setRegistering] = useState(false);
   const [regError, setRegError] = useState<string | null>(null);
   const [regDone, setRegDone] = useState(false);
+  const [scoringMatch, setScoringMatch] = useState<TournamentMatchRow | null>(null);
+  const [scoreA, setScoreA] = useState('');
+  const [scoreB, setScoreB] = useState('');
+  const [saving, setSaving] = useState(false);
 
   function load() {
     fetchPublicTournament(shareToken)
@@ -39,6 +44,32 @@ export default function WatchTournamentPage() {
   }
 
   useEffect(load, [shareToken]);
+
+  function openScoreEntry(match: TournamentMatchRow) {
+    if (match.status === 'completed') {
+      setError('This match already has a score — ask a club admin to correct it if needed.');
+      return;
+    }
+    setError(null);
+    setScoringMatch(match);
+    setScoreA('');
+    setScoreB('');
+  }
+
+  async function handleSaveScore() {
+    if (!scoringMatch || scoreA === '' || scoreB === '') return;
+    setSaving(true);
+    setError(null);
+    try {
+      await recordScoreSelf(scoringMatch.id, Number(scoreA), Number(scoreB));
+      setScoringMatch(null);
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save score.');
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function handleRegister() {
     if (!regName.trim()) {
@@ -184,13 +215,26 @@ export default function WatchTournamentPage() {
               )
             )}
             {isBracket ? (
-              <TournamentBracketTree matches={stageMatches} teams={teams} />
+              <TournamentBracketTree matches={stageMatches} teams={teams} onScoreClick={data.tournament.selfScoreEnabled ? openScoreEntry : undefined} />
             ) : (
-              <TournamentFixturesList matches={stageMatches} teams={teams} />
+              <TournamentFixturesList matches={stageMatches} teams={teams} onScoreClick={data.tournament.selfScoreEnabled ? openScoreEntry : undefined} />
             )}
           </section>
         );
       })}
+
+      {scoringMatch && (
+        <div className="card" style={{ position: 'sticky', bottom: 12, marginTop: 16, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 700, fontSize: 13 }}>Enter score:</span>
+          <input type="number" placeholder="Score A" value={scoreA} onChange={e => setScoreA(e.target.value)} style={{ width: 80 }} />
+          <span>–</span>
+          <input type="number" placeholder="Score B" value={scoreB} onChange={e => setScoreB(e.target.value)} style={{ width: 80 }} />
+          <button className="btn-primary" onClick={handleSaveScore} disabled={saving || scoreA === '' || scoreB === ''}>
+            Save
+          </button>
+          <button className="text-link-btn" onClick={() => setScoringMatch(null)}>Cancel</button>
+        </div>
+      )}
     </main>
   );
 }

@@ -43,7 +43,7 @@ export interface PublicRegistration {
 }
 
 export interface PublicTournamentData {
-  tournament: { id: string; name: string; status: string; registrationOpen: boolean };
+  tournament: { id: string; name: string; status: string; registrationOpen: boolean; selfScoreEnabled: boolean };
   teams: PublicTeam[];
   stages: {
     id: string;
