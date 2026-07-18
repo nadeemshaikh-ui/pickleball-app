@@ -8,6 +8,7 @@ export interface TournamentRegistrationRow {
   partner_name: string | null;
   registered_by_user_id: string | null;
   status: 'registered' | 'waitlisted' | 'withdrawn';
+  slot_number: number | null;
   created_at: string;
 }
 
@@ -46,5 +47,24 @@ export async function withdrawTournamentRegistration(registrationId: string): Pr
 
 export async function setTournamentRegistrationOpen(tournamentId: string, open: boolean): Promise<void> {
   const { error } = await supabase.rpc('set_tournament_registration_open', { p_tournament_id: tournamentId, p_open: open });
+  if (error) throw error;
+}
+
+// Admin-only — null turns slot-claiming off and reverts to free-form
+// registration. Mutually exclusive with free-form, not layered on top.
+export async function setTournamentSlotCount(tournamentId: string, slotCount: number | null): Promise<void> {
+  const { error } = await supabase.rpc('set_tournament_slot_count', { p_tournament_id: tournamentId, p_slot_count: slotCount });
+  if (error) throw error;
+}
+
+// Anon-reachable. Race-safe against a partial unique index server-side —
+// a "slot taken" error here means someone else claimed it a moment ago.
+export async function claimTournamentSlot(shareToken: string, slotNumber: number, registrantName: string, partnerName: string | null): Promise<void> {
+  const { error } = await supabase.rpc('claim_tournament_slot', {
+    p_share_token: shareToken,
+    p_slot_number: slotNumber,
+    p_registrant_name: registrantName,
+    p_partner_name: partnerName,
+  });
   if (error) throw error;
 }

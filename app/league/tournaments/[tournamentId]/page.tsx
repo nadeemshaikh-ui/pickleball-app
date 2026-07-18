@@ -9,6 +9,7 @@ import {
   fetchTournamentRegistrations,
   withdrawTournamentRegistration,
   setTournamentRegistrationOpen,
+  setTournamentSlotCount,
   type TournamentRegistrationRow,
 } from '@/lib/tournamentRegistration';
 import { fetchCourtScorerCodes, createCourtScorerCode, setTournamentSelfScore, type CourtScorerCodeRow } from '@/lib/tournamentScorers';
@@ -104,6 +105,31 @@ export default function TournamentDetailPage() {
       setTournament({ ...tournament, registration_open: !tournament.registration_open });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to update registration status.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSetSlotCount(raw: string) {
+    if (!tournament) return;
+    const trimmed = raw.trim();
+    const next = trimmed === '' ? null : Number(trimmed);
+    if (next !== null && (!Number.isInteger(next) || next < 1)) {
+      setError('Slot count must be a whole number of 1 or more, or blank to turn slots off.');
+      return;
+    }
+    if (next === tournament.slot_count) return;
+    const maxClaimed = Math.max(0, ...registrations.filter(r => r.slot_number !== null).map(r => r.slot_number!));
+    if (next !== null && next < maxClaimed) {
+      if (!window.confirm(`Slot #${maxClaimed} is already claimed — lowering below that hides it from the public grid without freeing it. Continue?`)) return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await setTournamentSlotCount(tournament.id, next);
+      setTournament({ ...tournament, slot_count: next });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update slot count.');
     } finally {
       setBusy(false);
     }
@@ -339,13 +365,29 @@ export default function TournamentDetailPage() {
 
       <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><UserPlus size={18} /> Registrations ({registrations.filter(r => r.status !== 'withdrawn').length})</h2>
       <div className="card" style={{ marginBottom: 16 }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: registrations.length > 0 ? 10 : 0, cursor: 'pointer' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 10, cursor: 'pointer' }}>
           <input type="checkbox" checked={tournament.registration_open} onChange={handleToggleRegistration} disabled={busy} />
           Registration open — anyone with the spectator link can sign up
         </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: registrations.length > 0 ? 10 : 0 }}>
+          Numbered slots
+          <input
+            type="number"
+            min={1}
+            placeholder="Off — free-form names"
+            defaultValue={tournament.slot_count ?? ''}
+            onBlur={e => handleSetSlotCount(e.target.value)}
+            disabled={busy}
+            style={{ width: 160 }}
+          />
+          <span style={{ fontSize: 11, color: 'var(--muted)' }}>set a count to switch from free-form names to numbered claimable slots</span>
+        </label>
         {registrations.filter(r => r.status !== 'withdrawn').map(r => (
           <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderTop: '1px solid var(--border)' }}>
-            <span style={{ flex: 1, fontSize: 13 }}>{r.registrant_name}{r.partner_name ? ` & ${r.partner_name}` : ''}</span>
+            <span style={{ flex: 1, fontSize: 13 }}>
+              {r.slot_number !== null && <strong>#{r.slot_number} </strong>}
+              {r.registrant_name}{r.partner_name ? ` & ${r.partner_name}` : ''}
+            </span>
             <button className="btn-secondary" style={{ minHeight: 28, padding: '3px 10px', fontSize: 12 }} onClick={() => handleWithdrawRegistration(r.id)} disabled={busy}>
               Withdraw
             </button>

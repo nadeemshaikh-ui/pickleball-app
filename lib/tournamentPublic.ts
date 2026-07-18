@@ -40,10 +40,11 @@ export interface PublicRegistration {
   registrantName: string;
   partnerName: string | null;
   status: 'registered' | 'waitlisted' | 'withdrawn';
+  slotNumber: number | null;
 }
 
 export interface PublicTournamentData {
-  tournament: { id: string; name: string; status: string; registrationOpen: boolean; selfScoreEnabled: boolean };
+  tournament: { id: string; name: string; status: string; registrationOpen: boolean; selfScoreEnabled: boolean; slotCount: number | null };
   teams: PublicTeam[];
   stages: {
     id: string;

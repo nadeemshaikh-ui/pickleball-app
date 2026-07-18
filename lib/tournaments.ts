@@ -11,6 +11,7 @@ export interface TournamentRow {
   completed_at: string | null;
   registration_open: boolean;
   self_score_enabled: boolean;
+  slot_count: number | null;
 }
 
 function generateShareToken(): string {

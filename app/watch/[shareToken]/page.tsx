@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Trophy, UserPlus } from 'lucide-react';
 import { fetchPublicTournament, type PublicTournamentData } from '@/lib/tournamentPublic';
-import { registerForTournament } from '@/lib/tournamentRegistration';
+import { registerForTournament, claimTournamentSlot } from '@/lib/tournamentRegistration';
 import { recordScoreSelf } from '@/lib/tournamentScorers';
 import { computeStandings, type StandingsRow } from '@/lib/tournamentStandings';
 import type { LeagueGroupResults } from '@/lib/tournamentStages';
@@ -31,6 +31,8 @@ export default function WatchTournamentPage() {
   const [registering, setRegistering] = useState(false);
   const [regError, setRegError] = useState<string | null>(null);
   const [regDone, setRegDone] = useState(false);
+  const [claimingSlot, setClaimingSlot] = useState<number | null>(null);
+  const [claiming, setClaiming] = useState(false);
   const [scoringMatch, setScoringMatch] = useState<TournamentMatchRow | null>(null);
   const [scoreA, setScoreA] = useState('');
   const [scoreB, setScoreB] = useState('');
@@ -68,6 +70,26 @@ export default function WatchTournamentPage() {
       setError(e instanceof Error ? e.message : 'Failed to save score.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleClaimSlot() {
+    if (claimingSlot === null || !regName.trim()) {
+      setRegError('Name is required.');
+      return;
+    }
+    setClaiming(true);
+    setRegError(null);
+    try {
+      await claimTournamentSlot(shareToken, claimingSlot, regName.trim(), regPartner.trim() || null);
+      setClaimingSlot(null);
+      setRegName('');
+      setRegPartner('');
+      load();
+    } catch (e) {
+      setRegError(e instanceof Error ? e.message : 'Could not claim that slot.');
+    } finally {
+      setClaiming(false);
     }
   }
 
@@ -111,7 +133,69 @@ export default function WatchTournamentPage() {
       <h1 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Trophy size={22} /> {data.tournament.name}</h1>
       <p style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'capitalize', marginBottom: 16 }}>{data.tournament.status}</p>
 
-      {data.tournament.registrationOpen && (
+      {data.tournament.registrationOpen && data.tournament.slotCount !== null && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <h2 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 6 }}><UserPlus size={18} /> Claim a slot</h2>
+          {(() => {
+            const claimed = new Map(data.registrations.filter(r => r.slotNumber !== null).map(r => [r.slotNumber as number, r]));
+            const slots = Array.from({ length: data.tournament.slotCount as number }, (_, i) => i + 1);
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 8 }}>
+                {slots.map(n => {
+                  const reg = claimed.get(n);
+                  if (reg) {
+                    return (
+                      <div key={n} className="card" style={{ padding: 8, fontSize: 12, background: 'var(--surface-2, rgba(127,127,127,0.08))' }}>
+                        <div style={{ fontWeight: 800 }}>#{n}</div>
+                        <div>{reg.registrantName}{reg.partnerName ? ` & ${reg.partnerName}` : ''}</div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => { setClaimingSlot(n); setRegError(null); }}
+                      style={{ padding: 8, fontSize: 12, fontWeight: 800 }}
+                    >
+                      #{n}<br />Claim
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
+          {claimingSlot !== null && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: 13 }}>Claiming slot #{claimingSlot}</p>
+              <input
+                value={regName}
+                onChange={e => setRegName(e.target.value)}
+                placeholder="Your name (or a guest's name)"
+                aria-label="Registrant name"
+                style={{ width: '100%', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+              />
+              <input
+                value={regPartner}
+                onChange={e => setRegPartner(e.target.value)}
+                placeholder="Partner's name (optional — leave blank if you need one)"
+                aria-label="Partner name"
+                style={{ width: '100%', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+              />
+              {regError && <p style={{ color: 'var(--danger)', fontWeight: 600, margin: 0 }}>{regError}</p>}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn-primary" onClick={handleClaimSlot} disabled={claiming}>
+                  {claiming ? 'Claiming…' : 'Confirm'}
+                </button>
+                <button className="text-link-btn" onClick={() => setClaimingSlot(null)}>Cancel</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {data.tournament.registrationOpen && data.tournament.slotCount === null && (
         <div className="card" style={{ marginBottom: 16 }}>
           <h2 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 6 }}><UserPlus size={18} /> Register to play</h2>
           {regDone ? (
