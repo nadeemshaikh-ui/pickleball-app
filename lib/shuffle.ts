@@ -48,7 +48,7 @@ function pairKey(a: string, b: string): string {
 // same person doesn't rest two rounds in a row — unless there aren't enough
 // other players to fill `count` without them, in which case a repeat is
 // unavoidable and allowed.
-function pickSitOuts(
+export function pickSitOuts(
   pool: string[],
   sitCounts: Map<string, number>,
   count: number,
@@ -73,7 +73,7 @@ export type LockedPair = [string, string];
 // Rejects overlapping locks (a player in two locked pairs) and pairs
 // referencing players who aren't in the roster — both would otherwise
 // silently corrupt the schedule rather than fail loudly.
-function validateLockedPairs(players: string[], lockedPairs: LockedPair[]): void {
+export function validateLockedPairs(players: string[], lockedPairs: LockedPair[]): void {
   const seen = new Set<string>();
   for (const [a, b] of lockedPairs) {
     if (a === b) throw new Error('A locked pair cannot be the same player twice.');
@@ -95,7 +95,7 @@ interface SitOutUnit {
   key: string;
 }
 
-function buildSitOutUnits(pool: string[], lockedPairs: LockedPair[]): SitOutUnit[] {
+export function buildSitOutUnits(pool: string[], lockedPairs: LockedPair[]): SitOutUnit[] {
   const partnerOf = new Map<string, string>();
   for (const [a, b] of lockedPairs) {
     partnerOf.set(a, b);
@@ -125,7 +125,7 @@ function buildSitOutUnits(pool: string[], lockedPairs: LockedPair[]): SitOutUnit
 // `playerSitOutCount` — rare (needs heavy lock usage with an awkward
 // leftover count), but silently over/under-sitting would break the court
 // fill, so it's a loud error instead.
-function pickSitOutUnits(
+export function pickSitOutUnits(
   units: SitOutUnit[],
   sitCounts: Map<string, number>,
   playerSitOutCount: number,
@@ -166,7 +166,7 @@ function pickSitOutUnits(
 // minimizing repeat partnerships based on the running partnerCounts map.
 // Locked pairs (if both members are in `players`) are seated first as a
 // fixed team before the rest are greedily matched.
-function pairIntoPairs(
+export function pairIntoPairs(
   players: string[],
   partnerCounts: Map<string, number>,
   rand: () => number,
