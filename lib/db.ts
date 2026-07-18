@@ -290,6 +290,12 @@ export async function renamePlayerEverywhere(
         black: session.squads.black.map(p => (p === oldName ? newName : p)),
       }
     : null;
+  // squads_v2 is the N-squad source every Phase 4 UI page now reads from —
+  // must be kept in lockstep with the legacy `squads` write above or a
+  // rename silently doesn't show up anywhere in the N-squad UI.
+  const newSquadsV2 = session.squads_v2
+    ? session.squads_v2.map(squad => ({ ...squad, players: squad.players.map(p => (p === oldName ? newName : p)) }))
+    : null;
 
   const rounds = await getRounds(sessionId);
   const roundUpdates = rounds
@@ -305,7 +311,7 @@ export async function renamePlayerEverywhere(
     });
 
   const results = await Promise.all([
-    supabase.from('sessions').update({ players: newPlayers, squads: newSquads }).eq('id', sessionId),
+    supabase.from('sessions').update({ players: newPlayers, squads: newSquads, squads_v2: newSquadsV2 }).eq('id', sessionId),
     ...roundUpdates,
   ]);
   const failed = results.find(r => r.error);
