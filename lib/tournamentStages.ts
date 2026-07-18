@@ -63,6 +63,13 @@ export interface TournamentStageRow {
   completed_at: string | null;
 }
 
+// Admin-only "Regenerate Bracket" safety net — only the last stage, only if
+// unscored (enforced server-side in delete_tournament_stage).
+export async function deleteStage(stageId: string): Promise<void> {
+  const { error } = await supabase.rpc('delete_tournament_stage', { p_stage_id: stageId });
+  if (error) throw error;
+}
+
 export async function fetchStages(tournamentId: string): Promise<TournamentStageRow[]> {
   const { data, error } = await supabase
     .from('tournament_stages')

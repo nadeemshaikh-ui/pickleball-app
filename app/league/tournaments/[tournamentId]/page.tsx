@@ -20,7 +20,7 @@ import {
   uploadTournamentTeamLogo,
   type TournamentTeamRow,
 } from '@/lib/tournamentTeams';
-import { fetchStages, generateNextStage, type TournamentStageRow, type StageType } from '@/lib/tournamentStages';
+import { fetchStages, generateNextStage, deleteStage, type TournamentStageRow, type StageType } from '@/lib/tournamentStages';
 import { drawMysteryPairs } from '@/lib/mysteryPartner';
 import { listPlayers, type PlayerRow } from '@/lib/players';
 import { isCurrentUserAdmin } from '@/lib/auth';
@@ -278,6 +278,20 @@ export default function TournamentDetailPage() {
     }
   }
 
+  async function handleRegenerateStage(stageId: string) {
+    if (!window.confirm('Delete this stage and its matches? Only works if nothing has been scored yet.')) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await deleteStage(stageId);
+      setStages(await fetchStages(tournamentId));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete stage.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleGenerateStage() {
     if (!currentClubId || !stageName.trim()) return;
     setBusy(true);
@@ -481,11 +495,24 @@ export default function TournamentDetailPage() {
       <h2>Stages</h2>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
         {stages.length === 0 && <p style={{ color: 'var(--muted)', fontSize: 14 }}>No stages yet.</p>}
-        {stages.map(s => (
-          <Link key={s.id} href={`/league/tournaments/${tournamentId}/stage/${s.id}`} className="card" style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ fontWeight: 700 }}>{s.name}</span>
-            <span style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'capitalize' }}>{STAGE_TYPE_LABELS[s.stage_type]} · {s.status}</span>
-          </Link>
+        {stages.map((s, i) => (
+          <div key={s.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Link href={`/league/tournaments/${tournamentId}/stage/${s.id}`} style={{ display: 'flex', justifyContent: 'space-between', flex: 1 }}>
+              <span style={{ fontWeight: 700 }}>{s.name}</span>
+              <span style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'capitalize' }}>{STAGE_TYPE_LABELS[s.stage_type]} · {s.status}</span>
+            </Link>
+            {isAdmin && i === stages.length - 1 && s.status !== 'completed' && (
+              <button
+                className="icon-btn"
+                aria-label={`Regenerate ${s.name}`}
+                title="Delete this stage and its matches (only if unscored)"
+                disabled={busy}
+                onClick={() => handleRegenerateStage(s.id)}
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+          </div>
         ))}
       </div>
 
