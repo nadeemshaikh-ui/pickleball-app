@@ -116,7 +116,7 @@ describe('validateManualPairings', () => {
 });
 
 describe('computeRapidFireState / computeRapidFireBonus', () => {
-  const config: RapidFireConfig = { targetPoints: 5, rotateEveryNPoints: 3, bonusPoints: 10 };
+  const config: RapidFireConfig = { targetPoints: 5, bonusPoints: 10 };
 
   it('tallies points per team from the log and detects the win at targetPoints', () => {
     const log = [
@@ -148,7 +148,7 @@ describe('computeRapidFireState / computeRapidFireBonus', () => {
     expect(bonus.get('challengers')).toBe(0);
   });
 
-  it('rotates the on-court foursome every rotateEveryNPoints total points, cycling each team roster independently', () => {
+  it('has no automatic rotation — on-court players default to each team\'s first two, then carry forward from the most recent log entry', () => {
     const fourPerTeam: SquadSet = [
       { id: 'home', players: ['H1', 'H2', 'H3', 'H4'] },
       { id: 'challengers', players: ['C1', 'C2', 'C3', 'C4'] },
@@ -156,18 +156,24 @@ describe('computeRapidFireState / computeRapidFireBonus', () => {
     const noPoints = computeRapidFireState([], config, fourPerTeam);
     expect(noPoints.onCourtPlayers).toEqual(['H1', 'H2', 'C1', 'C2']);
 
-    const threePoints = computeRapidFireState(
-      [1, 2, 3].map(i => ({ eventOrder: i, scoringTeamId: 'home', onCourtPlayers: [] })),
+    // A manual sub (H2 -> H3) recorded on the next logged point should stick,
+    // not get overridden by any point-count formula.
+    const afterManualSub = computeRapidFireState(
+      [{ eventOrder: 1, scoringTeamId: 'home', onCourtPlayers: ['H1', 'H3', 'C1', 'C2'] }],
       config,
       fourPerTeam
     );
-    expect(threePoints.onCourtPlayers).toEqual(['H3', 'H4', 'C3', 'C4']);
+    expect(afterManualSub.onCourtPlayers).toEqual(['H1', 'H3', 'C1', 'C2']);
 
-    const sixPoints = computeRapidFireState(
-      [1, 2, 3, 4, 5, 6].map(i => ({ eventOrder: i, scoringTeamId: 'home', onCourtPlayers: [] })),
+    // Without another manual sub, on-court players stay exactly as last logged.
+    const anotherPoint = computeRapidFireState(
+      [
+        { eventOrder: 1, scoringTeamId: 'home', onCourtPlayers: ['H1', 'H3', 'C1', 'C2'] },
+        { eventOrder: 2, scoringTeamId: 'home', onCourtPlayers: ['H1', 'H3', 'C1', 'C2'] },
+      ],
       config,
       fourPerTeam
     );
-    expect(sixPoints.onCourtPlayers).toEqual(['H1', 'H2', 'C1', 'C2']); // wraps back around
+    expect(anotherPoint.onCourtPlayers).toEqual(['H1', 'H3', 'C1', 'C2']);
   });
 });

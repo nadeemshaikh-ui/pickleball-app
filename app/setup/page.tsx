@@ -159,7 +159,6 @@ export default function SetupPage() {
   ]);
   const [enableRapidFire, setEnableRapidFire] = useState(false);
   const [rapidFireTarget, setRapidFireTarget] = useState(31);
-  const [rapidFireRotateEvery, setRapidFireRotateEvery] = useState(3);
   const [rapidFireBonus, setRapidFireBonus] = useState(10);
 
   const [lockedPairs, setLockedPairs] = useState<LockedPair[]>([]);
@@ -573,8 +572,8 @@ export default function SetupPage() {
         cursor += r.rounds;
         return stage;
       });
-      if (enableRapidFire && (!Number.isFinite(rapidFireTarget) || rapidFireTarget < 1 || !Number.isFinite(rapidFireRotateEvery) || rapidFireRotateEvery < 1 || !Number.isFinite(rapidFireBonus) || rapidFireBonus < 1)) {
-        setError('Rapid Fire target points, rotation, and bonus must all be positive numbers.');
+      if (enableRapidFire && (!Number.isFinite(rapidFireTarget) || rapidFireTarget < 1 || !Number.isFinite(rapidFireBonus) || rapidFireBonus < 1)) {
+        setError('Rapid Fire target points and bonus must both be positive numbers.');
         return;
       }
     }
@@ -699,7 +698,7 @@ export default function SetupPage() {
           squadsV2: teamChampionshipTeams,
           stageConfig: teamChampionshipStages,
           rapidFireConfig: enableRapidFire
-            ? { targetPoints: rapidFireTarget, rotateEveryNPoints: rapidFireRotateEvery, bonusPoints: rapidFireBonus }
+            ? { targetPoints: rapidFireTarget, bonusPoints: rapidFireBonus }
             : null,
         });
         // No insertRounds call — pairings are entered by hand, round by
@@ -1294,11 +1293,6 @@ export default function SetupPage() {
                 <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
                   Target points
                   <input type="number" min={1} value={rapidFireTarget} onChange={e => setRapidFireTarget(Number(e.target.value))} style={{ width: 70 }} />
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-                  Rotate every
-                  <input type="number" min={1} value={rapidFireRotateEvery} onChange={e => setRapidFireRotateEvery(Number(e.target.value))} style={{ width: 70 }} />
-                  points
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
                   Bonus points

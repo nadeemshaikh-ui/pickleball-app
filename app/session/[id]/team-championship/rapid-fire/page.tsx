@@ -10,16 +10,20 @@ import type { RapidFireLogEntry } from '@/lib/teamChampionship';
 const POLL_INTERVAL_MS = 3000; // matches the rest of the app's poll-don't-subscribe convention
 
 // Live rally-point scoreboard for the Rapid Fire finale — not round/match
-// based like every other screen in this app, a running tally with the
-// on-court foursome auto-rotating every N points (lib/teamChampionship.ts's
-// computeRapidFireState, built in Phase 2). Polls rather than subscribes,
-// same reasoning as every other live screen already in this app.
+// based like every other screen in this app, a running tally. Resolved
+// with the tournament committee: subbing the on-court foursome is a
+// manual organizer action, not an automatic rotation on a point count —
+// so `courtOverride` lets the organizer swap either on-court player for a
+// bench player at any time; it takes effect on the next point scored.
+// Polls rather than subscribes, same reasoning as every other live screen
+// already in this app.
 export default function RapidFirePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [session, setSession] = useState<SessionRow | null>(null);
   const [log, setLog] = useState<RapidFireLogEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [scoring, setScoring] = useState(false);
+  const [courtOverride, setCourtOverride] = useState<string[] | null>(null);
 
   async function load() {
     const [s, l] = await Promise.all([getSession(id), fetchRapidFireLog(id)]);
@@ -40,12 +44,17 @@ export default function RapidFirePage({ params }: { params: Promise<{ id: string
     setError(null);
     try {
       await recordRapidFirePoint(id, teamId, onCourtPlayers);
+      setCourtOverride(null);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to record point.');
     } finally {
       setScoring(false);
     }
+  }
+
+  function handleSub(currentPlayers: string[], outgoing: string, incoming: string) {
+    setCourtOverride(currentPlayers.map(p => (p === outgoing ? incoming : p)));
   }
 
   if (error && !session) return <main className="page"><p style={{ color: 'var(--danger)' }}>{error}</p></main>;
@@ -57,6 +66,7 @@ export default function RapidFirePage({ params }: { params: Promise<{ id: string
   const teams = session.squads_v2;
   const config = session.rapid_fire_config;
   const state = computeRapidFireState(log, config, teams);
+  const onCourtPlayers = courtOverride ?? state.onCourtPlayers;
   const bonus = state.isComplete ? computeRapidFireBonus(state, config) : null;
   const winnerLabel = state.winnerTeamId ? (teams.find(t => t.id === state.winnerTeamId)?.label ?? state.winnerTeamId) : null;
 
@@ -67,7 +77,7 @@ export default function RapidFirePage({ params }: { params: Promise<{ id: string
       </div>
       <h1>Rapid Fire</h1>
       <p style={{ fontSize: 12, color: 'var(--muted)' }}>
-        First to {config.targetPoints} · rotates every {config.rotateEveryNPoints} points · winner gets {config.bonusPoints} bonus points
+        First to {config.targetPoints} · winner gets {config.bonusPoints} bonus points
       </p>
 
       {error && <p style={{ color: 'var(--danger)', fontWeight: 600 }}>{error}</p>}
@@ -92,7 +102,33 @@ export default function RapidFirePage({ params }: { params: Promise<{ id: string
         <>
           <h2>On Court Now</h2>
           <div className="card" style={{ marginBottom: 16 }}>
-            <p style={{ fontSize: 15, fontWeight: 700, textAlign: 'center' }}>{state.onCourtPlayers.join(' & ')}</p>
+            <p style={{ fontSize: 15, fontWeight: 700, textAlign: 'center' }}>{onCourtPlayers.join(' & ')}</p>
+          </div>
+
+          <h2>Sub (manual)</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            {teams.map(team => {
+              const onCourt = onCourtPlayers.filter(p => team.players.includes(p));
+              const bench = team.players.filter(p => !onCourt.includes(p));
+              return (
+                <div key={team.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>{team.label ?? team.id}</div>
+                  {onCourt.map(p => (
+                    <label key={p} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                      {p} →
+                      <select
+                        value=""
+                        disabled={bench.length === 0}
+                        onChange={e => { if (e.target.value) handleSub(onCourtPlayers, p, e.target.value); }}
+                      >
+                        <option value="">Sub in…</option>
+                        {bench.map(b => <option key={b} value={b}>{b}</option>)}
+                      </select>
+                    </label>
+                  ))}
+                </div>
+              );
+            })}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -102,7 +138,7 @@ export default function RapidFirePage({ params }: { params: Promise<{ id: string
                 className="btn-primary"
                 style={{ minHeight: 64, fontSize: 18, fontWeight: 800 }}
                 disabled={scoring}
-                onClick={() => handleScore(team.id, state.onCourtPlayers)}
+                onClick={() => handleScore(team.id, onCourtPlayers)}
               >
                 +1 {team.label ?? team.id}
               </button>

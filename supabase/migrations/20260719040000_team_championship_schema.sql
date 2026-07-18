@@ -19,7 +19,7 @@ alter table sessions add constraint sessions_format_check
 comment on column sessions.stage_config is
   'Team Championship only. Array of {stageLabel, roundStart, roundEnd, pointsPerWin}, admin-configured per event.';
 comment on column sessions.rapid_fire_config is
-  'Team Championship only. {targetPoints, rotateEveryNPoints, bonusPoints}, admin-configured per event. Null if the event has no Rapid Fire finale.';
+  'Team Championship only. {targetPoints, bonusPoints}, admin-configured per event. Null if the event has no Rapid Fire finale. On-court subs are a manual organizer action, not config-driven.';
 
 -- Team rosters reuse the squads_v2 shape already built for N-squad Squad
 -- Rivalry (see project_pickleball_n_squad_plan) — [{id, label, logoUrl,

@@ -16,7 +16,6 @@ export interface StageConfig {
 
 export interface RapidFireConfig {
   targetPoints: number;
-  rotateEveryNPoints: number;
   bonusPoints: number;
 }
 
@@ -142,27 +141,17 @@ export interface RapidFireState {
   winnerTeamId: string | null;
 }
 
-// Deterministic round-robin pairing within one team's roster: cycle through
-// consecutive pairs in a fixed order. `index` is which rotation cycle
-// (0-based) — pairIndex wraps once every player has been through.
-function rotationPairForIndex(players: string[], index: number): [string, string] {
-  const pairCount = Math.floor(players.length / 2);
-  const pairIndex = index % pairCount;
-  return [players[pairIndex * 2], players[pairIndex * 2 + 1]];
-}
-
-// Rapid Fire is NOT round-based — a live continuous rally-point race with
-// the on-court foursome rotating every `rotateEveryNPoints` TOTAL points
-// scored (not per team). This computes current state purely from the
-// append-only log, so it's safe to call repeatedly as new points come in
-// (matches the app's existing poll-don't-subscribe convention).
-//
-// OPEN QUESTION not yet resolved with the tournament committee (see the
-// locked plan): does the whole foursome rotate every N points, or only
-// some of them? This implements "whole foursome rotates" as the
-// documented default — if the real rule turns out to be partial rotation,
-// only rotationPairForIndex's caller here needs to change, the rest of
-// this module (score tallying, win detection) is unaffected.
+// Rapid Fire is NOT round-based — a live continuous rally-point race.
+// Resolved with the tournament committee: there is no fixed rotation
+// formula — subbing the on-court foursome is a manual organizer action
+// (see the rapid-fire page's sub controls), not automatic on a point
+// count. This computes current state purely from the append-only log, so
+// it's safe to call repeatedly as new points come in (matches the app's
+// existing poll-don't-subscribe convention). on-court players carry
+// forward from the most recent log entry — falling back to each team's
+// first two roster players before any point has been scored — since the
+// log is the only durable record of who was on court, and a manual sub
+// takes effect starting with the next point logged.
 export function computeRapidFireState(
   log: RapidFireLogEntry[],
   config: RapidFireConfig,
@@ -179,8 +168,9 @@ export function computeRapidFireState(
   const isComplete = winnerEntry !== undefined;
   const winnerTeamId = winnerEntry?.[0] ?? null;
 
-  const rotationIndex = Math.floor(log.length / config.rotateEveryNPoints);
-  const onCourtPlayers = teams.flatMap(t => (t.players.length >= 2 ? rotationPairForIndex(t.players, rotationIndex) : []));
+  const onCourtPlayers = log.length > 0
+    ? log[log.length - 1].onCourtPlayers
+    : teams.flatMap(t => t.players.slice(0, 2));
 
   return { totalsByTeam, onCourtPlayers, isComplete, winnerTeamId };
 }
