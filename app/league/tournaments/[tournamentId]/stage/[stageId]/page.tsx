@@ -11,8 +11,9 @@ import { useCurrentClub } from '@/lib/useCurrentClub';
 import TournamentStandingsTable from '@/components/TournamentStandingsTable';
 import TournamentFixturesList from '@/components/TournamentFixturesList';
 import TournamentBracketTree from '@/components/TournamentBracketTree';
+import DoubleEliminationBracket from '@/components/DoubleEliminationBracket';
 
-const BRACKET_STAGE_TYPES = ['knockout', 'page_playoff', 'simple_semifinal'];
+const BRACKET_STAGE_TYPES = ['knockout', 'page_playoff', 'simple_semifinal', 'double_elimination'];
 
 export default function TournamentStagePage() {
   const { tournamentId, stageId } = useParams<{ tournamentId: string; stageId: string }>();
@@ -98,7 +99,9 @@ export default function TournamentStagePage() {
       )}
 
       <h2>{isBracket ? 'Bracket' : 'Fixtures'}</h2>
-      {isBracket ? (
+      {stage.stage_type === 'double_elimination' ? (
+        <DoubleEliminationBracket matches={matches} teams={teams} onScoreClick={openScoreEntry} />
+      ) : isBracket ? (
         <TournamentBracketTree matches={matches} teams={teams} onScoreClick={openScoreEntry} />
       ) : (
         <TournamentFixturesList matches={matches} teams={teams} onScoreClick={openScoreEntry} />

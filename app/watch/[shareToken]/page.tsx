@@ -11,10 +11,11 @@ import type { LeagueGroupResults } from '@/lib/tournamentStages';
 import TournamentStandingsTable from '@/components/TournamentStandingsTable';
 import TournamentFixturesList from '@/components/TournamentFixturesList';
 import TournamentBracketTree from '@/components/TournamentBracketTree';
+import DoubleEliminationBracket from '@/components/DoubleEliminationBracket';
 import type { TournamentMatchRow } from '@/lib/tournamentMatches';
 import type { TournamentTeamRow } from '@/lib/tournamentTeams';
 
-const BRACKET_STAGE_TYPES = ['knockout', 'page_playoff', 'simple_semifinal'];
+const BRACKET_STAGE_TYPES = ['knockout', 'page_playoff', 'simple_semifinal', 'double_elimination'];
 
 // Read-only spectator page — no auth, no write access. Works signed-out
 // because fetchPublicTournament calls a SECURITY DEFINER function granted to
@@ -298,7 +299,9 @@ export default function WatchTournamentPage() {
                 </div>
               )
             )}
-            {isBracket ? (
+            {stage.stageType === 'double_elimination' ? (
+              <DoubleEliminationBracket matches={stageMatches} teams={teams} onScoreClick={data.tournament.selfScoreEnabled ? openScoreEntry : undefined} />
+            ) : isBracket ? (
               <TournamentBracketTree matches={stageMatches} teams={teams} onScoreClick={data.tournament.selfScoreEnabled ? openScoreEntry : undefined} />
             ) : (
               <TournamentFixturesList matches={stageMatches} teams={teams} onScoreClick={data.tournament.selfScoreEnabled ? openScoreEntry : undefined} />

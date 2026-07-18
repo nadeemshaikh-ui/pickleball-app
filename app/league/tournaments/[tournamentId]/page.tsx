@@ -44,6 +44,7 @@ const STAGE_TYPE_LABELS: Record<StageType, string> = {
   knockout: 'Straight Knockout',
   page_playoff: 'Page Playoff (top 4)',
   simple_semifinal: 'Simple Semifinal (top 4)',
+  double_elimination: 'Double Elimination',
 };
 
 export default function TournamentDetailPage() {

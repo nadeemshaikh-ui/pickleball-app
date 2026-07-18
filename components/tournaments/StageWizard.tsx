@@ -1,10 +1,10 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Users, Layers, Swords, Award, Zap } from 'lucide-react';
+import { Users, Layers, Swords, Award, Zap, Repeat } from 'lucide-react';
 import type { StageType, StageConfig, TournamentStageRow } from '@/lib/tournamentStages';
 import type { TournamentTeamRow } from '@/lib/tournamentTeams';
-import { generateLeagueFixtures, generateGroupFixtures } from '@/lib/tournamentFixtures';
+import { generateLeagueFixtures, generateGroupFixtures, generateDoubleEliminationFixtures } from '@/lib/tournamentFixtures';
 import { assignTeamsToGroups } from '@/lib/tournamentRoundRobin';
 import { computeBracketSize } from '@/lib/tournamentBracket';
 
@@ -12,6 +12,7 @@ const FORMAT_CARDS: { type: StageType; label: string; description: string; icon:
   { type: 'league', label: 'League', description: 'Round robin — every team plays every other team once.', icon: Users },
   { type: 'group', label: 'Groups', description: 'Split into groups, round robin within each, then advance top teams.', icon: Layers },
   { type: 'knockout', label: 'Knockout', description: 'Single-elimination bracket — lose once, you’re out.', icon: Swords },
+  { type: 'double_elimination', label: 'Double Elimination', description: 'Lose once, drop to a losers bracket for a second life. Needs an exact power-of-2 team count.', icon: Repeat },
   { type: 'page_playoff', label: 'Page Playoff', description: 'Top-4 format that gives 1st/2nd a second chance at the final.', icon: Award },
   { type: 'simple_semifinal', label: 'Simple Semifinal', description: 'Top-4 straight semis into a final.', icon: Zap },
 ];
@@ -128,6 +129,14 @@ export function StageWizard(props: StageWizardProps) {
         case 'simple_semifinal':
           if (poolSize !== 4) return `Needs exactly 4 teams in the pool — currently ${poolSize}. Cut down to 4 with a prior stage first.`;
           return 'Top 4 seeded teams · 4 matches · straight semis into a final.';
+        case 'double_elimination': {
+          if ((poolSize & (poolSize - 1)) !== 0 || poolSize < 4) {
+            return `Needs an exact power-of-2 team count (4, 8, 16…) — currently ${poolSize}.`;
+          }
+          const fixtures = generateDoubleEliminationFixtures(fakeTeams);
+          const k = Math.log2(poolSize);
+          return `${poolSize} teams → ${fixtures.length} matches total · winners bracket (${k} rounds) + losers bracket + one grand final. No bracket reset — grand final is winner-takes-all.`;
+        }
         default:
           return '';
       }

@@ -15,10 +15,11 @@ import {
   generateKnockoutFixtures,
   generatePagePlayoffFixtures,
   generateSimpleSemifinalFixtures,
+  generateDoubleEliminationFixtures,
 } from './tournamentFixtures';
 
-export type StageType = 'league' | 'group' | 'knockout' | 'page_playoff' | 'simple_semifinal';
-const BRACKET_STAGE_TYPES: StageType[] = ['knockout', 'page_playoff', 'simple_semifinal'];
+export type StageType = 'league' | 'group' | 'knockout' | 'page_playoff' | 'simple_semifinal' | 'double_elimination';
+const BRACKET_STAGE_TYPES: StageType[] = ['knockout', 'page_playoff', 'simple_semifinal', 'double_elimination'];
 
 export interface StageConfig {
   groupCount?: number;
@@ -81,8 +82,9 @@ export async function fetchStages(tournamentId: string): Promise<TournamentStage
 }
 
 // A bracket-type stage's final match is, by construction, the one match with
-// no winner_next_match_id — true for knockout, page_playoff, and
-// simple_semifinal alike, so this needs no per-stage-type branching.
+// no winner_next_match_id — true for knockout, page_playoff, simple_semifinal,
+// and double_elimination (its grand final) alike, so this needs no
+// per-stage-type branching.
 function findFinalMatch(matches: TournamentMatchRow[]): TournamentMatchRow {
   const final = matches.find(m => m.winner_next_match_id === null);
   if (!final) throw new Error('Could not find a final match for this bracket stage — stage data looks corrupted.');
@@ -198,6 +200,9 @@ export async function generateNextStage(
       break;
     case 'knockout':
       fixtures = generateKnockoutFixtures(seeded);
+      break;
+    case 'double_elimination':
+      fixtures = generateDoubleEliminationFixtures(seeded);
       break;
     case 'page_playoff':
       if (seedOrderTeamIds.length !== 4) throw new Error(`Page Playoff requires exactly 4 teams, got ${seedOrderTeamIds.length}`);
