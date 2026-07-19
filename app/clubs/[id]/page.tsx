@@ -225,7 +225,7 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
           <Link href="/tournaments" className="btn-secondary" style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
             <Trophy size={15} /> Tournaments
           </Link>
-          <Link href="/league/auctions" className="btn-secondary" style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <Link href="/tournaments/auctions" className="btn-secondary" style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
             <Gavel size={15} /> Auctions
           </Link>
         </div>

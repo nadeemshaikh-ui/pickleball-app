@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Share2, RefreshCw, Sparkles, Swords, BarChart3, ListOrdered, Gift, Award, ScrollText, CalendarDays, IndianRupee, Crown, Trophy, Gavel } from 'lucide-react';
+import { Share2, RefreshCw, Sparkles, Swords, BarChart3, ListOrdered, Gift, Award, ScrollText, CalendarDays, IndianRupee, Crown, Trophy } from 'lucide-react';
 import {
   fetchPlayerOfTheMonthBoard,
   fetchBestDuos,
@@ -113,7 +113,6 @@ export default function LeaguePage() {
   const exploreLinks = [
     { href: '/league/stats', label: 'Lifetime Stats', icon: BarChart3 },
     { href: '/league/ladder', label: 'Ladder League', icon: ListOrdered },
-    { href: '/league/auctions', label: 'Auctions', icon: Gavel },
     { href: '/league/wrapped', label: 'Your Wrapped', icon: Gift },
     { href: '/league/badges', label: 'Badge Gallery', icon: Award },
     { href: '/league/sessions', label: 'Session History', icon: ScrollText },
