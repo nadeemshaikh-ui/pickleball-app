@@ -239,27 +239,24 @@ export default function TournamentsPage() {
           {visibleTournaments.map(t => {
             const canDelete = isAdmin || t.created_by === userId;
             return (
-              <div key={t.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8, position: 'relative' }}>
+              <div key={t.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <Link href={`/tournaments/${t.id}`} style={{ display: 'flex', flexDirection: 'column', gap: 8, color: 'inherit' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <span style={{ fontWeight: 700 }}>{t.name}</span>
                     <StatusBadge status={t.status} />
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--muted)' }}>
+                </Link>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Link href={`/tournaments/${t.id}`} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--muted)' }}>
                     <Calendar size={12} />
                     {new Date(t.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </div>
-                </Link>
-                {canDelete && (
-                  <button
-                    className="icon-btn"
-                    aria-label={`Delete ${t.name}`}
-                    onClick={() => setDeleteTarget(t)}
-                    style={{ position: 'absolute', top: 8, right: 8 }}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                )}
+                  </Link>
+                  {canDelete && (
+                    <button className="icon-btn" aria-label={`Delete ${t.name}`} onClick={() => setDeleteTarget(t)}>
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}
