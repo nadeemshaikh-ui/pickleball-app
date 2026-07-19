@@ -8,6 +8,6 @@ test.use({ storageState: 'e2e/.auth/requester.json' });
 
 test('a super admin sees the all-clubs list on /admin', async ({ page }) => {
   await page.goto('/admin');
-  await expect(page.getByRole('heading', { name: /All Clubs/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /^All Clubs/ })).toBeVisible();
   await expect(page.getByText('E2E Test Club')).toBeVisible();
 });
