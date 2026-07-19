@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getSession, getRounds, insertRounds, updateRoundTeams, type RoundRow, type SessionRow } from '@/lib/db';
+import { getSession, getRounds, insertRounds, updateRoundTeams, addCourtToSession, type RoundRow, type SessionRow } from '@/lib/db';
 import { generateSquadRivalryScheduleN } from '@/lib/squads';
 import { validateManualPairings } from '@/lib/teamChampionship';
 
@@ -24,6 +24,7 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
   const [generating, setGenerating] = useState(false);
   const [savingRoundId, setSavingRoundId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, [string, string, string, string]>>({});
+  const [addingCourt, setAddingCourt] = useState(false);
 
   async function load() {
     const [s, r] = await Promise.all([getSession(id), getRounds(id)]);
@@ -80,6 +81,21 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
     }
   }
 
+  async function handleAddCourt() {
+    if (!session) return;
+    setAddingCourt(true);
+    setError(null);
+    try {
+      const nextLabel = String(session.court_labels.length + 1);
+      await addCourtToSession(session.id, nextLabel);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to add court.');
+    } finally {
+      setAddingCourt(false);
+    }
+  }
+
   function updateDraftSlot(roundId: string, slot: number, value: string) {
     setDrafts(prev => {
       const current = prev[roundId] ?? ['', '', '', ''];
@@ -122,6 +138,13 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
       </p>
 
       {error && <p style={{ color: 'var(--danger)', fontWeight: 600 }}>{error}</p>}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
+        <span>{session.court_labels.length} court{session.court_labels.length === 1 ? '' : 's'} available</span>
+        <button className="btn-secondary" onClick={handleAddCourt} disabled={addingCourt} style={{ fontSize: 12, padding: '4px 10px' }}>
+          {addingCourt ? 'Adding…' : '+ Add Court'}
+        </button>
+      </div>
 
       {rounds.length === 0 && (
         <div className="card" style={{ marginBottom: 16 }}>

@@ -265,6 +265,21 @@ export async function markSessionCompleted(sessionId: string): Promise<void> {
   if (error) throw error;
 }
 
+// Appends one court to a running session (Team Championship's manual-
+// pairing flow needs this when a court frees up mid-tournament). Only
+// affects rounds not yet generated/typed in — existing rounds keep
+// whatever court they were created on, this just raises the ceiling
+// every court-count reader (validateManualPairings, handleGenerate)
+// already derives fresh from court_labels.length.
+export async function addCourtToSession(sessionId: string, newLabel: string): Promise<void> {
+  const session = await getSession(sessionId);
+  const { error } = await supabase
+    .from('sessions')
+    .update({ court_labels: [...session.court_labels, newLabel] })
+    .eq('id', sessionId);
+  if (error) throw error;
+}
+
 // Fixes a typo'd player name everywhere it appears: the session roster,
 // squads (if Squad Rivalry), and every round's teams/sit-outs. Scores are
 // untouched since they're keyed by round id, not by name.
