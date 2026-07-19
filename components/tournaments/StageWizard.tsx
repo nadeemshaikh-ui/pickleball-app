@@ -96,8 +96,13 @@ export function StageWizard(props: StageWizardProps) {
 
   const { size: poolSize, approximate } = poolInfo(teams, stages);
 
-  const previewText = useMemo(() => {
-    if (poolSize < 2) return 'Not enough teams yet to preview this stage.';
+  // Returns {text, isError} rather than a bare string — Generate Stage was
+  // previously enabled even when this preview was already showing an error
+  // (e.g. 3 teams into 2 groups always leaves a 1-team group, which a
+  // round-robin can't run), so clicking Generate just silently failed with
+  // no visible feedback. Gating the button on isError closes that gap.
+  const { text: previewText, isError: previewIsError } = useMemo(() => {
+    if (poolSize < 2) return { text: 'Not enough teams yet to preview this stage.', isError: true };
     const fakeIds = Array.from({ length: poolSize }, (_, i) => `preview-${i}`);
     const fakeTeams = fakeIds.map(id => ({ id }));
 
@@ -105,43 +110,54 @@ export function StageWizard(props: StageWizardProps) {
       switch (stageType) {
         case 'league': {
           const fixtures = generateLeagueFixtures(fakeIds, { doubleHeader });
-          return `${poolSize} teams · ${fixtures.length} match${fixtures.length === 1 ? '' : 'es'} · everyone plays everyone${doubleHeader ? ' twice' : ' once'}.`;
+          return { text: `${poolSize} teams · ${fixtures.length} match${fixtures.length === 1 ? '' : 'es'} · everyone plays everyone${doubleHeader ? ' twice' : ' once'}.`, isError: false };
         }
         case 'group': {
-          if (groupCount > poolSize) return `Need at least ${groupCount} teams for ${groupCount} groups — only ${poolSize} in the pool.`;
+          if (groupCount > poolSize) return { text: `Need at least ${groupCount} teams for ${groupCount} groups — only ${poolSize} in the pool.`, isError: true };
           const groups = assignTeamsToGroups(fakeTeams, groupCount);
           const sizes = Object.values(groups).map(g => g.length);
+          // Check this before calling generateGroupFixtures — an undersized
+          // group throws from deep inside the shared round-robin generator
+          // with a message that says "league", not "group", which is
+          // confusing on top of being late.
+          const tooSmall = sizes.findIndex(s => s < 2);
+          if (tooSmall !== -1) {
+            return {
+              text: `${groupCount} groups from ${poolSize} teams leaves a group of just ${sizes[tooSmall]} — round robin needs at least 2 per group. Try fewer groups.`,
+              isError: true,
+            };
+          }
           const fixtures = generateGroupFixtures(fakeTeams, { groupCount, doubleHeader });
           const advanceText = advanceMode === 'combined'
             ? `flat top ${advanceCount} across all groups advance`
             : `top ${advancePerGroup} from each group advance (${advancePerGroup * groupCount} total)`;
-          return `${poolSize} teams → ${groupCount} groups (${sizes.join('/')} teams each) · ${fixtures.length} matches · ${advanceText}.`;
+          return { text: `${poolSize} teams → ${groupCount} groups (${sizes.join('/')} teams each) · ${fixtures.length} matches · ${advanceText}.`, isError: false };
         }
         case 'knockout': {
           const bracketSize = computeBracketSize(poolSize);
           const byes = bracketSize - poolSize;
           const rounds = Math.log2(bracketSize);
-          return `${poolSize} teams → bracket of ${bracketSize}${byes > 0 ? ` (${byes} bye${byes === 1 ? '' : 's'} to top seed${byes === 1 ? '' : 's'})` : ''} · ${rounds} round${rounds === 1 ? '' : 's'} to a champion.`;
+          return { text: `${poolSize} teams → bracket of ${bracketSize}${byes > 0 ? ` (${byes} bye${byes === 1 ? '' : 's'} to top seed${byes === 1 ? '' : 's'})` : ''} · ${rounds} round${rounds === 1 ? '' : 's'} to a champion.`, isError: false };
         }
         case 'page_playoff':
-          if (poolSize !== 4) return `Needs exactly 4 teams in the pool — currently ${poolSize}. Cut down to 4 with a prior stage first.`;
-          return 'Top 4 seeded teams · 4 matches · 1st/2nd get a second life before the final.';
+          if (poolSize !== 4) return { text: `Needs exactly 4 teams in the pool — currently ${poolSize}. Cut down to 4 with a prior stage first.`, isError: true };
+          return { text: 'Top 4 seeded teams · 4 matches · 1st/2nd get a second life before the final.', isError: false };
         case 'simple_semifinal':
-          if (poolSize !== 4) return `Needs exactly 4 teams in the pool — currently ${poolSize}. Cut down to 4 with a prior stage first.`;
-          return 'Top 4 seeded teams · 4 matches · straight semis into a final.';
+          if (poolSize !== 4) return { text: `Needs exactly 4 teams in the pool — currently ${poolSize}. Cut down to 4 with a prior stage first.`, isError: true };
+          return { text: 'Top 4 seeded teams · 4 matches · straight semis into a final.', isError: false };
         case 'double_elimination': {
           if ((poolSize & (poolSize - 1)) !== 0 || poolSize < 4) {
-            return `Needs an exact power-of-2 team count (4, 8, 16…) — currently ${poolSize}.`;
+            return { text: `Needs an exact power-of-2 team count (4, 8, 16…) — currently ${poolSize}.`, isError: true };
           }
           const fixtures = generateDoubleEliminationFixtures(fakeTeams);
           const k = Math.log2(poolSize);
-          return `${poolSize} teams → ${fixtures.length} matches total · winners bracket (${k} rounds) + losers bracket + one grand final. No bracket reset — grand final is winner-takes-all.`;
+          return { text: `${poolSize} teams → ${fixtures.length} matches total · winners bracket (${k} rounds) + losers bracket + one grand final. No bracket reset — grand final is winner-takes-all.`, isError: false };
         }
         default:
-          return '';
+          return { text: '', isError: false };
       }
     } catch (e) {
-      return e instanceof Error ? e.message : 'Could not compute a preview for this configuration.';
+      return { text: e instanceof Error ? e.message : 'Could not compute a preview for this configuration.', isError: true };
     }
   }, [poolSize, stageType, groupCount, doubleHeader, advanceMode, advancePerGroup, advanceCount]);
 
@@ -205,7 +221,17 @@ export function StageWizard(props: StageWizardProps) {
         </label>
       )}
 
-      <div style={{ fontSize: 12, background: 'var(--surface-2, rgba(127,127,127,0.08))', borderRadius: 8, padding: '8px 10px', color: 'var(--muted)' }}>
+      <div
+        style={{
+          fontSize: 12,
+          background: previewIsError ? 'var(--danger-bg, rgba(220,38,38,0.08))' : 'var(--surface-2, rgba(127,127,127,0.08))',
+          border: previewIsError ? '1px solid var(--danger)' : 'none',
+          borderRadius: 8,
+          padding: '8px 10px',
+          color: previewIsError ? 'var(--danger)' : 'var(--muted)',
+          fontWeight: previewIsError ? 600 : 400,
+        }}
+      >
         {previewText}
         {approximate && stages.length > 0 && (
           <div style={{ marginTop: 4, fontStyle: 'italic' }}>
@@ -214,7 +240,7 @@ export function StageWizard(props: StageWizardProps) {
         )}
       </div>
 
-      <button className="btn-primary" onClick={onGenerate} disabled={busy || !stageName.trim()}>
+      <button className="btn-primary" onClick={onGenerate} disabled={busy || !stageName.trim() || previewIsError}>
         Generate Stage
       </button>
     </div>
