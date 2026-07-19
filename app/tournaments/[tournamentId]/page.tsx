@@ -454,6 +454,11 @@ function TournamentDetailPageInner() {
       )}
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
         {teams.length === 0 && <p style={{ color: 'var(--muted)', fontSize: 14 }}>No teams yet.</p>}
+        {teams.length > 0 && (
+          <p style={{ fontSize: 11, color: 'var(--muted)', margin: 0 }}>
+            Seed is optional — it only affects tiebreakers and bracket placement (lower number = seeded higher). Leave blank to skip it.
+          </p>
+        )}
         {teams.map(t => (
           <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontWeight: 700, flex: 1 }}>{t.name}</span>
