@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { X, RotateCcw, Camera, Flame, ListOrdered, Scale, Lock } from 'lucide-react';
 import {
   generateScrambleSchedule,
@@ -69,9 +69,29 @@ const FORMAT_INFO: Record<Format, { label: string; summary: string; example: str
   },
 };
 
+// The 5 club-night formats shown in the visible picker below. Team
+// Championship is a tournament format (2 fixed teams, multi-stage,
+// manual pairings) — it lives in FORMAT_INFO for its label/summary/example
+// text and every existing format-branch below still handles it, but it's
+// only reachable via /tournaments' "New Team Championship" entry point
+// (?format=team_championship), not this picker, per explicit product
+// decision that tournament formats don't belong alongside single-night
+// club formats.
+const NORMAL_FORMATS: Format[] = ['scramble', 'squad_rivalry', 'court_blocks', 'fixed_partners', 'king_of_court'];
+
 export default function SetupPage() {
+  return (
+    <Suspense fallback={<main className="page"><p>Loading…</p></main>}>
+      <SetupPageInner />
+    </Suspense>
+  );
+}
+
+function SetupPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { currentClubId, currentClub, user, loading: clubLoading } = useCurrentClub();
+  const presetFormat = searchParams.get('format') === 'team_championship';
 
   // Restores in-progress setup form state after a back-navigation or
   // accidental reload — without this, leaving /setup mid-fill (even via the
@@ -113,7 +133,7 @@ export default function SetupPage() {
     }
   }
 
-  const [format, setFormat] = useState<Format>(draft.format ?? 'scramble');
+  const [format, setFormat] = useState<Format>(presetFormat ? 'team_championship' : draft.format ?? 'scramble');
   const [openFormatInfo, setOpenFormatInfo] = useState<Format | null>(null);
   const [roundCount, setRoundCount] = useState(12);
   const [courtLabels, setCourtLabels] = useState<string[]>(['1', '2']);
@@ -929,23 +949,34 @@ export default function SetupPage() {
         </label>
       </div>
 
-      <h2>Format</h2>
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {(Object.keys(FORMAT_INFO) as Format[]).map(f => (
-          <label key={f} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <input type="radio" checked={format === f} onChange={() => setFormat(f)} />
-            <span style={{ flex: 1 }}>{FORMAT_INFO[f].label}</span>
-            <button
-              type="button"
-              onClick={() => setOpenFormatInfo(f)}
-              className="btn-secondary"
-              style={{ minHeight: 32, padding: '4px 10px', fontSize: 12 }}
-            >
-              What is this?
-            </button>
-          </label>
-        ))}
-      </div>
+      {presetFormat ? (
+        <div className="card" style={{ marginBottom: 4 }}>
+          <strong>{FORMAT_INFO.team_championship.label}</strong>
+          <p style={{ fontSize: 12, color: 'var(--muted)', margin: '6px 0 0' }}>
+            Started from Tournaments — {FORMAT_INFO.team_championship.summary}
+          </p>
+        </div>
+      ) : (
+        <>
+          <h2>Format</h2>
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {NORMAL_FORMATS.map(f => (
+              <label key={f} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <input type="radio" checked={format === f} onChange={() => setFormat(f)} />
+                <span style={{ flex: 1 }}>{FORMAT_INFO[f].label}</span>
+                <button
+                  type="button"
+                  onClick={() => setOpenFormatInfo(f)}
+                  className="btn-secondary"
+                  style={{ minHeight: 32, padding: '4px 10px', fontSize: 12 }}
+                >
+                  What is this?
+                </button>
+              </label>
+            ))}
+          </div>
+        </>
+      )}
       {openFormatInfo && (
         <InfoModal title={FORMAT_INFO[openFormatInfo].label} onClose={() => setOpenFormatInfo(null)}>
           <p>{FORMAT_INFO[openFormatInfo].summary}</p>

@@ -141,6 +141,13 @@ export default function TournamentsPage() {
               </button>
             </div>
           )}
+          <Link
+            href="/setup?format=team_championship"
+            className="btn-secondary"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 8, width: '100%' }}
+          >
+            <Plus size={14} /> Start a Team Championship
+          </Link>
         </div>
       )}
 
