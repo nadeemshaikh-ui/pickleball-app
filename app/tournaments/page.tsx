@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Trophy, Plus, Calendar, Sparkles } from 'lucide-react';
-import { fetchTournaments, createTournament, type TournamentRow } from '@/lib/tournaments';
+import { Trophy, Plus, Calendar, Sparkles, Trash2 } from 'lucide-react';
+import { fetchTournaments, createTournament, deleteTournament, type TournamentRow } from '@/lib/tournaments';
 import { getCurrentUser, isCurrentUserAdmin } from '@/lib/auth';
 import { useCurrentClub } from '@/lib/useCurrentClub';
+import ConfirmModal from '@/components/ConfirmModal';
 
 type StatusFilter = 'all' | TournamentRow['status'];
 
@@ -62,6 +63,8 @@ export default function TournamentsPage() {
   const [newName, setNewName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<StatusFilter>('all');
+  const [deleteTarget, setDeleteTarget] = useState<TournamentRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (clubLoading) return;
@@ -116,6 +119,21 @@ export default function TournamentsPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to start Mystery Partner.');
       setCreatingMystery(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget || !currentClubId) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await deleteTournament(deleteTarget.id);
+      setDeleteTarget(null);
+      setTournaments(await fetchTournaments(currentClubId));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete tournament.');
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -218,19 +236,44 @@ export default function TournamentsPage() {
         <p style={{ color: 'var(--muted)', fontSize: 14 }}>No {filter} tournaments.</p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-          {visibleTournaments.map(t => (
-            <Link key={t.id} href={`/tournaments/${t.id}`} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <span style={{ fontWeight: 700 }}>{t.name}</span>
-                <StatusBadge status={t.status} />
+          {visibleTournaments.map(t => {
+            const canDelete = isAdmin || t.created_by === userId;
+            return (
+              <div key={t.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8, position: 'relative' }}>
+                <Link href={`/tournaments/${t.id}`} style={{ display: 'flex', flexDirection: 'column', gap: 8, color: 'inherit' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <span style={{ fontWeight: 700 }}>{t.name}</span>
+                    <StatusBadge status={t.status} />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--muted)' }}>
+                    <Calendar size={12} />
+                    {new Date(t.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </div>
+                </Link>
+                {canDelete && (
+                  <button
+                    className="icon-btn"
+                    aria-label={`Delete ${t.name}`}
+                    onClick={() => setDeleteTarget(t)}
+                    style={{ position: 'absolute', top: 8, right: 8 }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--muted)' }}>
-                <Calendar size={12} />
-                {new Date(t.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
-              </div>
-            </Link>
-          ))}
+            );
+          })}
         </div>
+      )}
+
+      {deleteTarget && (
+        <ConfirmModal
+          title={`Delete "${deleteTarget.name}"?`}
+          message="Only allowed while it has no stages generated yet — this can't be undone."
+          confirmLabel={deleting ? 'Deleting…' : 'Delete'}
+          onConfirm={handleDelete}
+          onCancel={() => setDeleteTarget(null)}
+        />
       )}
     </main>
   );

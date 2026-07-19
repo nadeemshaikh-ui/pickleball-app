@@ -44,6 +44,25 @@ export async function createTournament(clubId: string, name: string, userId: str
   return data.id;
 }
 
+// Zero-stages-only by design, checked here rather than trusting `status`
+// alone — nothing in this codebase ever sets status to 'active', so every
+// working tournament stays 'draft' for its entire life including after
+// real stages/matches/results exist. Gating on status='draft' alone would
+// let real generated data get silently deleted. A tournament with just a
+// name and maybe some teams (no stages yet) is safe to remove outright.
+export async function deleteTournament(tournamentId: string): Promise<void> {
+  const { count, error: countError } = await supabase
+    .from('tournament_stages')
+    .select('id', { count: 'exact', head: true })
+    .eq('tournament_id', tournamentId);
+  if (countError) throw countError;
+  if (count && count > 0) {
+    throw new Error('This tournament already has stages generated — deleting it would destroy real match data. Not allowed.');
+  }
+  const { error } = await supabase.from('tournaments').delete().eq('id', tournamentId);
+  if (error) throw error;
+}
+
 export async function completeTournament(tournamentId: string): Promise<void> {
   const { error } = await supabase
     .from('tournaments')
