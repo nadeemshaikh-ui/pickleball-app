@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Trophy, Plus, Calendar } from 'lucide-react';
+import { Trophy, Plus, Calendar, Sparkles } from 'lucide-react';
 import { fetchTournaments, createTournament, type TournamentRow } from '@/lib/tournaments';
 import { getCurrentUser, isCurrentUserAdmin } from '@/lib/auth';
 import { useCurrentClub } from '@/lib/useCurrentClub';
@@ -99,6 +99,26 @@ export default function TournamentsPage() {
     }
   }
 
+  // Mystery Partner is a distinct entry point (own button, own flow framing
+  // on the resulting page via ?mystery=1) rather than "Create Tournament"
+  // with an optional draw buried mid-page — same underlying tournament +
+  // team + stage tables, since the draw/manual-pairing, group stage, and
+  // top-N-by-wins-then-point-diff qualification it needs already exist and
+  // already match spec, this only needed a real front door.
+  const [creatingMystery, setCreatingMystery] = useState(false);
+  async function handleCreateMystery() {
+    if (!currentClubId || !userId) return;
+    setCreatingMystery(true);
+    setError(null);
+    try {
+      const id = await createTournament(currentClubId, 'Mystery Partner Night', userId);
+      window.location.href = `/tournaments/${id}?mystery=1`;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to start Mystery Partner.');
+      setCreatingMystery(false);
+    }
+  }
+
   const filterCounts = useMemo(() => {
     const counts: Record<StatusFilter, number> = { all: tournaments.length, draft: 0, active: 0, completed: 0, archived: 0 };
     for (const t of tournaments) counts[t.status]++;
@@ -148,6 +168,14 @@ export default function TournamentsPage() {
           >
             <Plus size={14} /> Start a Team Championship
           </Link>
+          <button
+            className="btn-secondary"
+            onClick={handleCreateMystery}
+            disabled={creatingMystery}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 8, width: '100%' }}
+          >
+            <Sparkles size={14} /> {creatingMystery ? 'Starting…' : 'Start Mystery Partner'}
+          </button>
         </div>
       )}
 

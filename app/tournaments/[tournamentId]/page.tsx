@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { Trophy, Plus, Trash2, Copy, Sparkles, UserPlus, KeyRound } from 'lucide-react';
 import { fetchTournament, watchUrlFor, type TournamentRow } from '@/lib/tournaments';
 import {
@@ -48,7 +48,17 @@ const STAGE_TYPE_LABELS: Record<StageType, string> = {
 };
 
 export default function TournamentDetailPage() {
+  return (
+    <Suspense fallback={<main className="page"><p>Loading…</p></main>}>
+      <TournamentDetailPageInner />
+    </Suspense>
+  );
+}
+
+function TournamentDetailPageInner() {
   const { tournamentId } = useParams<{ tournamentId: string }>();
+  const searchParams = useSearchParams();
+  const isMystery = searchParams.get('mystery') === '1';
   const { currentClubId, loading: clubLoading } = useCurrentClub();
   const [tournament, setTournament] = useState<TournamentRow | null>(null);
   const [teams, setTeams] = useState<TournamentTeamRow[]>([]);
@@ -425,7 +435,12 @@ export default function TournamentDetailPage() {
         </div>
       </div>
 
-      <h2>Teams</h2>
+      <h2>{isMystery ? 'Step 1: Teams' : 'Teams'}</h2>
+      {isMystery && (
+        <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: -8, marginBottom: 8 }}>
+          Draw random pairs below, or add a team by hand here — either way works, once every team&apos;s set you move to the group stage.
+        </p>
+      )}
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
         {teams.length === 0 && <p style={{ color: 'var(--muted)', fontSize: 14 }}>No teams yet.</p>}
         {teams.map(t => (
@@ -459,7 +474,9 @@ export default function TournamentDetailPage() {
         ))}
 
         {isAdmin && (
-          <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+            {isMystery && <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>Or pair manually</span>}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <input type="text" placeholder="Team name" value={teamName} onChange={e => setTeamName(e.target.value)} style={{ flex: '1 1 140px' }} />
             <select value={player1} onChange={e => setPlayer1(e.target.value)} style={{ flex: '1 1 120px' }}>
               <option value="">Player 1</option>
@@ -472,6 +489,7 @@ export default function TournamentDetailPage() {
             <button className="btn-primary" onClick={handleAddTeam} disabled={busy || !teamName.trim() || !player1 || !player2}>
               <Plus size={14} /> Add
             </button>
+          </div>
           </div>
         )}
       </div>
