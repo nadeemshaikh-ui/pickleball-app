@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { ScrambleRound, Squads } from './shuffle';
+import type { ScrambleRound } from './shuffle';
 import type { SquadSet } from './squads';
 import type { StageConfig, RapidFireConfig } from './teamChampionship';
 
@@ -29,7 +29,7 @@ export interface SessionRow {
   created_at: string;
   format: Format;
   players: string[];
-  squads: Squads | null;
+  squads: SquadSet | null;
   round_count: number;
   status: 'setup' | 'in_progress' | 'completed' | 'voided';
   court_labels: string[];
@@ -44,13 +44,8 @@ export interface SessionRow {
   is_ladder: boolean;
   king_of_court_fixed_pairs: boolean | null;
   venue: string | null;
-  squad_gold_label: string | null;
-  squad_black_label: string | null;
-  squad_gold_logo_url: string | null;
-  squad_black_logo_url: string | null;
   storylines: string[] | null;
   booker_upi_vpa: string | null;
-  squads_v2: SquadSet | null;
   stage_config: StageConfig[] | null;
   rapid_fire_config: RapidFireConfig | null;
 }
@@ -76,7 +71,7 @@ export interface CreateSessionOptions {
   players: string[];
   format: Format;
   roundCount: number;
-  squads: Squads | null;
+  squads: SquadSet | null;
   courtLabels: string[];
   roundDurationMinutes: number | null;
   roundsPerBlock: number | null;
@@ -89,17 +84,12 @@ export interface CreateSessionOptions {
   isLadder: boolean;
   kingOfCourtFixedPairs: boolean | null;
   venue: string | null;
-  squadGoldLabel: string | null;
-  squadBlackLabel: string | null;
-  squadGoldLogoUrl: string | null;
-  squadBlackLogoUrl: string | null;
   storylines: string[];
   bookerUpiVpa: string | null;
   // Team Championship only — optional so every other format's existing
-  // createSession call sites need no changes. All three null means "not a
-  // Team Championship session," matching how squad/roundsPerBlock etc.
-  // already null out for formats that don't use them.
-  squadsV2?: SquadSet | null;
+  // createSession call sites need no changes. Both null means "not a
+  // Team Championship session," matching how roundsPerBlock etc. already
+  // null out for formats that don't use them.
   stageConfig?: StageConfig[] | null;
   rapidFireConfig?: RapidFireConfig | null;
 }
@@ -125,13 +115,8 @@ export async function createSession(options: CreateSessionOptions): Promise<stri
     is_ladder: options.isLadder,
     king_of_court_fixed_pairs: options.kingOfCourtFixedPairs,
     venue: options.venue,
-    squad_gold_label: options.squadGoldLabel,
-    squad_black_label: options.squadBlackLabel,
-    squad_gold_logo_url: options.squadGoldLogoUrl,
-    squad_black_logo_url: options.squadBlackLogoUrl,
     storylines: options.storylines,
     booker_upi_vpa: options.bookerUpiVpa,
-    squads_v2: options.squadsV2 ?? null,
     stage_config: options.stageConfig ?? null,
     rapid_fire_config: options.rapidFireConfig ?? null,
     status: 'in_progress',
@@ -300,16 +285,7 @@ export async function renamePlayerEverywhere(
   const session = await getSession(sessionId);
   const newPlayers = session.players.map(p => (p === oldName ? newName : p));
   const newSquads = session.squads
-    ? {
-        gold: session.squads.gold.map(p => (p === oldName ? newName : p)),
-        black: session.squads.black.map(p => (p === oldName ? newName : p)),
-      }
-    : null;
-  // squads_v2 is the N-squad source every Phase 4 UI page now reads from —
-  // must be kept in lockstep with the legacy `squads` write above or a
-  // rename silently doesn't show up anywhere in the N-squad UI.
-  const newSquadsV2 = session.squads_v2
-    ? session.squads_v2.map(squad => ({ ...squad, players: squad.players.map(p => (p === oldName ? newName : p)) }))
+    ? session.squads.map(squad => ({ ...squad, players: squad.players.map(p => (p === oldName ? newName : p)) }))
     : null;
 
   const rounds = await getRounds(sessionId);
@@ -326,7 +302,7 @@ export async function renamePlayerEverywhere(
     });
 
   const results = await Promise.all([
-    supabase.from('sessions').update({ players: newPlayers, squads: newSquads, squads_v2: newSquadsV2 }).eq('id', sessionId),
+    supabase.from('sessions').update({ players: newPlayers, squads: newSquads }).eq('id', sessionId),
     ...roundUpdates,
   ]);
   const failed = results.find(r => r.error);

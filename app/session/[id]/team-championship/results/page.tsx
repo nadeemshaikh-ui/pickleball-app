@@ -36,11 +36,11 @@ export default function TeamChampionshipResultsPage({ params }: { params: Promis
   if (loading) return <main className="page"><p>Loading…</p></main>;
   if (error) return <main className="page"><p style={{ color: 'var(--danger)' }}>{error}</p></main>;
   if (!session) return <main className="page"><p>Session not found.</p></main>;
-  if (session.format !== 'team_championship' || !session.squads_v2 || !session.stage_config) {
+  if (session.format !== 'team_championship' || !session.squads || !session.stage_config) {
     return <main className="page"><p>This session isn&apos;t a Team Championship, or is missing its team/stage setup.</p></main>;
   }
 
-  const teams = session.squads_v2;
+  const teams = session.squads;
   const stages = session.stage_config;
   const { totalsByTeam, stageBreakdown } = computeTeamChampionshipStandings(rounds, teams, stages);
 

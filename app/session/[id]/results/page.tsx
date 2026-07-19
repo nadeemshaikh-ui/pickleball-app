@@ -61,8 +61,8 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
       setRounds(r);
       const board = computeLeaderboard(r);
       setLeaderboard(board);
-      if (s.format === 'squad_rivalry' && s.squads_v2) {
-        setSquadTotals(computeSquadTotalsN(r, s.squads_v2));
+      if (s.format === 'squad_rivalry' && s.squads) {
+        setSquadTotals(computeSquadTotalsN(r, s.squads));
       }
       setDues(await fetchSessionDues(id));
       setConfirmations(await fetchConfirmations(id));
@@ -199,21 +199,21 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
         <h1>Results</h1>
         {session && <SessionDate createdAt={session.created_at} venue={session.venue} />}
 
-        {squadTotals && session && session.squads_v2 && session.squads_v2.length === 2 && (
+        {squadTotals && session && session.squads && session.squads.length === 2 && (
           <div className="card" style={{ marginTop: 16 }}>
             <SquadVersusHero
-              goldLabel={session.squad_gold_label || session.squads_v2[0].label || 'Gold'}
-              blackLabel={session.squad_black_label || session.squads_v2[1].label || 'Black'}
-              goldLogoUrl={session.squad_gold_logo_url}
-              blackLogoUrl={session.squad_black_logo_url}
-              goldScore={squadTotals.get(session.squads_v2[0].id) ?? 0}
-              blackScore={squadTotals.get(session.squads_v2[1].id) ?? 0}
+              goldLabel={session.squads[0].label || 'Gold'}
+              blackLabel={session.squads[1].label || 'Black'}
+              goldLogoUrl={session.squads[0].logoUrl ?? null}
+              blackLogoUrl={session.squads[1].logoUrl ?? null}
+              goldScore={squadTotals.get(session.squads[0].id) ?? 0}
+              blackScore={squadTotals.get(session.squads[1].id) ?? 0}
             />
           </div>
         )}
-        {squadTotals && session && session.squads_v2 && session.squads_v2.length > 2 && (
+        {squadTotals && session && session.squads && session.squads.length > 2 && (
           <div className="card" style={{ marginTop: 16 }}>
-            <SquadStandingsCard squads={session.squads_v2} totalsByTeam={squadTotals} />
+            <SquadStandingsCard squads={session.squads} totalsByTeam={squadTotals} />
           </div>
         )}
 

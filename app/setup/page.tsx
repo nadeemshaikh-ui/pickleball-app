@@ -614,10 +614,6 @@ export default function SetupPage() {
         isLadder,
         kingOfCourtFixedPairs: format === 'king_of_court' ? kingOfCourtFixedPairs : null,
         venue: venue.trim() || null,
-        squadGoldLabel: squadCount === 2 ? squadRivalryLabel1 : null,
-        squadBlackLabel: squadCount === 2 ? squadRivalryLabel2 : null,
-        squadGoldLogoUrl: squadCount === 2 ? squadGoldLogoUrl : null,
-        squadBlackLogoUrl: squadCount === 2 ? squadBlackLogoUrl : null,
         storylines,
         bookerUpiVpa: bookerUpiVpa.trim() || null,
       };
@@ -640,10 +636,7 @@ export default function SetupPage() {
         await insertRounds(sessionId, rounds);
       } else if (format === 'squad_rivalry' && squadCount === 2) {
         const { squads, rounds } = generateSquadRivalrySchedule(trimmed, courtCount, roundCount, seed, lockedPairs, manualSquads);
-        // Dual-write: squads (legacy 2-key shape) for every existing reader,
-        // squadsV2 (the same data, N-squad shape) so this session is
-        // readable by the same code path N>2 sessions use, going forward.
-        const squadsV2: SquadSet = [
+        const squadSet: SquadSet = [
           { id: 'gold', label: squadRivalryLabel1 ?? undefined, logoUrl: squadGoldLogoUrl, players: squads.gold },
           { id: 'black', label: squadRivalryLabel2 ?? undefined, logoUrl: squadBlackLogoUrl, players: squads.black },
         ];
@@ -651,19 +644,17 @@ export default function SetupPage() {
           ...baseOptions,
           format: 'squad_rivalry',
           roundCount,
-          squads,
-          squadsV2,
+          squads: squadSet,
           roundsPerBlock: null,
         });
         await insertRounds(sessionId, rounds);
       } else if (format === 'squad_rivalry') {
-        const { squads: squadsV2, rounds } = generateSquadRivalryScheduleN(trimmed, squadCount, courtCount, roundCount, seed, lockedPairs, manualSquadsN);
+        const { squads: squadSet, rounds } = generateSquadRivalryScheduleN(trimmed, squadCount, courtCount, roundCount, seed, lockedPairs, manualSquadsN);
         sessionId = await createSession({
           ...baseOptions,
           format: 'squad_rivalry',
           roundCount,
-          squads: null,
-          squadsV2,
+          squads: squadSet,
           roundsPerBlock: null,
         });
         await insertRounds(sessionId, rounds);
@@ -693,9 +684,8 @@ export default function SetupPage() {
           ...baseOptions,
           format: 'team_championship',
           roundCount: totalRounds,
-          squads: null,
+          squads: teamChampionshipTeams ?? null,
           roundsPerBlock: null,
-          squadsV2: teamChampionshipTeams,
           stageConfig: teamChampionshipStages,
           rapidFireConfig: enableRapidFire
             ? { targetPoints: rapidFireTarget, bonusPoints: rapidFireBonus }

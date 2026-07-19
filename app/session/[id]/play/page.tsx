@@ -256,18 +256,18 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
     <>
       <main className="page">
         {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
-        {session && session.format === 'squad_rivalry' && session.squads_v2 && session.squads_v2.length === 2 && (
+        {session && session.format === 'squad_rivalry' && session.squads && session.squads.length === 2 && (
           <SquadVersusHero
-            goldLabel={session.squad_gold_label || session.squads_v2[0].label || 'Gold'}
-            blackLabel={session.squad_black_label || session.squads_v2[1].label || 'Black'}
-            goldLogoUrl={session.squad_gold_logo_url}
-            blackLogoUrl={session.squad_black_logo_url}
-            goldScore={computeSquadTotalsN(rounds, session.squads_v2).get(session.squads_v2[0].id) ?? 0}
-            blackScore={computeSquadTotalsN(rounds, session.squads_v2).get(session.squads_v2[1].id) ?? 0}
+            goldLabel={session.squads[0].label || 'Gold'}
+            blackLabel={session.squads[1].label || 'Black'}
+            goldLogoUrl={session.squads[0].logoUrl ?? null}
+            blackLogoUrl={session.squads[1].logoUrl ?? null}
+            goldScore={computeSquadTotalsN(rounds, session.squads).get(session.squads[0].id) ?? 0}
+            blackScore={computeSquadTotalsN(rounds, session.squads).get(session.squads[1].id) ?? 0}
           />
         )}
-        {session && session.format === 'squad_rivalry' && session.squads_v2 && session.squads_v2.length > 2 && (
-          <SquadStandingsCard squads={session.squads_v2} totalsByTeam={computeSquadTotalsN(rounds, session.squads_v2)} />
+        {session && session.format === 'squad_rivalry' && session.squads && session.squads.length > 2 && (
+          <SquadStandingsCard squads={session.squads} totalsByTeam={computeSquadTotalsN(rounds, session.squads)} />
         )}
         <h1>Live Scoring</h1>
         <p style={{ color: 'var(--muted)', marginTop: 4 }}>

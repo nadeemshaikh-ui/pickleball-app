@@ -42,14 +42,14 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
   }, [id]);
 
   async function handleGenerate() {
-    if (!session || !session.squads_v2 || !session.stage_config) return;
+    if (!session || !session.squads || !session.stage_config) return;
     setGenerating(true);
     setError(null);
     try {
       const totalRounds = session.stage_config.reduce((sum, s) => sum + (s.roundEnd - s.roundStart + 1), 0);
       const courtCount = session.court_labels.length || 1;
       const seed = `${session.id}-team-championship`;
-      const { rounds: generated } = generateSquadRivalryScheduleN(session.players, 2, courtCount, totalRounds, seed, [], session.squads_v2);
+      const { rounds: generated } = generateSquadRivalryScheduleN(session.players, 2, courtCount, totalRounds, seed, [], session.squads);
       await insertRounds(session.id, generated);
       await load();
     } catch (e) {
@@ -108,11 +108,11 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
   if (loading) return <main className="page"><p>Loading…</p></main>;
   if (error && !session) return <main className="page"><p style={{ color: 'var(--danger)' }}>{error}</p></main>;
   if (!session) return <main className="page"><p>Session not found.</p></main>;
-  if (session.format !== 'team_championship' || !session.squads_v2 || !session.stage_config) {
+  if (session.format !== 'team_championship' || !session.squads || !session.stage_config) {
     return <main className="page"><p>This session isn&apos;t a Team Championship, or is missing its team/stage setup.</p></main>;
   }
 
-  const teams = session.squads_v2;
+  const teams = session.squads;
   const stages = session.stage_config;
   const rosterByTeam = teams.map(t => ({ id: t.id, label: t.label ?? t.id, players: t.players }));
   const allPlayers = teams.flatMap(t => t.players);

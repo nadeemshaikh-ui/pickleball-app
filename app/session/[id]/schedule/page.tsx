@@ -161,22 +161,22 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
           </p>
         )}
 
-        {session && session.format === 'squad_rivalry' && session.squads_v2 && session.squads_v2.length === 2 && (
+        {session && session.format === 'squad_rivalry' && session.squads && session.squads.length === 2 && (
           <div style={{ marginTop: 16 }}>
             <SquadLineupCard
-              goldLabel={session.squad_gold_label || session.squads_v2[0].label || 'Gold'}
-              blackLabel={session.squad_black_label || session.squads_v2[1].label || 'Black'}
-              goldLogoUrl={session.squad_gold_logo_url}
-              blackLogoUrl={session.squad_black_logo_url}
-              goldPlayers={session.squads_v2[0].players}
-              blackPlayers={session.squads_v2[1].players}
+              goldLabel={session.squads[0].label || 'Gold'}
+              blackLabel={session.squads[1].label || 'Black'}
+              goldLogoUrl={session.squads[0].logoUrl ?? null}
+              blackLogoUrl={session.squads[1].logoUrl ?? null}
+              goldPlayers={session.squads[0].players}
+              blackPlayers={session.squads[1].players}
               filename={`squad-lineup-${id}.png`}
             />
           </div>
         )}
-        {session && session.format === 'squad_rivalry' && session.squads_v2 && session.squads_v2.length > 2 && (
-          <div className="card" style={{ marginTop: 16, display: 'grid', gridTemplateColumns: `repeat(${Math.min(session.squads_v2.length, 4)}, 1fr)`, gap: 12 }}>
-            {session.squads_v2.map(squad => (
+        {session && session.format === 'squad_rivalry' && session.squads && session.squads.length > 2 && (
+          <div className="card" style={{ marginTop: 16, display: 'grid', gridTemplateColumns: `repeat(${Math.min(session.squads.length, 4)}, 1fr)`, gap: 12 }}>
+            {session.squads.map(squad => (
               <div key={squad.id}>
                 <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>
                   {squad.label ?? squad.id} ({squad.players.length})

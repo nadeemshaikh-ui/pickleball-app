@@ -28,10 +28,11 @@ export interface Squad {
   id: string;
   players: string[];
   // Optional — the N-squad scheduling algorithm below never sets or reads
-  // these (it only cares about id/players), but the squads_v2 DB storage
-  // shape this type also represents (see supabase/migrations/
-  // 20260719030000_squad_rivalry_n_squads_schema.sql and
-  // 20260719040000_team_championship_schema.sql) carries admin-entered
+  // these (it only cares about id/players), but the sessions.squads DB
+  // storage shape this type also represents (see supabase/migrations/
+  // 20260719030000_squad_rivalry_n_squads_schema.sql,
+  // 20260719040000_team_championship_schema.sql, and the Phase 5 cutover
+  // migration that renamed squads_v2 -> squads) carries admin-entered
   // label/logo, so both features share one type instead of two near-
   // identical ones.
   label?: string;

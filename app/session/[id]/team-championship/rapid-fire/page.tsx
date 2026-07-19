@@ -59,11 +59,11 @@ export default function RapidFirePage({ params }: { params: Promise<{ id: string
 
   if (error && !session) return <main className="page"><p style={{ color: 'var(--danger)' }}>{error}</p></main>;
   if (!session) return <main className="page"><p>Loading…</p></main>;
-  if (session.format !== 'team_championship' || !session.squads_v2 || !session.rapid_fire_config) {
+  if (session.format !== 'team_championship' || !session.squads || !session.rapid_fire_config) {
     return <main className="page"><p>This session has no Rapid Fire finale configured.</p></main>;
   }
 
-  const teams = session.squads_v2;
+  const teams = session.squads;
   const config = session.rapid_fire_config;
   const state = computeRapidFireState(log, config, teams);
   const onCourtPlayers = courtOverride ?? state.onCourtPlayers;

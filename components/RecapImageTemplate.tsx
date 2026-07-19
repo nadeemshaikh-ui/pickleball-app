@@ -22,7 +22,7 @@ export default function RecapImageTemplate({
   const blowoutWinner = blowout && blowout.score_a! > blowout.score_b! ? blowout.team_a : blowout?.team_b;
 
   const rankColor = (i: number) => (i === 0 ? '#e5c100' : i === 1 ? '#c0c0c0' : '#b06a3a');
-  const squadTotals = session.format === 'squad_rivalry' && session.squads_v2 ? computeSquadTotalsN(rounds, session.squads_v2) : null;
+  const squadTotals = session.format === 'squad_rivalry' && session.squads ? computeSquadTotalsN(rounds, session.squads) : null;
 
   return (
     <div style={{ width: 1080, background: '#e5fa00', padding: 32, fontFamily: 'var(--font-body), Arial, sans-serif' }}>
@@ -50,16 +50,16 @@ export default function RecapImageTemplate({
         </div>
       </div>
 
-      {squadTotals && session.squads_v2 && session.squads_v2.length === 2 && (
+      {squadTotals && session.squads && session.squads.length === 2 && (
         <div style={{ background: '#ffffff', border: '3px solid #121a2f', borderTop: 'none', padding: '28px 32px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 28 }}>
-          <SquadResult label={session.squad_gold_label || session.squads_v2[0].label || 'Gold'} logoUrl={session.squad_gold_logo_url} score={squadTotals.get(session.squads_v2[0].id) ?? 0} color="#d4af37" />
+          <SquadResult label={session.squads[0].label || 'Gold'} logoUrl={session.squads[0].logoUrl ?? null} score={squadTotals.get(session.squads[0].id) ?? 0} color="#d4af37" />
           <div style={{ fontFamily: 'var(--font-display), sans-serif', fontSize: 36, color: '#121a2f' }}>VS</div>
-          <SquadResult label={session.squad_black_label || session.squads_v2[1].label || 'Black'} logoUrl={session.squad_black_logo_url} score={squadTotals.get(session.squads_v2[1].id) ?? 0} color="#121a2f" />
+          <SquadResult label={session.squads[1].label || 'Black'} logoUrl={session.squads[1].logoUrl ?? null} score={squadTotals.get(session.squads[1].id) ?? 0} color="#121a2f" />
         </div>
       )}
-      {squadTotals && session.squads_v2 && session.squads_v2.length > 2 && (
+      {squadTotals && session.squads && session.squads.length > 2 && (
         <div style={{ background: '#ffffff', border: '3px solid #121a2f', borderTop: 'none', padding: '28px 32px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 24 }}>
-          {[...session.squads_v2]
+          {[...session.squads]
             .sort((a, b) => (squadTotals.get(b.id) ?? 0) - (squadTotals.get(a.id) ?? 0))
             .map((squad, i) => (
               <SquadResult
