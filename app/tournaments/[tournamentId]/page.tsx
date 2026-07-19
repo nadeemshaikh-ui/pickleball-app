@@ -218,11 +218,15 @@ function TournamentDetailPageInner() {
   }, [tournamentId, stages.length]);
 
   async function handleAddTeam() {
-    if (!currentClubId || !teamName.trim() || !player1 || !player2 || player1 === player2) return;
+    if (!currentClubId || !player1 || !player2 || player1 === player2) return;
     setBusy(true);
     setError(null);
     try {
-      await createTournamentTeam({ tournamentId, name: teamName.trim(), playerNames: [player1, player2] });
+      // Team name is optional — with 10-20+ teams typing a name for every
+      // one is real friction for no benefit, so a blank name auto-numbers
+      // against however many teams already exist.
+      const autoName = teamName.trim() || `Team ${teams.length + 1}`;
+      await createTournamentTeam({ tournamentId, name: autoName, playerNames: [player1, player2] });
       setTeamName('');
       setPlayer1('');
       setPlayer2('');
@@ -330,7 +334,14 @@ function TournamentDetailPageInner() {
   }
 
   async function handleGenerateStage() {
-    if (!currentClubId || !stageName.trim()) return;
+    if (!stageName.trim()) {
+      setError('Name this stage before generating it (e.g. "Group Stage", "Quarterfinals").');
+      return;
+    }
+    if (!currentClubId) {
+      setError('Lost track of which club this is — refresh the page and try again.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -452,6 +463,7 @@ function TournamentDetailPageInner() {
                 <input
                   type="number"
                   placeholder="Seed"
+                  title="Optional. Ranks this team for tiebreakers and bracket placement — lower number seeds higher. Leave blank if you don't need manual seeding."
                   defaultValue={t.seed ?? ''}
                   onBlur={e => handleSeedChange(t.id, e.target.value)}
                   style={{ width: 60 }}
@@ -477,7 +489,7 @@ function TournamentDetailPageInner() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
             {isMystery && <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>Or pair manually</span>}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <input type="text" placeholder="Team name" value={teamName} onChange={e => setTeamName(e.target.value)} style={{ flex: '1 1 140px' }} />
+            <input type="text" placeholder={`Team name (optional — defaults to "Team ${teams.length + 1}")`} value={teamName} onChange={e => setTeamName(e.target.value)} style={{ flex: '1 1 140px' }} />
             <select value={player1} onChange={e => setPlayer1(e.target.value)} style={{ flex: '1 1 120px' }}>
               <option value="">Player 1</option>
               {players.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
@@ -486,7 +498,7 @@ function TournamentDetailPageInner() {
               <option value="">Player 2</option>
               {players.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
             </select>
-            <button className="btn-primary" onClick={handleAddTeam} disabled={busy || !teamName.trim() || !player1 || !player2}>
+            <button className="btn-primary" onClick={handleAddTeam} disabled={busy || !player1 || !player2}>
               <Plus size={14} /> Add
             </button>
           </div>
