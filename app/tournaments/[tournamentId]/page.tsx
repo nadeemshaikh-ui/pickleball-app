@@ -69,9 +69,12 @@ function TournamentDetailPageInner() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const [teamName, setTeamName] = useState('');
-  const [player1, setPlayer1] = useState('');
-  const [player2, setPlayer2] = useState('');
+  // Explicit choice between the two ways to form teams — was previously a
+  // free-text-name-plus-dropdowns form sitting right above an unrelated
+  // "Mystery Partner Draw" section, with no framing distinguishing the two
+  // as alternatives. null = not chosen yet.
+  const [pairingMode, setPairingMode] = useState<'auto' | 'manual' | null>(null);
+  const [manualPick1, setManualPick1] = useState('');
 
   const [stageType, setStageType] = useState<StageType>('league');
   const [stageName, setStageName] = useState('');
@@ -217,25 +220,35 @@ function TournamentDetailPageInner() {
     return () => clearInterval(interval);
   }, [tournamentId, stages.length]);
 
-  async function handleAddTeam() {
-    if (!currentClubId || !player1 || !player2 || player1 === player2) return;
+  // Manual mode's sequential flow: tap a player, tap a second, team is
+  // created immediately and the picker resets for "Team N+1" — no name
+  // field, no dropdowns, matches the same tap-to-select pattern the
+  // Mystery Draw pool already uses below.
+  async function handleManualAddPair(p1: string, p2: string) {
+    if (!currentClubId) return;
     setBusy(true);
     setError(null);
     try {
-      // Team name is optional — with 10-20+ teams typing a name for every
-      // one is real friction for no benefit, so a blank name auto-numbers
-      // against however many teams already exist.
-      const autoName = teamName.trim() || `Team ${teams.length + 1}`;
-      await createTournamentTeam({ tournamentId, name: autoName, playerNames: [player1, player2] });
-      setTeamName('');
-      setPlayer1('');
-      setPlayer2('');
+      await createTournamentTeam({ tournamentId, name: `Team ${teams.length + 1}`, playerNames: [p1, p2] });
+      setManualPick1('');
       setTeams(await fetchTournamentTeams(tournamentId));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to add team.');
     } finally {
       setBusy(false);
     }
+  }
+
+  function handleManualChipClick(name: string) {
+    if (!manualPick1) {
+      setManualPick1(name);
+      return;
+    }
+    if (name === manualPick1) {
+      setManualPick1('');
+      return;
+    }
+    handleManualAddPair(manualPick1, name);
   }
 
   async function handleLogoUpload(teamId: string, file: File) {
@@ -447,11 +460,6 @@ function TournamentDetailPageInner() {
       </div>
 
       <h2>{isMystery ? 'Step 1: Teams' : 'Teams'}</h2>
-      {isMystery && (
-        <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: -8, marginBottom: 8 }}>
-          Draw random pairs below, or add a team by hand here — either way works, once every team&apos;s set you move to the group stage.
-        </p>
-      )}
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
         {teams.length === 0 && <p style={{ color: 'var(--muted)', fontSize: 14 }}>No teams yet.</p>}
         {teams.length > 0 && (
@@ -489,31 +497,70 @@ function TournamentDetailPageInner() {
             )}
           </div>
         ))}
-
-        {isAdmin && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-            {isMystery && <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>Or pair manually</span>}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <input type="text" placeholder={`Team name (optional — defaults to "Team ${teams.length + 1}")`} value={teamName} onChange={e => setTeamName(e.target.value)} style={{ flex: '1 1 140px' }} />
-            <select value={player1} onChange={e => setPlayer1(e.target.value)} style={{ flex: '1 1 120px' }}>
-              <option value="">Player 1</option>
-              {players.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-            </select>
-            <select value={player2} onChange={e => setPlayer2(e.target.value)} style={{ flex: '1 1 120px' }}>
-              <option value="">Player 2</option>
-              {players.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-            </select>
-            <button className="btn-primary" onClick={handleAddTeam} disabled={busy || !player1 || !player2}>
-              <Plus size={14} /> Add
-            </button>
-          </div>
-          </div>
-        )}
       </div>
 
-      {isAdmin && (
+      {isAdmin && pairingMode === null && (
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>How do you want to form teams?</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <button className="btn-secondary" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: 14 }} onClick={() => setPairingMode('auto')}>
+              <Sparkles size={20} />
+              <span style={{ fontWeight: 700 }}>Automatic</span>
+              <span style={{ fontSize: 11, color: 'var(--muted)', textAlign: 'center' }}>Random draw from a pool</span>
+            </button>
+            <button className="btn-secondary" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: 14 }} onClick={() => setPairingMode('manual')}>
+              <UserPlus size={20} />
+              <span style={{ fontWeight: 700 }}>Manual</span>
+              <span style={{ fontSize: 11, color: 'var(--muted)', textAlign: 'center' }}>Pick each team's players yourself</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isAdmin && pairingMode === 'manual' && (
         <>
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Sparkles size={18} /> Mystery Partner Draw</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><UserPlus size={18} /> Team {teams.length + 1}: pick 2 players</h2>
+            <button className="text-link-btn" onClick={() => { setPairingMode(null); setManualPick1(''); }}>Change method</button>
+          </div>
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+            {(() => {
+              const alreadyOnATeam = new Set(teams.flatMap(t => t.player_names));
+              const candidates = players.filter(p => !alreadyOnATeam.has(p.name));
+              return candidates.length === 0 ? (
+                <p style={{ fontSize: 13, color: 'var(--muted)' }}>Every registered player is already on a team.</p>
+              ) : (
+                <>
+                  <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>
+                    {manualPick1 ? `${manualPick1} selected — tap their partner.` : 'Tap the first player for this team.'}
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {candidates.map(p => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className={manualPick1 === p.name ? 'btn-primary' : 'btn-secondary'}
+                        onClick={() => handleManualChipClick(p.name)}
+                        disabled={busy}
+                        style={{ minHeight: 32, padding: '4px 10px', fontSize: 13 }}
+                      >
+                        {p.name}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </>
+      )}
+
+      {isAdmin && pairingMode === 'auto' && (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Sparkles size={18} /> Automatic Draw</h2>
+            <button className="text-link-btn" onClick={() => setPairingMode(null)}>Change method</button>
+          </div>
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
             <p style={{ fontSize: 12, color: 'var(--muted)' }}>
               Pick a pool of players — they&apos;ll be randomly paired into teams. Pairs stream in one at a time so anyone with this page open can

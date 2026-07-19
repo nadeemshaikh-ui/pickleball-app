@@ -17,16 +17,15 @@ test('Mystery Partner: optional team names, blocks an invalid group split, gener
   await page.waitForURL(/\/tournaments\/[^/]+\?mystery=1/, { timeout: 15000 });
   await expect(page.getByRole('heading', { name: 'Step 1: Teams' })).toBeVisible();
 
+  // Explicit Automatic/Manual choice, then manual mode's sequential
+  // tap-2-players-per-team flow — no team name field.
+  await page.getByRole('button', { name: 'Manual' }).click();
   const players = ['E2E Ladder A', 'E2E Ladder B', 'E2E Ladder C', 'E2E Ladder D', 'E2E Member', 'E2E Requester'];
-  const manualPairingSection = page.locator('div', { hasText: 'Or pair manually' }).last();
-  const player1Select = manualPairingSection.locator('select').nth(0);
-  const player2Select = manualPairingSection.locator('select').nth(1);
   for (let i = 0; i < players.length; i += 2) {
-    // Deliberately leave the team name blank — bug #1.
-    await player1Select.selectOption({ label: players[i] });
-    await player2Select.selectOption({ label: players[i + 1] });
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
-    await expect(page.getByText(`Team ${i / 2 + 1}`)).toBeVisible({ timeout: 10000 });
+    await page.getByRole('heading', { name: `Team ${i / 2 + 1}: pick 2 players` }).waitFor();
+    await page.getByRole('button', { name: players[i], exact: true }).click();
+    await page.getByRole('button', { name: players[i + 1], exact: true }).click();
+    await expect(page.getByText(`Team ${i / 2 + 1}`).first()).toBeVisible({ timeout: 10000 });
   }
 
   // Bug #2, reproduced exactly: 3 teams, default 2 groups -> one group of 1.
