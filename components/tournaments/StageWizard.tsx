@@ -66,6 +66,11 @@ interface StageWizardProps {
   onAdvanceCountChange: (n: number) => void;
   busy: boolean;
   onGenerate: () => void;
+  // Rendered right next to the button — the page-level error banner lives
+  // at the very top of a long page (teams, form-teams, registrations,
+  // court codes all sit above this), so a failure here was invisible
+  // without scrolling up. Reported 3 times as "Generate does nothing."
+  generateError: string | null;
 }
 
 // Pool size feeding this stage: exact for stage 1 (every tournament team),
@@ -91,7 +96,7 @@ export function StageWizard(props: StageWizardProps) {
     teams, stages, stageName, onStageNameChange, stageType, onStageTypeChange,
     groupCount, onGroupCountChange, doubleHeader, onDoubleHeaderChange,
     advanceMode, onAdvanceModeChange, advancePerGroup, onAdvancePerGroupChange,
-    advanceCount, onAdvanceCountChange, busy, onGenerate,
+    advanceCount, onAdvanceCountChange, busy, onGenerate, generateError,
   } = props;
 
   const { size: poolSize, approximate } = poolInfo(teams, stages);
@@ -199,17 +204,17 @@ export function StageWizard(props: StageWizardProps) {
       {stageType === 'group' && (
         <>
           <Stepper label="Number of groups" value={groupCount} onChange={onGroupCountChange} min={2} />
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-            Who advances
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13 }}>
+            How many teams move on to the next stage?
             <select value={advanceMode} onChange={e => onAdvanceModeChange(e.target.value as 'per_group' | 'combined')}>
-              <option value="per_group">Top N from each group</option>
-              <option value="combined">Flat top N across all groups combined</option>
+              <option value="per_group">The same number from every group (e.g. top 2 from each)</option>
+              <option value="combined">A fixed total across all groups (e.g. best 8 overall, any group)</option>
             </select>
           </label>
           {advanceMode === 'per_group' ? (
-            <Stepper label="Advance per group" value={advancePerGroup} onChange={onAdvancePerGroupChange} min={1} />
+            <Stepper label="How many from each group" value={advancePerGroup} onChange={onAdvancePerGroupChange} min={1} />
           ) : (
-            <Stepper label="Total advancing" value={advanceCount} onChange={onAdvanceCountChange} min={2} />
+            <Stepper label="Total teams advancing overall" value={advanceCount} onChange={onAdvanceCountChange} min={2} />
           )}
         </>
       )}
@@ -241,8 +246,13 @@ export function StageWizard(props: StageWizardProps) {
       </div>
 
       <button className="btn-primary" onClick={onGenerate} disabled={busy || !stageName.trim() || previewIsError}>
-        Generate Stage
+        {busy ? 'Generating…' : 'Generate Stage'}
       </button>
+      {generateError && (
+        <p style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 13, margin: 0 }}>
+          {generateError}
+        </p>
+      )}
     </div>
   );
 }

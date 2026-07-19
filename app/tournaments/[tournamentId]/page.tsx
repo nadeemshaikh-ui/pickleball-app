@@ -585,6 +585,7 @@ function TournamentDetailPageInner() {
           onAdvanceCountChange={setAdvanceCount}
           busy={busy}
           onGenerate={handleGenerateStage}
+          generateError={error}
         />
       )}
     </main>
