@@ -119,7 +119,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
             </span>
             <span style={{ flex: '1 1 auto', maxWidth: 80 }} />
             <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', textAlign: 'right' }}>
-              Win–Loss · Points For–Against
+              Win–Loss · Win%
             </span>
           </div>
         )}
@@ -138,7 +138,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
                   <div className="win-bar-fill" style={{ width: `${(p.wins / maxWins) * 100}%` }} />
                 </div>
                 <span className="leaderboard-stats">
-                  {p.wins}W-{p.losses}L · {p.pointsFor}-{p.pointsAgainst}
+                  {p.wins}W-{p.losses}L · {p.wins + p.losses > 0 ? `${Math.round((p.wins / (p.wins + p.losses)) * 100)}%` : '—'}
                 </span>
               </div>
             );

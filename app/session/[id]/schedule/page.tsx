@@ -205,7 +205,7 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
                   <thead>
                     <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
                       <th style={{ padding: '6px 8px', fontSize: 12, color: 'var(--muted)' }}>Player</th>
-                      <th style={{ padding: '6px 8px', fontSize: 12, color: 'var(--muted)' }}>Flight</th>
+                      <th style={{ padding: '6px 8px', fontSize: 12, color: 'var(--muted)' }}>Games Played</th>
                       <th style={{ padding: '6px 8px', fontSize: 12, color: 'var(--muted)', textAlign: 'right' }}>Rating</th>
                     </tr>
                   </thead>
@@ -221,7 +221,6 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
                       })
                       .map(name => {
                         const p = playersByName.get(name);
-                        const flight = flightForRating(p?.elo_rating ?? 1500);
                         return (
                           <tr key={name} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '8px' }}>
@@ -230,7 +229,7 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
                                 <span style={{ fontWeight: 700 }}>{name}</span>
                               </div>
                             </td>
-                            <td style={{ padding: '8px', color: 'var(--muted)' }}>{flight}</td>
+                            <td style={{ padding: '8px', color: 'var(--muted)' }}>{p ? p.games_played : '—'}</td>
                             <td style={{ padding: '8px', textAlign: 'right', color: 'var(--muted)' }} title="Skill rating — used to balance courts and flights">
                               {p ? p.elo_rating : '—'}
                             </td>

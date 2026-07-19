@@ -326,7 +326,7 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                 const aWins = court.score_a !== null && court.score_b !== null && court.score_a > court.score_b;
                 const bWins = court.score_a !== null && court.score_b !== null && court.score_b > court.score_a;
                 return (
-                  <div key={court.id} className="match-box">
+                  <div key={court.id} className="match-box" style={scoreErrors[court.id] ? { outline: '2px solid var(--danger)', outlineOffset: 2 } : undefined}>
                     <span className="court-label-big">COURT {session?.court_labels?.[court.court - 1] ?? court.court}</span>
                     <div className="match-teams-row">
                       <div className={`team-box ${aWins ? 'winner' : ''}`}>
@@ -337,7 +337,9 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                           inputMode="numeric"
                           max={99}
                           aria-label={`${court.team_a.join(' & ')} score, court ${court.court}, round ${roundNumber}`}
+                          aria-invalid={!!scoreErrors[court.id]}
                           value={scoreA}
+                          style={scoreErrors[court.id] ? { borderColor: 'var(--danger)', borderWidth: 2 } : undefined}
                           onChange={e => {
                             setDrafts(prev => ({ ...prev, [court.id]: [clampScore(e.target.value), draftFor(court)[1]] }));
                             setScoreErrors(prev => ({ ...prev, [court.id]: '' }));
@@ -354,7 +356,9 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                           inputMode="numeric"
                           max={99}
                           aria-label={`${court.team_b.join(' & ')} score, court ${court.court}, round ${roundNumber}`}
+                          aria-invalid={!!scoreErrors[court.id]}
                           value={scoreB}
+                          style={scoreErrors[court.id] ? { borderColor: 'var(--danger)', borderWidth: 2 } : undefined}
                           onChange={e => {
                             setDrafts(prev => ({ ...prev, [court.id]: [draftFor(court)[0], clampScore(e.target.value)] }));
                             setScoreErrors(prev => ({ ...prev, [court.id]: '' }));
