@@ -500,16 +500,25 @@ function TournamentDetailPageInner() {
             <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
               <button
                 className="btn-primary"
-                onClick={() => handleMysteryDraw(candidates.filter(p => p.name !== byePlayer).map(p => p.name))}
-                disabled={drawing || candidates.length < 2 || (oddCount && !byePlayer)}
+                onClick={() => {
+                  // Odd counts don't block the button anymore — forcing a
+                  // pre-selection before the primary action was the exact
+                  // "button looks stuck, nothing happens" pattern already
+                  // fixed for Generate Stage. A bye is picked automatically
+                  // (randomly, unless the organizer already chose one below)
+                  // and shown after the fact, not required beforehand.
+                  const bye = byePlayer || (oddCount ? candidates[Math.floor(Math.random() * candidates.length)].name : null);
+                  handleMysteryDraw(candidates.filter(p => p.name !== bye).map(p => p.name));
+                }}
+                disabled={drawing || candidates.length < 2}
               >
                 {drawing && drawProgress ? `Pairing… ${drawProgress.done}/${drawProgress.total}` : `Auto-Pair All ${candidates.length} Remaining`}
               </button>
               {oddCount && (
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                  Odd number left ({candidates.length}) — who sits out this round?
+                  Odd number ({candidates.length}) — one sits out. Pick who, or leave it random:
                   <select value={byePlayer} onChange={e => setByePlayer(e.target.value)} disabled={drawing}>
-                    <option value="">Choose a bye…</option>
+                    <option value="">Random</option>
                     {candidates.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
                   </select>
                 </label>
