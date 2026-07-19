@@ -69,11 +69,10 @@ function TournamentDetailPageInner() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Explicit choice between the two ways to form teams — was previously a
-  // free-text-name-plus-dropdowns form sitting right above an unrelated
-  // "Mystery Partner Draw" section, with no framing distinguishing the two
-  // as alternatives. null = not chosen yet.
-  const [pairingMode, setPairingMode] = useState<'auto' | 'manual' | null>(null);
+  // "Form Teams" is one unified screen (industry-standard pattern: an
+  // instant one-click auto-pair for everyone remaining, plus tap-to-pair
+  // for manual overrides) rather than a mode-select gate — no reason a
+  // small pool should force a modal choice before doing anything.
   const [manualPick1, setManualPick1] = useState('');
 
   const [stageType, setStageType] = useState<StageType>('league');
@@ -293,18 +292,9 @@ function TournamentDetailPageInner() {
     }
   }
 
-  function toggleMysteryPoolPlayer(name: string) {
-    setMysteryPool(prev => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
-      return next;
-    });
-    setByePlayer('');
-  }
 
-  async function handleMysteryDraw() {
-    const pool = [...mysteryPool];
+  async function handleMysteryDraw(explicitPool?: string[]) {
+    const pool = explicitPool ?? [...mysteryPool];
     if (pool.length < 2) return;
     setError(null);
     setDrawing(true);
@@ -499,123 +489,57 @@ function TournamentDetailPageInner() {
         ))}
       </div>
 
-      {isAdmin && pairingMode === null && (
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-          <p style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>How do you want to form teams?</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <button className="btn-secondary" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: 14 }} onClick={() => setPairingMode('auto')}>
-              <Sparkles size={20} />
-              <span style={{ fontWeight: 700 }}>Automatic</span>
-              <span style={{ fontSize: 11, color: 'var(--muted)', textAlign: 'center' }}>Random draw from a pool</span>
-            </button>
-            <button className="btn-secondary" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: 14 }} onClick={() => setPairingMode('manual')}>
-              <UserPlus size={20} />
-              <span style={{ fontWeight: 700 }}>Manual</span>
-              <span style={{ fontSize: 11, color: 'var(--muted)', textAlign: 'center' }}>Pick each team's players yourself</span>
-            </button>
-          </div>
-        </div>
-      )}
+      {isAdmin && (() => {
+        const alreadyOnATeam = new Set(teams.flatMap(t => t.player_names));
+        const candidates = players.filter(p => !alreadyOnATeam.has(p.name));
+        if (candidates.length === 0) return null;
+        const oddCount = candidates.length % 2 !== 0;
+        return (
+          <>
+            <h2>Form Teams</h2>
+            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+              <button
+                className="btn-primary"
+                onClick={() => handleMysteryDraw(candidates.filter(p => p.name !== byePlayer).map(p => p.name))}
+                disabled={drawing || candidates.length < 2 || (oddCount && !byePlayer)}
+              >
+                {drawing && drawProgress ? `Pairing… ${drawProgress.done}/${drawProgress.total}` : `Auto-Pair All ${candidates.length} Remaining`}
+              </button>
+              {oddCount && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                  Odd number left ({candidates.length}) — who sits out this round?
+                  <select value={byePlayer} onChange={e => setByePlayer(e.target.value)} disabled={drawing}>
+                    <option value="">Choose a bye…</option>
+                    {candidates.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                  </select>
+                </label>
+              )}
 
-      {isAdmin && pairingMode === 'manual' && (
-        <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><UserPlus size={18} /> Team {teams.length + 1}: pick 2 players</h2>
-            <button className="text-link-btn" onClick={() => { setPairingMode(null); setManualPick1(''); }}>Change method</button>
-          </div>
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-            {(() => {
-              const alreadyOnATeam = new Set(teams.flatMap(t => t.player_names));
-              const candidates = players.filter(p => !alreadyOnATeam.has(p.name));
-              return candidates.length === 0 ? (
-                <p style={{ fontSize: 13, color: 'var(--muted)' }}>Every registered player is already on a team.</p>
-              ) : (
-                <>
-                  <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>
-                    {manualPick1 ? `${manualPick1} selected — tap their partner.` : 'Tap the first player for this team.'}
-                  </p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {candidates.map(p => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        className={manualPick1 === p.name ? 'btn-primary' : 'btn-secondary'}
-                        onClick={() => handleManualChipClick(p.name)}
-                        disabled={busy}
-                        style={{ minHeight: 32, padding: '4px 10px', fontSize: 13 }}
-                      >
-                        {p.name}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        </>
-      )}
-
-      {isAdmin && pairingMode === 'auto' && (
-        <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Sparkles size={18} /> Automatic Draw</h2>
-            <button className="text-link-btn" onClick={() => setPairingMode(null)}>Change method</button>
-          </div>
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-            <p style={{ fontSize: 12, color: 'var(--muted)' }}>
-              Pick a pool of players — they&apos;ll be randomly paired into teams. Pairs stream in one at a time so anyone with this page open can
-              watch the reveal.
-            </p>
-            {(() => {
-              const alreadyOnATeam = new Set(teams.flatMap(t => t.player_names));
-              const candidates = players.filter(p => !alreadyOnATeam.has(p.name));
-              return (
-                <>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {candidates.map(p => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        className={mysteryPool.has(p.name) ? 'btn-primary' : 'btn-secondary'}
-                        onClick={() => toggleMysteryPoolPlayer(p.name)}
-                        disabled={drawing}
-                        style={{ minHeight: 32, padding: '4px 10px', fontSize: 13 }}
-                      >
-                        {p.name}
-                      </button>
-                    ))}
-                    {candidates.length === 0 && <p style={{ fontSize: 13, color: 'var(--muted)' }}>Every registered player is already on a team.</p>}
-                  </div>
-
-                  {mysteryPool.size > 0 && mysteryPool.size % 2 !== 0 && (
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                      Odd pool ({mysteryPool.size}) — who sits out this draw?
-                      <select value={byePlayer} onChange={e => setByePlayer(e.target.value)} disabled={drawing}>
-                        <option value="">Choose a bye…</option>
-                        {[...mysteryPool].map(name => <option key={name} value={name}>{name}</option>)}
-                      </select>
-                    </label>
-                  )}
-
-                  <button
-                    className="btn-primary"
-                    onClick={handleMysteryDraw}
-                    disabled={
-                      drawing ||
-                      mysteryPool.size < 2 ||
-                      (mysteryPool.size % 2 !== 0 && !byePlayer)
-                    }
-                  >
-                    {drawing && drawProgress
-                      ? `Drawing… ${drawProgress.done}/${drawProgress.total} pairs revealed`
-                      : 'Start Draw'}
-                  </button>
-                </>
-              );
-            })()}
-          </div>
-        </>
-      )}
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 6px' }}>
+                  {manualPick1
+                    ? `${manualPick1} selected — tap their partner to pair them instead.`
+                    : 'Or tap any 2 below to pair them yourself:'}
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {candidates.map(p => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className={manualPick1 === p.name ? 'btn-primary' : 'btn-secondary'}
+                      onClick={() => handleManualChipClick(p.name)}
+                      disabled={busy || drawing}
+                      style={{ minHeight: 32, padding: '4px 10px', fontSize: 13 }}
+                    >
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>
+        );
+      })()}
 
       <h2>Stages</h2>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
