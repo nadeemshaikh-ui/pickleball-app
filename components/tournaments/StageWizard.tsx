@@ -175,7 +175,13 @@ export function StageWizard(props: StageWizardProps) {
         placeholder="Stage name (e.g. 'Group Stage', 'Semifinals')"
         value={stageName}
         onChange={e => onStageNameChange(e.target.value)}
+        style={!stageName.trim() ? { borderColor: 'var(--danger)' } : undefined}
       />
+      {!stageName.trim() && (
+        <p style={{ fontSize: 12, color: 'var(--danger)', margin: '-6px 0 0', fontWeight: 600 }}>
+          Required — Generate Stage won&apos;t work without a name here.
+        </p>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
         {FORMAT_CARDS.map(({ type, label, description, icon: Icon }) => {
@@ -245,7 +251,15 @@ export function StageWizard(props: StageWizardProps) {
         )}
       </div>
 
-      <button className="btn-primary" onClick={onGenerate} disabled={busy || !stageName.trim() || previewIsError}>
+      {/* Deliberately NOT disabled for a missing stage name — a disabled
+          button's onClick never fires at all, so the parent's "name this
+          stage first" error (already handled in handleGenerateStage) never
+          had a chance to show. Reported repeatedly as "Generate does
+          nothing" because that's literally true for a disabled button:
+          nothing can happen, not even an error. Only disable for things
+          that make the click itself meaningless (already busy, or the
+          preview shows a genuinely invalid config). */}
+      <button className="btn-primary" onClick={onGenerate} disabled={busy || previewIsError}>
         {busy ? 'Generating…' : 'Generate Stage'}
       </button>
       {generateError && (
