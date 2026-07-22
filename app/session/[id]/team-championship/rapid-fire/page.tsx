@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { getSession, type SessionRow } from '@/lib/db';
 import { fetchRapidFireLog, recordRapidFirePoint } from '@/lib/rapidFire';
@@ -24,6 +24,7 @@ export default function RapidFirePage({ params }: { params: Promise<{ id: string
   const [error, setError] = useState<string | null>(null);
   const [scoring, setScoring] = useState(false);
   const [courtOverride, setCourtOverride] = useState<string[] | null>(null);
+  const scoringRef = useRef(false);
 
   async function load() {
     const [s, l] = await Promise.all([getSession(id), fetchRapidFireLog(id)]);
@@ -40,6 +41,8 @@ export default function RapidFirePage({ params }: { params: Promise<{ id: string
   }, [id]);
 
   async function handleScore(teamId: string, onCourtPlayers: string[]) {
+    if (scoringRef.current) return;
+    scoringRef.current = true;
     setScoring(true);
     setError(null);
     try {
@@ -49,6 +52,7 @@ export default function RapidFirePage({ params }: { params: Promise<{ id: string
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to record point.');
     } finally {
+      scoringRef.current = false;
       setScoring(false);
     }
   }

@@ -38,7 +38,7 @@ export default function CrossClubPlayerProfilePage() {
 
   return (
     <main className="page">
-      <Link href="/register" className="text-link-btn">← Profile</Link>
+      <Link href="/league" className="text-link-btn">← Dashboard</Link>
       <h1>{stats.perClub[0].playerName}</h1>
       <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16 }}>
         Combined across {stats.perClub.length} shared club{stats.perClub.length === 1 ? '' : 's'} — ratings aren&apos;t shown here since elo isn&apos;t

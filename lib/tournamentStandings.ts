@@ -228,15 +228,22 @@ export function computeCombinedStandings(
   for (const t of teams) row(t.id, groupOf.get(t.id) ?? null);
   for (const r of rows.values()) r.winPct = r.played > 0 ? r.won / r.played : 0;
 
+  const winPctGroups = new Map<number, number>();
+  for (const r of rows.values()) winPctGroups.set(r.winPct, (winPctGroups.get(r.winPct) ?? 0) + 1);
+
   const sorted = [...rows.values()].sort((x, y) => {
     if (y.winPct !== x.winPct) return y.winPct - x.winPct;
-    if (x.groupLabel !== null && x.groupLabel === y.groupLabel) {
+
+    // Apply head-to-head ONLY if exactly 2 teams share this win percentage
+    if (winPctGroups.get(x.winPct) === 2 && x.groupLabel !== null && x.groupLabel === y.groupLabel) {
       const h2h = headToHeadWinner(x.teamId, y.teamId, matches);
       if (h2h) return h2h === x.teamId ? -1 : 1;
     }
-    const diffX = x.pointsFor - x.pointsAgainst;
-    const diffY = y.pointsFor - y.pointsAgainst;
-    if (diffY !== diffX) return diffY - diffX;
+
+    // Average Point Differential per match played (prevents unfair advantage for larger groups)
+    const avgDiffX = x.played > 0 ? (x.pointsFor - x.pointsAgainst) / x.played : 0;
+    const avgDiffY = y.played > 0 ? (y.pointsFor - y.pointsAgainst) / y.played : 0;
+    if (avgDiffY !== avgDiffX) return avgDiffY - avgDiffX;
     if (y.pointsFor !== x.pointsFor) return y.pointsFor - x.pointsFor;
     return (seedOf.get(x.teamId) ?? Number.MAX_SAFE_INTEGER) - (seedOf.get(y.teamId) ?? Number.MAX_SAFE_INTEGER);
   });

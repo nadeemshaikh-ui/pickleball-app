@@ -461,7 +461,7 @@ function TournamentDetailPageInner() {
           <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontWeight: 700, flex: 1 }}>{t.name}</span>
             <span style={{ fontSize: 12, color: 'var(--muted)' }}>{t.player_names.join(' & ')}</span>
-            {isAdmin && (
+            {(
               <>
                 <input
                   type="number"
@@ -489,7 +489,7 @@ function TournamentDetailPageInner() {
         ))}
       </div>
 
-      {isAdmin && (() => {
+      {(() => {
         const alreadyOnATeam = new Set(teams.flatMap(t => t.player_names));
         const candidates = players.filter(p => !alreadyOnATeam.has(p.name));
         if (candidates.length === 0) return null;
@@ -559,7 +559,7 @@ function TournamentDetailPageInner() {
               <span style={{ fontWeight: 700 }}>{s.name}</span>
               <span style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'capitalize' }}>{STAGE_TYPE_LABELS[s.stage_type]} · {s.status}</span>
             </Link>
-            {isAdmin && i === stages.length - 1 && s.status !== 'completed' && (
+            {i === stages.length - 1 && s.status !== 'completed' && (
               <button
                 className="icon-btn"
                 aria-label={`Regenerate ${s.name}`}
@@ -574,7 +574,7 @@ function TournamentDetailPageInner() {
         ))}
       </div>
 
-      {isAdmin && teams.length >= 2 && (
+      {teams.length >= 2 && (
         <StageWizard
           teams={teams}
           stages={stages}

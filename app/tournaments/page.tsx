@@ -158,7 +158,7 @@ export default function TournamentsPage() {
 
       {error && <p style={{ color: 'var(--danger)', marginBottom: 12, fontWeight: 600 }}>{error}</p>}
 
-      {isAdmin && (
+      {(isAdmin || userId !== null) && (
         <div style={{ marginBottom: 16 }}>
           {!showCreateForm ? (
             <button className="btn-primary" onClick={() => setShowCreateForm(true)} style={{ width: '100%' }}>
