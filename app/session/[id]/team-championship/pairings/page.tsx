@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getSession, getRounds, insertRounds, updateRoundTeams, addCourtToSession, type RoundRow, type SessionRow } from '@/lib/db';
+import { getSession, getRounds, insertRounds, updateRoundTeams, updateRoundCourt, swapRoundOrder, addCourtToSession, type RoundRow, type SessionRow } from '@/lib/db';
 import { generateSquadRivalryScheduleN } from '@/lib/squads';
 import { validateManualPairings } from '@/lib/teamChampionship';
 
@@ -82,6 +82,37 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
       setError(e instanceof Error ? e.message : 'Failed to save this round.');
     } finally {
       setSavingRoundId(null);
+    }
+  }
+
+  const [changingCourtId, setChangingCourtId] = useState<string | null>(null);
+  const [changingOrderId, setChangingOrderId] = useState<string | null>(null);
+
+  async function handleChangeCourt(round: RoundRow, court: number) {
+    if (court === round.court) return;
+    setChangingCourtId(round.id);
+    setError(null);
+    try {
+      await updateRoundCourt(round.id, court);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to change court.');
+    } finally {
+      setChangingCourtId(null);
+    }
+  }
+
+  async function handleChangeOrder(round: RoundRow, targetRoundNumber: number) {
+    if (!session || targetRoundNumber === round.round_number) return;
+    setChangingOrderId(round.id);
+    setError(null);
+    try {
+      await swapRoundOrder(session.id, round.id, targetRoundNumber);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to change round order.');
+    } finally {
+      setChangingOrderId(null);
     }
   }
 
@@ -181,9 +212,37 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {stageRounds.map(round => {
                 const draft = drafts[round.id] ?? [round.team_a[0], round.team_a[1], round.team_b[0], round.team_b[1]];
+                const stageRoundNumbers = Array.from({ length: stage.roundEnd - stage.roundStart + 1 }, (_, i) => stage.roundStart + i);
+                const courtCount = session.court_labels.length || 1;
                 return (
                   <div key={round.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>Round {round.round_number} · Court {round.court}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--muted)', flexWrap: 'wrap' }}>
+                      <span>Round</span>
+                      <select
+                        value={round.round_number}
+                        onChange={e => handleChangeOrder(round, Number(e.target.value))}
+                        disabled={changingOrderId === round.id}
+                        aria-label={`Change round order for round ${round.round_number} court ${round.court}`}
+                        style={{ fontSize: 12, fontWeight: 700 }}
+                      >
+                        {stageRoundNumbers.map(n => (
+                          <option key={n} value={n}>{n}</option>
+                        ))}
+                      </select>
+                      <span>· Court</span>
+                      <select
+                        value={round.court}
+                        onChange={e => handleChangeCourt(round, Number(e.target.value))}
+                        disabled={changingCourtId === round.id}
+                        aria-label={`Change court for round ${round.round_number} court ${round.court}`}
+                        style={{ fontSize: 12, fontWeight: 700 }}
+                      >
+                        {Array.from({ length: courtCount }, (_, i) => i + 1).map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                      {(changingOrderId === round.id || changingCourtId === round.id) && <span>Saving…</span>}
+                    </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)' }}>{rosterByTeam[0]?.label}</span>

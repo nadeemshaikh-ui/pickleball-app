@@ -264,6 +264,62 @@ export async function updateRoundTeams(roundId: string, teamA: [string, string],
   if (error) throw error;
 }
 
+// Team Championship only, so far — every other format's court assignment
+// comes from its scheduling algorithm and isn't meant to be hand-edited.
+// Doesn't touch round_number: this changes WHICH COURT a round is played
+// on, not when. Resets scores like updateRoundTeams does, for the same
+// reason — a captain reassigning a court after a match started/scored
+// should re-confirm the result, not silently keep a stale score attached
+// to a different court.
+export async function updateRoundCourt(roundId: string, court: number): Promise<void> {
+  const { error } = await supabase
+    .from('rounds')
+    .update({ court, score_a: null, score_b: null })
+    .eq('id', roundId);
+  if (error) throw error;
+}
+
+// Team Championship only — lets a captain resequence which round number a
+// pairing is slotted into (the "order" pairs are submitted/played in), not
+// just who's in it or which court. Swaps round_number with whatever round
+// currently holds targetRoundNumber within the same session, so two rounds
+// never collide on the same round_number — an unconditional single-row
+// update could otherwise leave two rows claiming the same round_number
+// (violates nothing at the DB level, since there's no unique constraint on
+// (session_id, round_number, court), but would corrupt stage-boundary
+// point attribution in computeTeamChampionshipStandings, which looks up a
+// round's stage purely by round_number).
+export async function swapRoundOrder(sessionId: string, roundId: string, targetRoundNumber: number): Promise<void> {
+  const { data: current, error: currentError } = await supabase
+    .from('rounds')
+    .select('id, round_number, court')
+    .eq('id', roundId)
+    .single();
+  if (currentError) throw currentError;
+
+  const { data: target, error: targetError } = await supabase
+    .from('rounds')
+    .select('id, round_number, court')
+    .eq('session_id', sessionId)
+    .eq('round_number', targetRoundNumber)
+    .eq('court', current.court)
+    .maybeSingle();
+  if (targetError) throw targetError;
+  if (!target) throw new Error(`No round on this court currently has round number ${targetRoundNumber}.`);
+
+  const { error: updateCurrentError } = await supabase
+    .from('rounds')
+    .update({ round_number: targetRoundNumber })
+    .eq('id', current.id);
+  if (updateCurrentError) throw updateCurrentError;
+
+  const { error: updateTargetError } = await supabase
+    .from('rounds')
+    .update({ round_number: current.round_number })
+    .eq('id', target.id);
+  if (updateTargetError) throw updateTargetError;
+}
+
 export async function markSessionCompleted(sessionId: string): Promise<void> {
   const { error } = await supabase.from('sessions').update({ status: 'completed' }).eq('id', sessionId);
   if (error) throw error;
