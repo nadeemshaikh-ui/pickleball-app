@@ -26,6 +26,7 @@ import { fetchRivalriesForPlayer, fetchRivalriesAmongRoster, fetchStreaks, type 
 import { buildStorylines } from '@/lib/storylines';
 import { polishStorylines } from '@/lib/storylinesLLM';
 import { useCurrentClub } from '@/lib/useCurrentClub';
+import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import StatusChip from '@/components/StatusChip';
 import SignInGate from '@/components/SignInGate';
 import InfoModal from '@/components/InfoModal';
@@ -91,6 +92,13 @@ function SetupPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentClubId, currentClub, user, loading: clubLoading } = useCurrentClub();
+  // Circle mode: only meaningful when the user has NO club at all — a
+  // club member's existing flow (roster history, rivalries, streaks, dues,
+  // skill-balanced pairing) is untouched. See the circle scope note in
+  // 20260723000000_circles_schema.sql: sessions + scoring only, no dues/
+  // roster-history parity for circles in this pass.
+  const { current: currentGroup, loading: groupLoading } = useCurrentGroup();
+  const circleId = !currentClubId && currentGroup.type === 'circle' ? currentGroup.circleId : null;
   const presetFormat = searchParams.get('format') === 'team_championship';
 
   // Restores in-progress setup form state after a back-navigation or
@@ -516,8 +524,8 @@ function SetupPageInner() {
 
   async function handleGenerate() {
     setError(null);
-    if (!currentClubId) {
-      setError('Join or create a club before starting a session.');
+    if (!currentClubId && !circleId) {
+      setError('Join or create a club, or play with friends, before starting a session.');
       return;
     }
     const trimmed = names.map(n => n.trim());
@@ -662,7 +670,8 @@ function SetupPageInner() {
       const squadRivalryLabel2 = format === 'squad_rivalry' ? squadLabels[1]?.trim() || null : null;
 
       const baseOptions = {
-        clubId: currentClubId,
+        clubId: currentClubId ?? undefined,
+        circleId: circleId ?? undefined,
         players: trimmed,
         courtLabels: trimmedCourtLabels,
         roundDurationMinutes: parsedDuration,
@@ -682,10 +691,13 @@ function SetupPageInner() {
       let sessionId: string;
       if (format === 'scramble') {
         const skillRatings =
-          skillBalanced && lockedPairs.length === 0 ? (await getSkillRatingsForNames(currentClubId, trimmed)) ?? undefined : undefined;
-        const rivalryHeatMap = rivalryAware
-          ? buildRivalryHeatMap(await fetchRivalriesAmongRoster(currentClubId, trimmed))
-          : undefined;
+          currentClubId && skillBalanced && lockedPairs.length === 0
+            ? (await getSkillRatingsForNames(currentClubId, trimmed)) ?? undefined
+            : undefined;
+        const rivalryHeatMap =
+          currentClubId && rivalryAware
+            ? buildRivalryHeatMap(await fetchRivalriesAmongRoster(currentClubId, trimmed))
+            : undefined;
         const rounds = generateScrambleSchedule(trimmed, courtCount, roundCount, seed, lockedPairs, skillRatings, rivalryHeatMap);
         sessionId = await createSession({
           ...baseOptions,
@@ -766,9 +778,14 @@ function SetupPageInner() {
         });
         await insertRounds(sessionId, rounds);
       }
-      await saveRoster(currentClubId, trimmed);
-      if (parsedCourtCost !== null) {
-        await createSessionDues(sessionId, parsedCourtCost, parsedBallCost, trimmed);
+      // Roster history and dues are club-scoped concepts with no circle
+      // equivalent yet (MVP scope: circles get sessions + scoring only —
+      // see 20260723000000_circles_schema.sql).
+      if (currentClubId) {
+        await saveRoster(currentClubId, trimmed);
+        if (parsedCourtCost !== null) {
+          await createSessionDues(sessionId, parsedCourtCost, parsedBallCost, trimmed);
+        }
       }
       sessionStorage.removeItem(SETUP_DRAFT_KEY);
       router.push(
@@ -784,15 +801,23 @@ function SetupPageInner() {
     }
   }
 
-  if (clubLoading) return <main className="page"><p>Loading…</p></main>;
+  if (clubLoading || groupLoading) return <main className="page"><p>Loading…</p></main>;
   if (!user) return <SignInGate message="Sign in to start a session." />;
-  if (!currentClubId) {
+  if (!currentClubId && !circleId) {
     return (
       <main className="page">
-        <p>Join or create a club before starting a session.</p>
-        <a href="/clubs" className="btn-primary" style={{ display: 'inline-block', marginTop: 12 }}>
-          Go to Clubs
-        </a>
+        <p>Join or create a club, or play a casual session with friends — no club needed.</p>
+        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+          <a href="/clubs" className="btn-primary" style={{ display: 'inline-block' }}>
+            Go to Clubs
+          </a>
+          <a href="/circles/new" className="btn-secondary" style={{ display: 'inline-block' }}>
+            Play with Friends
+          </a>
+          <a href="/circles/join" className="btn-secondary" style={{ display: 'inline-block' }}>
+            Join a Circle
+          </a>
+        </div>
       </main>
     );
   }

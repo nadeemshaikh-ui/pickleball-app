@@ -25,7 +25,17 @@ export async function uploadSquadLogo(file: File): Promise<string> {
 
 export interface SessionRow {
   id: string;
+  // Exactly one of club_id/circle_id is non-null at the DB level (XOR
+  // check), but kept typed as plain `string` here deliberately: every
+  // existing club page queries sessions via .eq('club_id', clubId), so a
+  // circle session can never be returned to club-only code paths — widening
+  // this to `string | null` ripples into 40+ files that read session.club_id
+  // assuming it's always present (confirmed via tsc — out of scope for this
+  // pass). circle_id is the new, accurately-nullable field; circle-aware
+  // code should branch on circle_id being non-null rather than trusting
+  // club_id's type here.
   club_id: string;
+  circle_id: string | null;
   created_at: string;
   format: Format;
   players: string[];
@@ -67,7 +77,9 @@ function randomSessionId(): string {
 }
 
 export interface CreateSessionOptions {
-  clubId: string;
+  // Optional so a circle session can omit it — pass exactly one of
+  // clubId/circleId, never both, matching the DB's XOR check constraint.
+  clubId?: string;
   players: string[];
   format: Format;
   roundCount: number;
@@ -92,13 +104,20 @@ export interface CreateSessionOptions {
   // null out for formats that don't use them.
   stageConfig?: StageConfig[] | null;
   rapidFireConfig?: RapidFireConfig | null;
+  // A circle session in this MVP has no players/dues/branding/stats parity
+  // with club sessions — see 20260723000000_circles_schema.sql's scope
+  // note. circleId is mutually exclusive with clubId at the DB level (XOR
+  // check); this type doesn't enforce that, callers must pass exactly one.
+  circleId?: string | null;
 }
 
 export async function createSession(options: CreateSessionOptions): Promise<string> {
+  if (!options.circleId && !options.clubId) throw new Error('createSession requires either clubId or circleId.');
   const id = randomSessionId();
   const { error } = await supabase.from('sessions').insert({
     id,
-    club_id: options.clubId,
+    club_id: options.circleId ? null : options.clubId,
+    circle_id: options.circleId ?? null,
     format: options.format,
     players: options.players,
     squads: options.squads,
