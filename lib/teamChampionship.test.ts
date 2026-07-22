@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeTeamChampionshipStandings, validateManualPairings, computeRapidFireState, computeRapidFireBonus, type StageConfig, type RapidFireConfig } from './teamChampionship';
+import { computeTeamChampionshipStandings, validateManualPairings, computeRapidFireState, computeRapidFireBonus, findFinalRoundPairs, type StageConfig, type RapidFireConfig } from './teamChampionship';
 import type { RoundRow } from './db';
 import type { SquadSet } from './squads';
 
@@ -112,6 +112,50 @@ describe('validateManualPairings', () => {
     ];
     const warnings = validateManualPairings(rounds, t, stage, 1);
     expect(warnings.some(w => w.type === 'repeat_partner' && w.message.includes('A & B'))).toBe(true);
+  });
+
+  it('flags a partnership repeated ACROSS the stage-2/stage-3 boundary (the rounds 6-15 combined rule)', () => {
+    const t: SquadSet = [{ id: 'home', players: ['A', 'B', 'C', 'D'] }, { id: 'away', players: ['E', 'F', 'G', 'H'] }];
+    const stages: StageConfig[] = [
+      { stageLabel: 'Foundation', roundStart: 1, roundEnd: 5, pointsPerWin: 1 },
+      { stageLabel: 'Momentum', roundStart: 6, roundEnd: 10, pointsPerWin: 2 },
+      { stageLabel: 'Championship', roundStart: 11, roundEnd: 15, pointsPerWin: 3 },
+    ];
+    const rounds = [
+      { roundNumber: 6, teamA: ['A', 'B'] as [string, string], teamB: ['E', 'F'] as [string, string] },
+      { roundNumber: 13, teamA: ['A', 'B'] as [string, string], teamB: ['G', 'H'] as [string, string] }, // repeat spanning stage 2 -> stage 3
+    ];
+    const warnings = validateManualPairings(rounds, t, stages, 1);
+    expect(warnings.some(w => w.type === 'repeat_partner' && w.message.includes('A & B'))).toBe(true);
+  });
+
+  it('does NOT flag a stage-1 pairing reused in the rounds 6-15 window (stage 1 is a separate free window)', () => {
+    const t: SquadSet = [{ id: 'home', players: ['A', 'B', 'C', 'D'] }, { id: 'away', players: ['E', 'F', 'G', 'H'] }];
+    const stages: StageConfig[] = [
+      { stageLabel: 'Foundation', roundStart: 1, roundEnd: 5, pointsPerWin: 1 },
+      { stageLabel: 'Momentum', roundStart: 6, roundEnd: 10, pointsPerWin: 2 },
+      { stageLabel: 'Championship', roundStart: 11, roundEnd: 15, pointsPerWin: 3 },
+    ];
+    const rounds = [
+      { roundNumber: 2, teamA: ['A', 'B'] as [string, string], teamB: ['E', 'F'] as [string, string] },
+      { roundNumber: 8, teamA: ['A', 'B'] as [string, string], teamB: ['G', 'H'] as [string, string] }, // stage1 -> stage2 is allowed
+    ];
+    const warnings = validateManualPairings(rounds, t, stages, 1);
+    expect(warnings.some(w => w.type === 'repeat_partner')).toBe(false);
+  });
+});
+
+describe('findFinalRoundPairs', () => {
+  it('returns each team pairing from their most recent scored round', () => {
+    const teams: SquadSet = [{ id: 'home', players: ['A', 'B', 'C', 'D'] }, { id: 'away', players: ['E', 'F', 'G', 'H'] }];
+    const rounds = [
+      { roundNumber: 14, court: 1, teamA: ['A', 'B'] as [string, string], teamB: ['E', 'F'] as [string, string], scoreA: 15, scoreB: 10 },
+      { roundNumber: 15, court: 1, teamA: ['C', 'D'] as [string, string], teamB: ['G', 'H'] as [string, string], scoreA: 15, scoreB: 12 },
+      { roundNumber: 15, court: 2, teamA: ['A', 'C'] as [string, string], teamB: ['E', 'G'] as [string, string], scoreA: null, scoreB: null }, // unscored, ignored
+    ];
+    const pairs = findFinalRoundPairs(rounds, teams);
+    expect(pairs.get('home')).toEqual(['C', 'D']); // round 15 court 1, most recent scored
+    expect(pairs.get('away')).toEqual(['G', 'H']);
   });
 });
 

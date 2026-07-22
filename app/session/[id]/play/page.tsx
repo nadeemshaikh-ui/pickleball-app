@@ -133,6 +133,20 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
       setScoreError(court.id, "Pickleball games can't end in a tie — check the score.");
       return;
     }
+    // Team Championship match rule: every match is played to 15 (at 14-14 a
+    // golden point decides it, 15-14). So the winning score is always
+    // exactly 15 and the loser is 0-14 — anything else (21-19, 11-9,
+    // 16-14) is a mis-entry for this format. Scoped to team_championship
+    // only: other formats in this app play to different targets and must
+    // not be constrained here.
+    if (session.format === 'team_championship') {
+      const hi = Math.max(Number(a), Number(b));
+      const lo = Math.min(Number(a), Number(b));
+      if (hi !== 15 || lo < 0 || lo > 14) {
+        setScoreError(court.id, 'Team Championship matches are played to 15 (golden point at 14-14). The winning score must be exactly 15 and the loser 0-14.');
+        return;
+      }
+    }
     setSavingCourtId(court.id);
     const beforeElo = eloByName;
     await updateRoundScore(court.id, Number(a), Number(b));

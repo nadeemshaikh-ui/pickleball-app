@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getSession, getRounds, insertRounds, updateRoundTeams, updateRoundCourt, swapRoundOrder, addCourtToSession, type RoundRow, type SessionRow } from '@/lib/db';
+import { getSession, getRounds, insertRounds, updateRoundTeams, updateRoundCourt, swapRoundOrder, clearRoundScore, addCourtToSession, type RoundRow, type SessionRow } from '@/lib/db';
 import { generateSquadRivalryScheduleN } from '@/lib/squads';
 import { validateManualPairings } from '@/lib/teamChampionship';
 
@@ -64,6 +64,10 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
   }
 
   async function handleSaveRound(round: RoundRow) {
+    if (round.score_a !== null && round.score_b !== null) {
+      setError('This round already has a score and is locked — pairings can\'t be changed after a result is recorded. Clear the score first if this was a mistake.');
+      return;
+    }
     const draft = drafts[round.id];
     if (!draft || draft.some(name => !name)) {
       setError('Every slot needs a player before saving.');
@@ -87,9 +91,28 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
 
   const [changingCourtId, setChangingCourtId] = useState<string | null>(null);
   const [changingOrderId, setChangingOrderId] = useState<string | null>(null);
+  const [unlockingId, setUnlockingId] = useState<string | null>(null);
+
+  async function handleUnlock(round: RoundRow) {
+    if (!confirm(`This clears the recorded score (${round.score_a}-${round.score_b}) for this round so its pairing/court/order can be edited. Continue?`)) return;
+    setUnlockingId(round.id);
+    setError(null);
+    try {
+      await clearRoundScore(round.id);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to unlock this round.');
+    } finally {
+      setUnlockingId(null);
+    }
+  }
 
   async function handleChangeCourt(round: RoundRow, court: number) {
     if (court === round.court) return;
+    if (round.score_a !== null && round.score_b !== null) {
+      setError('This round already has a score and is locked — clear the score first to reassign its court.');
+      return;
+    }
     setChangingCourtId(round.id);
     setError(null);
     try {
@@ -104,6 +127,15 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
 
   async function handleChangeOrder(round: RoundRow, targetRoundNumber: number) {
     if (!session || targetRoundNumber === round.round_number) return;
+    if (round.score_a !== null && round.score_b !== null) {
+      setError('This round already has a score and is locked — reordering it would also move which stage its result counts toward. Clear the score first.');
+      return;
+    }
+    const targetRound = rounds.find(r => r.court === round.court && r.round_number === targetRoundNumber);
+    if (targetRound && targetRound.score_a !== null && targetRound.score_b !== null) {
+      setError('The round you\'re swapping with already has a score — clear it first, reordering would move which stage its result counts toward.');
+      return;
+    }
     setChangingOrderId(round.id);
     setError(null);
     try {
@@ -214,6 +246,7 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
                 const draft = drafts[round.id] ?? [round.team_a[0], round.team_a[1], round.team_b[0], round.team_b[1]];
                 const stageRoundNumbers = Array.from({ length: stage.roundEnd - stage.roundStart + 1 }, (_, i) => stage.roundStart + i);
                 const courtCount = session.court_labels.length || 1;
+                const isScored = round.score_a !== null && round.score_b !== null;
                 return (
                   <div key={round.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--muted)', flexWrap: 'wrap' }}>
@@ -221,7 +254,7 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
                       <select
                         value={round.round_number}
                         onChange={e => handleChangeOrder(round, Number(e.target.value))}
-                        disabled={changingOrderId === round.id}
+                        disabled={isScored || changingOrderId === round.id}
                         aria-label={`Change round order for round ${round.round_number} court ${round.court}`}
                         style={{ fontSize: 12, fontWeight: 700 }}
                       >
@@ -233,7 +266,7 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
                       <select
                         value={round.court}
                         onChange={e => handleChangeCourt(round, Number(e.target.value))}
-                        disabled={changingCourtId === round.id}
+                        disabled={isScored || changingCourtId === round.id}
                         aria-label={`Change court for round ${round.round_number} court ${round.court}`}
                         style={{ fontSize: 12, fontWeight: 700 }}
                       >
@@ -242,6 +275,7 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
                         ))}
                       </select>
                       {(changingOrderId === round.id || changingCourtId === round.id) && <span>Saving…</span>}
+                      {isScored && <span>🔒 Locked</span>}
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -251,6 +285,7 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
                             key={slot}
                             value={draft[slot]}
                             onChange={e => updateDraftSlot(round.id, slot, e.target.value)}
+                            disabled={isScored}
                             aria-label={`Round ${round.round_number} court ${round.court} ${rosterByTeam[0]?.label} player ${slot + 1}`}
                           >
                             <option value="">Select…</option>
@@ -267,6 +302,7 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
                             key={slot}
                             value={draft[slot]}
                             onChange={e => updateDraftSlot(round.id, slot, e.target.value)}
+                            disabled={isScored}
                             aria-label={`Round ${round.round_number} court ${round.court} ${rosterByTeam[1]?.label} player ${slot - 1}`}
                           >
                             <option value="">Select…</option>
@@ -277,19 +313,31 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
                         ))}
                       </div>
                     </div>
-                    {round.score_a !== null && round.score_b !== null && (
+                    {isScored && (
                       <p style={{ fontSize: 11, color: 'var(--muted)', margin: 0 }}>
-                        Scored {round.score_a}-{round.score_b} — saving a pairing change here resets this round&apos;s score.
+                        Scored {round.score_a}-{round.score_b} — locked. Unlock to correct a mistaken pairing/court/order (this clears the recorded score).
                       </p>
                     )}
-                    <button
-                      className="btn-secondary"
-                      style={{ alignSelf: 'flex-start' }}
-                      onClick={() => handleSaveRound(round)}
-                      disabled={savingRoundId === round.id}
-                    >
-                      {savingRoundId === round.id ? 'Saving…' : 'Save Round'}
-                    </button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        className="btn-secondary"
+                        style={{ alignSelf: 'flex-start' }}
+                        onClick={() => handleSaveRound(round)}
+                        disabled={isScored || savingRoundId === round.id}
+                      >
+                        {savingRoundId === round.id ? 'Saving…' : isScored ? 'Locked' : 'Save Round'}
+                      </button>
+                      {isScored && (
+                        <button
+                          className="btn-secondary"
+                          style={{ alignSelf: 'flex-start' }}
+                          onClick={() => handleUnlock(round)}
+                          disabled={unlockingId === round.id}
+                        >
+                          {unlockingId === round.id ? 'Unlocking…' : 'Unlock'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}

@@ -2,9 +2,9 @@
 
 import { use, useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
-import { getSession, type SessionRow } from '@/lib/db';
+import { getSession, getRounds, type SessionRow, type RoundRow } from '@/lib/db';
 import { fetchRapidFireLog, recordRapidFirePoint } from '@/lib/rapidFire';
-import { computeRapidFireState, computeRapidFireBonus } from '@/lib/teamChampionship';
+import { computeRapidFireState, computeRapidFireBonus, findFinalRoundPairs } from '@/lib/teamChampionship';
 import type { RapidFireLogEntry } from '@/lib/teamChampionship';
 
 const POLL_INTERVAL_MS = 3000; // matches the rest of the app's poll-don't-subscribe convention
@@ -20,6 +20,7 @@ const POLL_INTERVAL_MS = 3000; // matches the rest of the app's poll-don't-subsc
 export default function RapidFirePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [session, setSession] = useState<SessionRow | null>(null);
+  const [rounds, setRounds] = useState<RoundRow[]>([]);
   const [log, setLog] = useState<RapidFireLogEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [scoring, setScoring] = useState(false);
@@ -27,8 +28,9 @@ export default function RapidFirePage({ params }: { params: Promise<{ id: string
   const scoringRef = useRef(false);
 
   async function load() {
-    const [s, l] = await Promise.all([getSession(id), fetchRapidFireLog(id)]);
+    const [s, r, l] = await Promise.all([getSession(id), getRounds(id), fetchRapidFireLog(id)]);
     setSession(s);
+    setRounds(r);
     setLog(l);
   }
 
@@ -69,7 +71,11 @@ export default function RapidFirePage({ params }: { params: Promise<{ id: string
 
   const teams = session.squads;
   const config = session.rapid_fire_config;
-  const state = computeRapidFireState(log, config, teams);
+  const finalRoundPairs = findFinalRoundPairs(
+    rounds.map(r => ({ roundNumber: r.round_number, court: r.court, teamA: r.team_a, teamB: r.team_b, scoreA: r.score_a, scoreB: r.score_b })),
+    teams
+  );
+  const state = computeRapidFireState(log, config, teams, finalRoundPairs);
   const onCourtPlayers = courtOverride ?? state.onCourtPlayers;
   const bonus = state.isComplete ? computeRapidFireBonus(state, config) : null;
   const winnerLabel = state.winnerTeamId ? (teams.find(t => t.id === state.winnerTeamId)?.label ?? state.winnerTeamId) : null;

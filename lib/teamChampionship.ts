@@ -86,26 +86,18 @@ export function validateManualPairings(
 ): PairingWarning[] {
   const warnings: PairingWarning[] = [];
 
+  // Play-count balancing ("every player plays 3, rests 2, per session") is
+  // a per-stage rule — unchanged, checked per stage below.
   for (const stage of stages) {
     const stageRounds = rounds.filter(r => r.roundNumber >= stage.roundStart && r.roundNumber <= stage.roundEnd);
     const roundsInStage = stage.roundEnd - stage.roundStart + 1;
 
     const playCounts = new Map<string, number>();
     for (const t of teams) for (const p of t.players) playCounts.set(p, 0);
-    const partnerSeen = new Set<string>();
 
     for (const r of stageRounds) {
       for (const team of [r.teamA, r.teamB]) {
         for (const p of team) playCounts.set(p, (playCounts.get(p) ?? 0) + 1);
-        const key = [...team].sort().join('|');
-        if (partnerSeen.has(key)) {
-          warnings.push({
-            type: 'repeat_partner',
-            message: `${team[0]} & ${team[1]} have already partnered once in ${stage.stageLabel} (round ${r.roundNumber}).`,
-          });
-        } else {
-          partnerSeen.add(key);
-        }
       }
     }
 
@@ -120,6 +112,51 @@ export function validateManualPairings(
             type: 'play_count',
             message: `${p} plays ${count}/${roundsInStage} rounds in ${stage.stageLabel} (target ${fairTarget}).`,
           });
+        }
+      }
+    }
+  }
+
+  // Repeat-partner checking is NOT per-stage — the tournament rule is
+  // "no partnership repeated in Rounds 6-15" (Stage 2 + Stage 3 combined),
+  // while Stage 1 is free of that constraint. A per-stage reset (the
+  // original implementation) silently missed exactly this: a pair
+  // repeating across the stage boundary (e.g. round 7 and round 13) never
+  // triggered a warning, because Stage 2's and Stage 3's tracking sets
+  // were separate. Generalized as: Stage 1 gets its own window (matches
+  // "rounds 1-5" having no stated no-repeat rule), every stage after it
+  // shares one combined window (matches "rounds 6-15" for the 3-stage
+  // case, and generalizes to N stages — session 1 is a free warm-up,
+  // every session after it is locked together).
+  const [firstStage, ...laterStages] = stages;
+  const repeatWindows: { label: string; roundsInWindow: typeof rounds }[] = [];
+  if (firstStage) {
+    repeatWindows.push({
+      label: firstStage.stageLabel,
+      roundsInWindow: rounds.filter(r => r.roundNumber >= firstStage.roundStart && r.roundNumber <= firstStage.roundEnd),
+    });
+  }
+  if (laterStages.length > 0) {
+    const windowStart = laterStages[0].roundStart;
+    const windowEnd = laterStages[laterStages.length - 1].roundEnd;
+    repeatWindows.push({
+      label: `${laterStages[0].stageLabel}–${laterStages[laterStages.length - 1].stageLabel} (rounds ${windowStart}-${windowEnd})`,
+      roundsInWindow: rounds.filter(r => r.roundNumber >= windowStart && r.roundNumber <= windowEnd),
+    });
+  }
+
+  for (const window of repeatWindows) {
+    const partnerSeen = new Set<string>();
+    for (const r of window.roundsInWindow) {
+      for (const team of [r.teamA, r.teamB]) {
+        const key = [...team].sort().join('|');
+        if (partnerSeen.has(key)) {
+          warnings.push({
+            type: 'repeat_partner',
+            message: `${team[0]} & ${team[1]} have already partnered once in ${window.label} (round ${r.roundNumber}).`,
+          });
+        } else {
+          partnerSeen.add(key);
         }
       }
     }
@@ -148,14 +185,23 @@ export interface RapidFireState {
 // count. This computes current state purely from the append-only log, so
 // it's safe to call repeatedly as new points come in (matches the app's
 // existing poll-don't-subscribe convention). on-court players carry
-// forward from the most recent log entry — falling back to each team's
-// first two roster players before any point has been scored — since the
-// log is the only durable record of who was on court, and a manual sub
-// takes effect starting with the next point logged.
+// forward from the most recent log entry once any point has been scored —
+// a manual sub takes effect starting with the next point logged.
+//
+// Before any point is scored, the rule is "the partnerships used in the
+// final matches of Rounds 14 & 15 continue as the opening partnerships" —
+// NOT an arbitrary roster-order guess. finalRoundPairs supplies each
+// team's actual pairing from their own most recent scored round (the
+// caller finds this by walking rounds most-recent-first per team — see
+// rapid-fire/page.tsx). Falls back to first-two-roster-players only if
+// that data is genuinely unavailable (e.g. no rounds were ever scored),
+// which should not happen in a real tournament but keeps this function
+// total rather than throwing.
 export function computeRapidFireState(
   log: RapidFireLogEntry[],
   config: RapidFireConfig,
-  teams: SquadSet
+  teams: SquadSet,
+  finalRoundPairs?: Map<string, [string, string]>
 ): RapidFireState {
   const totalsByTeam = new Map(teams.map(t => [t.id, 0]));
   for (const entry of log) {
@@ -168,11 +214,41 @@ export function computeRapidFireState(
   const isComplete = winnerEntry !== undefined;
   const winnerTeamId = winnerEntry?.[0] ?? null;
 
-  const onCourtPlayers = log.length > 0
-    ? log[log.length - 1].onCourtPlayers
-    : teams.flatMap(t => t.players.slice(0, 2));
+  const onCourtPlayers =
+    log.length > 0
+      ? log[log.length - 1].onCourtPlayers
+      : teams.flatMap(t => finalRoundPairs?.get(t.id) ?? t.players.slice(0, 2));
 
   return { totalsByTeam, onCourtPlayers, isComplete, winnerTeamId };
+}
+
+// Finds each team's pairing from their own most recent SCORED round —
+// used to seed Rapid Fire's opening partnerships per the "Rounds 14 & 15
+// carry forward" rule. Walks rounds most-recent-round-number-first, then
+// by court, so ties resolve deterministically. A team not found in any
+// scored round (shouldn't happen in a real tournament, but e.g. a
+// misconfigured/empty session) is simply absent from the returned map —
+// computeRapidFireState's fallback covers that case.
+export function findFinalRoundPairs(
+  rounds: { roundNumber: number; court: number; teamA: [string, string]; teamB: [string, string]; scoreA: number | null; scoreB: number | null }[],
+  teams: SquadSet
+): Map<string, [string, string]> {
+  const squadOfPlayer = new Map<string, string>();
+  for (const t of teams) for (const p of t.players) squadOfPlayer.set(p, t.id);
+
+  const sorted = [...rounds]
+    .filter(r => r.scoreA !== null && r.scoreB !== null)
+    .sort((a, b) => (b.roundNumber !== a.roundNumber ? b.roundNumber - a.roundNumber : a.court - b.court));
+
+  const result = new Map<string, [string, string]>();
+  for (const round of sorted) {
+    for (const pair of [round.teamA, round.teamB]) {
+      const teamId = squadOfPlayer.get(pair[0]);
+      if (teamId && !result.has(teamId)) result.set(teamId, pair);
+    }
+    if (result.size === teams.length) break;
+  }
+  return result;
 }
 
 // Winner-take-all is the plan's assumed default for the Rapid Fire bonus

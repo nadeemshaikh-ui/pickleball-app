@@ -251,6 +251,17 @@ export async function updateRoundScore(
   if (error) throw error;
 }
 
+// The deliberate unlock action for a scored Team Championship round (see
+// pairings/page.tsx's isScored lock) - explicit and separate from
+// updateRoundTeams/updateRoundCourt's own score-nulling side effect, so a
+// captain has to consciously choose to clear a result before they can even
+// reach the now-enabled pairing/court/order controls, rather than a
+// pairing edit silently wiping a score as a side effect.
+export async function clearRoundScore(roundId: string): Promise<void> {
+  const { error } = await supabase.from('rounds').update({ score_a: null, score_b: null }).eq('id', roundId);
+  if (error) throw error;
+}
+
 // Team Championship's manual pairing editor — every other format only ever
 // changes a round's score (players are locked in at generation time), so
 // this is new: lets a captain override which players are on a round's
