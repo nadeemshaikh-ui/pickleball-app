@@ -98,11 +98,34 @@ function SetupPageInner() {
   // in-app "Change Players" back link's parent navigation) loses everything
   // typed so far since it's plain component state with nowhere else to live.
   const SETUP_DRAFT_KEY = 'pickleball-setup-draft';
-  function readDraft(): { playerCount?: number; courtCount?: number; namesEntered?: boolean; names?: string[]; format?: Format; venue?: string } {
+  function readDraft(): {
+    playerCount?: number;
+    courtCount?: number;
+    namesEntered?: boolean;
+    names?: string[];
+    format?: Format;
+    venue?: string;
+    manualSquadAssignment?: (number | null)[];
+    manualPartnerAssignment?: (number | null)[];
+    manualBlocks?: (number | null)[][];
+    lockedPairs?: LockedPair[];
+  } {
     if (typeof window === 'undefined') return {};
     try {
       const raw = sessionStorage.getItem(SETUP_DRAFT_KEY);
-      return raw ? JSON.parse(raw) : {};
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          ...parsed,
+          names: Array.isArray(parsed.names) ? parsed.names : undefined,
+          manualSquadAssignment: Array.isArray(parsed.manualSquadAssignment) ? parsed.manualSquadAssignment : undefined,
+          manualPartnerAssignment: Array.isArray(parsed.manualPartnerAssignment) ? parsed.manualPartnerAssignment : undefined,
+          manualBlocks: Array.isArray(parsed.manualBlocks) ? parsed.manualBlocks : undefined,
+          lockedPairs: Array.isArray(parsed.lockedPairs) ? parsed.lockedPairs : undefined,
+        };
+      }
+      return {};
     } catch {
       return {};
     }
@@ -128,8 +151,12 @@ function SetupPageInner() {
       savePlayerPhoto(trimmedName, publicUrl);
       setPhotoVersion(v => v + 1);
     } catch {
-      // Upload failed — local preview still shows for this session, but
-      // won't persist. Not worth blocking setup over a photo.
+      // Upload failed — clear local preview so fake preview isn't shown
+      setPhotoPreviews(prev => {
+        const copy = { ...prev };
+        delete copy[i];
+        return copy;
+      });
     }
   }
 
@@ -141,16 +168,11 @@ function SetupPageInner() {
   const [startTime, setStartTime] = useState('');
   const [venue, setVenue] = useState(draft.venue ?? '');
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    sessionStorage.setItem(SETUP_DRAFT_KEY, JSON.stringify({ playerCount, courtCount, namesEntered, names, format, venue }));
-  }, [playerCount, courtCount, namesEntered, names, format, venue]);
-
   const [roundsPerBlock, setRoundsPerBlock] = useState(6);
   const [swapCount, setSwapCount] = useState(2);
   const [assignmentMode, setAssignmentMode] = useState<'auto' | 'manual'>('auto');
   // Per block: court index (0-based) assigned to each player, or null if unassigned.
-  const [manualBlocks, setManualBlocks] = useState<(number | null)[][]>([]);
+  const [manualBlocks, setManualBlocks] = useState<(number | null)[][]>(draft.manualBlocks ?? []);
 
   const [squadMode, setSquadMode] = useState<'auto' | 'manual'>('auto');
   const [squadGoldLabel, setSquadGoldLabel] = useState('');
@@ -161,13 +183,13 @@ function SetupPageInner() {
   // Widened from (0|1|null)[] to (number|null)[] to support N squads —
   // team_championship's own usage (always exactly 2 teams) is unaffected,
   // it just always passes squadCount=2 to cycleSquadPlayer below.
-  const [manualSquadAssignment, setManualSquadAssignment] = useState<(number | null)[]>([]);
+  const [manualSquadAssignment, setManualSquadAssignment] = useState<(number | null)[]>(draft.manualSquadAssignment ?? []);
   const [squadCount, setSquadCount] = useState(2);
   const [squadLabels, setSquadLabels] = useState<string[]>([]);
 
   const [partnerMode, setPartnerMode] = useState<'auto' | 'manual'>('auto');
   // Team index (0-based), null = unassigned, indexed by player.
-  const [manualPartnerAssignment, setManualPartnerAssignment] = useState<(number | null)[]>([]);
+  const [manualPartnerAssignment, setManualPartnerAssignment] = useState<(number | null)[]>(draft.manualPartnerAssignment ?? []);
 
   // Team Championship — reuses manualSquadAssignment/cycleSquadPlayer (the
   // exact same 2-way split infra squad_rivalry's manual mode already uses)
@@ -181,11 +203,30 @@ function SetupPageInner() {
   const [rapidFireTarget, setRapidFireTarget] = useState(31);
   const [rapidFireBonus, setRapidFireBonus] = useState(10);
 
-  const [lockedPairs, setLockedPairs] = useState<LockedPair[]>([]);
+  const [lockedPairs, setLockedPairs] = useState<LockedPair[]>(draft.lockedPairs ?? []);
   const [skillBalanced, setSkillBalanced] = useState(false);
   const [rivalryAware, setRivalryAware] = useState(false);
   const [lockPickerA, setLockPickerA] = useState('');
   const [lockPickerB, setLockPickerB] = useState('');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    sessionStorage.setItem(
+      SETUP_DRAFT_KEY,
+      JSON.stringify({
+        playerCount,
+        courtCount,
+        namesEntered,
+        names,
+        format,
+        venue,
+        manualSquadAssignment,
+        manualPartnerAssignment,
+        manualBlocks,
+        lockedPairs,
+      })
+    );
+  }, [playerCount, courtCount, namesEntered, names, format, venue, manualSquadAssignment, manualPartnerAssignment, manualBlocks, lockedPairs]);
 
   const trimmedNamesForLocks = names.map(n => n.trim()).filter(Boolean);
   const lockedPlayers = new Set(lockedPairs.flatMap(p => p));
@@ -730,7 +771,13 @@ function SetupPageInner() {
         await createSessionDues(sessionId, parsedCourtCost, parsedBallCost, trimmed);
       }
       sessionStorage.removeItem(SETUP_DRAFT_KEY);
-      router.push(format === 'king_of_court' ? `/session/${sessionId}/play` : `/session/${sessionId}/schedule`);
+      router.push(
+        format === 'king_of_court'
+          ? `/session/${sessionId}/play`
+          : format === 'team_championship'
+          ? `/session/${sessionId}/team-championship/pairings`
+          : `/session/${sessionId}/schedule`
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create session.');
       setSubmitting(false);

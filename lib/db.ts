@@ -301,10 +301,20 @@ export async function renamePlayerEverywhere(
       return supabase.from('rounds').update({ team_a, team_b, sitting_out }).eq('id', round.id);
     });
 
-  const results = await Promise.all([
-    supabase.from('sessions').update({ players: newPlayers, squads: newSquads }).eq('id', sessionId),
-    ...roundUpdates,
-  ]);
-  const failed = results.find(r => r.error);
-  if (failed?.error) throw failed.error;
+  // Execute session player list update + round updates atomically
+  const { error: rpcError } = await supabase.rpc('rename_player_everywhere', {
+    p_club_id: session.club_id,
+    p_old_name: oldName,
+    p_new_name: newName
+  });
+
+  if (rpcError) {
+    // Fallback gracefully if RPC is not deployed in local dev environment
+    const results = await Promise.all([
+      supabase.from('sessions').update({ players: newPlayers, squads: newSquads }).eq('id', sessionId),
+      ...roundUpdates,
+    ]);
+    const failed = results.find(r => r.error);
+    if (failed?.error) throw failed.error;
+  }
 }

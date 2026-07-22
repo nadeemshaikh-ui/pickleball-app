@@ -12,6 +12,13 @@ export interface DueRow {
 
 export { computeDuesSplit };
 
+export function buildUpiDeepLink(vpa: string, amount: number, payeeName = 'Pickleball Session'): string {
+  const cleanVpa = vpa.trim();
+  const safeAmount = Math.max(0, amount);
+  const note = encodeURIComponent(`Court Dues - ${payeeName}`);
+  return `tez://upi/pay?pa=${cleanVpa}&pn=${encodeURIComponent(payeeName)}&am=${safeAmount}&cu=INR&tn=${note}`;
+}
+
 export async function createSessionDues(sessionId: string, courtCost: number, ballCost: number, players: string[]): Promise<void> {
   const split = computeDuesSplit(courtCost, ballCost, players);
   if (split.length === 0) return;

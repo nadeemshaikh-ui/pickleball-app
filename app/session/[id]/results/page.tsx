@@ -28,6 +28,7 @@ import { listPlayers, getOwnPlayer } from '@/lib/players';
 import { fetchConfirmations, confirmParticipation, voidSession, type Confirmation } from '@/lib/sessionConfirmations';
 import { getClubUpiVpa, getClubBranding } from '@/lib/clubs';
 import { shareToWhatsApp } from '@/lib/whatsapp';
+import { exportStandingsToCsv } from '@/lib/exportCsv';
 
 export default function ResultsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -281,7 +282,28 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
           ))}
         </div>
 
-        <h2>Full Leaderboard</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h2>Full Leaderboard</h2>
+          <button
+            type="button"
+            className="btn-secondary"
+            style={{ fontSize: 12, padding: '6px 10px' }}
+            onClick={() =>
+              exportStandingsToCsv(
+                `${session?.group_name ?? 'session'}-standings`,
+                leaderboard.map(p => ({
+                  name: p.name,
+                  wins: p.wins,
+                  losses: p.losses,
+                  winPct: (p.winPct * 100).toFixed(0),
+                  gamesPlayed: p.gamesPlayed,
+                }))
+              )
+            }
+          >
+            Export CSV
+          </button>
+        </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {leaderboard.map(p => (
             <div key={p.name} className="card">

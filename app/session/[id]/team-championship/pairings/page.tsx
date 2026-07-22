@@ -42,7 +42,11 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
   }, [id]);
 
   async function handleGenerate() {
-    if (!session || !session.squads || !session.stage_config) return;
+    if (!session) return;
+    if (!session.squads || !session.stage_config) {
+      setError('This session is missing squad or stage setup and cannot generate pairings — go back to setup and recreate it.');
+      return;
+    }
     setGenerating(true);
     setError(null);
     try {

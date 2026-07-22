@@ -14,6 +14,32 @@ export async function signOut(): Promise<void> {
   if (error) throw error;
 }
 
+// Silent, formless entry point for circles/guest mode — gives a real
+// auth.uid() (so RLS on circles/sessions/rounds works unmodified) without a
+// Google prompt. Device-scoped: a fresh browser/device gets a different
+// anon identity, so this does not by itself carry a person across devices —
+// linkGoogleIdentity is what makes an identity portable.
+export async function signInAnonymously(): Promise<void> {
+  const { error } = await supabase.auth.signInAnonymously();
+  if (error) throw error;
+}
+
+// Upgrades the CURRENT auth.uid() in place by attaching a Google identity —
+// does not create a new user, so every circle/session/round row already
+// owned by this anon uid stays owned by it after linking. This is the only
+// way an anonymous user's data survives losing the device/browser session.
+export async function linkGoogleIdentity(redirectTo?: string): Promise<void> {
+  const { error } = await supabase.auth.linkIdentity({
+    provider: 'google',
+    options: { redirectTo: redirectTo ?? window.location.href },
+  });
+  if (error) throw error;
+}
+
+export function isAnonymousUser(user: User | null): boolean {
+  return Boolean(user?.is_anonymous);
+}
+
 export async function getCurrentUser(): Promise<User | null> {
   const { data } = await supabase.auth.getUser();
   return data.user;
