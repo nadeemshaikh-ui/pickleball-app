@@ -23,6 +23,14 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [savingRoundId, setSavingRoundId] = useState<string | null>(null);
+  // A round that's already saved shows a read-only "✓ Saved" state with an
+  // explicit Edit button, rather than always-interactive dropdowns —
+  // real feedback: showing live-editable selects right after a save read
+  // as "you just saved it on your own" with no clear way back in. Editing
+  // any select naturally un-saves it (draft no longer matches the DB, see
+  // isSaved below), so this only needs to gate the disabled state, not
+  // track a full separate "editing" mode.
+  const [editingRoundId, setEditingRoundId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, [string, string, string, string]>>({});
   const [addingCourt, setAddingCourt] = useState(false);
   const [removingCourt, setRemovingCourt] = useState(false);
@@ -55,7 +63,23 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
       const courtCount = session.court_labels.length || 1;
       const seed = `${session.id}-team-championship`;
       const { rounds: generated } = generateSquadRivalryScheduleN(session.players, 2, courtCount, totalRounds, seed, [], session.squads);
-      await insertRounds(session.id, generated);
+      // generateSquadRivalryScheduleN (shared with Squad Rivalry, which
+      // doesn't care which bucket is which) doesn't guarantee court.teamA
+      // is always session.squads[0]'s players — a real bug found via live
+      // testing: the pairings screen's dropdowns are scoped one-column-
+      // per-team, so a swapped bucket put a Team 2 player where only Team
+      // 1 names are offered, silently showing "Select…" instead of the
+      // real value. Fixed at the source here (not by widening the
+      // dropdowns) so each column only ever shows its own team's roster,
+      // which is also what a captain actually wants — no risk of
+      // accidentally assigning the wrong team's player into a slot.
+      const team0Id = session.squads![0].id;
+      const squadOfPlayer = new Map(session.squads!.flatMap(t => t.players.map(p => [p, t.id] as const)));
+      const normalized = generated.map(r => ({
+        ...r,
+        courts: r.courts.map(c => (squadOfPlayer.get(c.teamA[0]) === team0Id ? c : { teamA: c.teamB, teamB: c.teamA })),
+      }));
+      await insertRounds(session.id, normalized);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to generate pairings.');
@@ -372,12 +396,12 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
                                     key={slot}
                                     value={draft[slot]}
                                     onChange={e => updateDraftSlot(round.id, slot, e.target.value)}
-                                    disabled={isScored}
+                                    disabled={isScored || (isSaved && editingRoundId !== round.id)}
                                     aria-label={`Round ${round.round_number} court ${round.court} ${rosterByTeam[0]?.label} player ${slot + 1}`}
                                     style={selectStyle}
                                   >
                                     <option value="">Select…</option>
-                                    {allPlayers.map(p => (
+                                    {rosterByTeam[0]?.players.map(p => (
                                       <option key={p} value={p}>{p}</option>
                                     ))}
                                   </select>
@@ -390,12 +414,12 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
                                     key={slot}
                                     value={draft[slot]}
                                     onChange={e => updateDraftSlot(round.id, slot, e.target.value)}
-                                    disabled={isScored}
+                                    disabled={isScored || (isSaved && editingRoundId !== round.id)}
                                     aria-label={`Round ${round.round_number} court ${round.court} ${rosterByTeam[1]?.label} player ${slot - 1}`}
                                     style={selectStyle}
                                   >
                                     <option value="">Select…</option>
-                                    {allPlayers.map(p => (
+                                    {rosterByTeam[1]?.players.map(p => (
                                       <option key={p} value={p}>{p}</option>
                                     ))}
                                   </select>
@@ -409,9 +433,18 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
                             )}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                               {isSaved ? (
-                                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--success, #16a34a)', display: 'inline-flex', alignItems: 'center', gap: 4, minHeight: 44 }}>
-                                  ✓ Saved
-                                </span>
+                                <>
+                                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--success, #16a34a)', display: 'inline-flex', alignItems: 'center', gap: 4, minHeight: 44 }}>
+                                    ✓ Saved
+                                  </span>
+                                  <button
+                                    className="btn-secondary"
+                                    style={{ minHeight: 44, fontSize: 14, padding: '10px 16px' }}
+                                    onClick={() => setEditingRoundId(round.id)}
+                                  >
+                                    Edit
+                                  </button>
+                                </>
                               ) : (
                                 <button
                                   className="btn-secondary"

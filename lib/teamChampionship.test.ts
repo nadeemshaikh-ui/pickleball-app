@@ -156,6 +156,17 @@ describe('validateManualPairings', () => {
     const warnings = validateManualPairings(rounds, t, stages, 1);
     expect(warnings.some(w => w.type === 'repeat_partner')).toBe(false);
   });
+
+  it('produces zero warnings for freshly-started blank manual entry (no false "repeat partner" noise)', () => {
+    // Start Manual Entry inserts every round/court as ['',''] vs ['','']
+    // immediately — a blank pair must never be treated as a real
+    // repeating partnership, and an unfilled stage must never trigger
+    // play-count or missing-partner warnings.
+    const blank: [string, string] = ['', ''];
+    const rounds = Array.from({ length: 5 }, (_, i) => ({ roundNumber: i + 1, teamA: blank, teamB: blank }));
+    const warnings = validateManualPairings(rounds, teams, [{ stageLabel: 'Foundation', roundStart: 1, roundEnd: 5, pointsPerWin: 1 }], 1);
+    expect(warnings).toEqual([]);
+  });
 });
 
 describe('findFinalRoundPairs', () => {

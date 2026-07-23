@@ -118,6 +118,13 @@ function SetupPageInner() {
     manualPartnerAssignment?: (number | null)[];
     manualBlocks?: (number | null)[][];
     lockedPairs?: LockedPair[];
+    squadGoldLabel?: string;
+    squadBlackLabel?: string;
+    stageRows?: { label: string; rounds: number; pointsPerWin: number }[];
+    enableRapidFire?: boolean;
+    rapidFireTarget?: number;
+    rapidFireBonus?: number;
+    matchScoringRule?: MatchScoringRule;
   } {
     if (typeof window === 'undefined') return {};
     try {
@@ -132,6 +139,7 @@ function SetupPageInner() {
           manualPartnerAssignment: Array.isArray(parsed.manualPartnerAssignment) ? parsed.manualPartnerAssignment : undefined,
           manualBlocks: Array.isArray(parsed.manualBlocks) ? parsed.manualBlocks : undefined,
           lockedPairs: Array.isArray(parsed.lockedPairs) ? parsed.lockedPairs : undefined,
+          stageRows: Array.isArray(parsed.stageRows) ? parsed.stageRows : undefined,
         };
       }
       return {};
@@ -184,8 +192,8 @@ function SetupPageInner() {
   const [manualBlocks, setManualBlocks] = useState<(number | null)[][]>(draft.manualBlocks ?? []);
 
   const [squadMode, setSquadMode] = useState<'auto' | 'manual'>('auto');
-  const [squadGoldLabel, setSquadGoldLabel] = useState('');
-  const [squadBlackLabel, setSquadBlackLabel] = useState('');
+  const [squadGoldLabel, setSquadGoldLabel] = useState(draft.squadGoldLabel ?? '');
+  const [squadBlackLabel, setSquadBlackLabel] = useState(draft.squadBlackLabel ?? '');
   const [squadGoldLogoFile, setSquadGoldLogoFile] = useState<File | null>(null);
   const [squadBlackLogoFile, setSquadBlackLogoFile] = useState<File | null>(null);
   // 0 = gold, 1 = black, null = unassigned, indexed by player.
@@ -211,15 +219,17 @@ function SetupPageInner() {
   // previously silent-misconfiguration-prone (no validation ever checked
   // stage count or point-value shape, only that each row was individually
   // valid). Still fully editable — this is just a correct starting point.
-  const [stageRows, setStageRows] = useState<{ label: string; rounds: number; pointsPerWin: number }[]>([
-    { label: 'Foundation', rounds: 5, pointsPerWin: 1 },
-    { label: 'Momentum', rounds: 5, pointsPerWin: 2 },
-    { label: 'Championship', rounds: 5, pointsPerWin: 3 },
-  ]);
-  const [enableRapidFire, setEnableRapidFire] = useState(true);
-  const [rapidFireTarget, setRapidFireTarget] = useState(31);
-  const [rapidFireBonus, setRapidFireBonus] = useState(10);
-  const [matchScoringRule, setMatchScoringRule] = useState<MatchScoringRule>('golden_14');
+  const [stageRows, setStageRows] = useState<{ label: string; rounds: number; pointsPerWin: number }[]>(
+    draft.stageRows ?? [
+      { label: 'Foundation', rounds: 5, pointsPerWin: 1 },
+      { label: 'Momentum', rounds: 5, pointsPerWin: 2 },
+      { label: 'Championship', rounds: 5, pointsPerWin: 3 },
+    ]
+  );
+  const [enableRapidFire, setEnableRapidFire] = useState(draft.enableRapidFire ?? true);
+  const [rapidFireTarget, setRapidFireTarget] = useState(draft.rapidFireTarget ?? 31);
+  const [rapidFireBonus, setRapidFireBonus] = useState(draft.rapidFireBonus ?? 10);
+  const [matchScoringRule, setMatchScoringRule] = useState<MatchScoringRule>(draft.matchScoringRule ?? 'golden_14');
 
   const [lockedPairs, setLockedPairs] = useState<LockedPair[]>(draft.lockedPairs ?? []);
   const [skillBalanced, setSkillBalanced] = useState(false);
@@ -242,9 +252,34 @@ function SetupPageInner() {
         manualPartnerAssignment,
         manualBlocks,
         lockedPairs,
+        squadGoldLabel,
+        squadBlackLabel,
+        stageRows,
+        enableRapidFire,
+        rapidFireTarget,
+        rapidFireBonus,
+        matchScoringRule,
       })
     );
-  }, [playerCount, courtCount, namesEntered, names, format, venue, manualSquadAssignment, manualPartnerAssignment, manualBlocks, lockedPairs]);
+  }, [
+    playerCount,
+    courtCount,
+    namesEntered,
+    names,
+    format,
+    venue,
+    manualSquadAssignment,
+    manualPartnerAssignment,
+    manualBlocks,
+    lockedPairs,
+    squadGoldLabel,
+    squadBlackLabel,
+    stageRows,
+    enableRapidFire,
+    rapidFireTarget,
+    rapidFireBonus,
+    matchScoringRule,
+  ]);
 
   const trimmedNamesForLocks = names.map(n => n.trim()).filter(Boolean);
   const lockedPlayers = new Set(lockedPairs.flatMap(p => p));

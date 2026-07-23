@@ -237,6 +237,15 @@ export function validateManualPairings(
 ): PairingWarning[] {
   const warnings: PairingWarning[] = [];
 
+  // A blank slot ('') means "not filled in yet," not a real player — this
+  // matters a lot for manual/blank-started entry (Start Manual Entry),
+  // where every round begins as ['',''] on both sides. Without this guard,
+  // every blank round would count as the SAME "player" ('') repeatedly
+  // partnering itself, flooding the warnings list with noise before the
+  // captain has entered a single real name. A pair only counts once BOTH
+  // of its slots are filled.
+  const isCompletePair = (team: readonly [string, string]) => team[0] !== '' && team[1] !== '';
+
   // Play-count balancing ("every player plays 3, rests 2, per session") is
   // a per-stage rule — unchanged, checked per stage below.
   for (const stage of stages) {
@@ -248,21 +257,31 @@ export function validateManualPairings(
 
     for (const r of stageRounds) {
       for (const team of [r.teamA, r.teamB]) {
+        if (!isCompletePair(team)) continue;
         for (const p of team) playCounts.set(p, (playCounts.get(p) ?? 0) + 1);
       }
     }
 
-    for (const t of teams) {
-      if (t.players.length === 0) continue;
-      const totalSlots = courtCount * 2 * roundsInStage;
-      const fairTarget = Math.round(totalSlots / t.players.length);
-      for (const p of t.players) {
-        const count = playCounts.get(p) ?? 0;
-        if (count !== fairTarget) {
-          warnings.push({
-            type: 'play_count',
-            message: `${p} plays ${count}/${roundsInStage} rounds in ${stage.stageLabel} (target ${fairTarget}).`,
-          });
+    // Only warn once the whole stage is actually filled in — a stage still
+    // being entered (manual or partially hand-edited) naturally has uneven
+    // counts by definition, that's not a real imbalance to flag yet.
+    // stageRounds is one row per court-round slot, not per round number —
+    // courtCount * roundsInStage is the real expected row count.
+    const stageFullyFilled =
+      stageRounds.length >= courtCount * roundsInStage && stageRounds.every(r => isCompletePair(r.teamA) && isCompletePair(r.teamB));
+    if (stageFullyFilled) {
+      for (const t of teams) {
+        if (t.players.length === 0) continue;
+        const totalSlots = courtCount * 2 * roundsInStage;
+        const fairTarget = Math.round(totalSlots / t.players.length);
+        for (const p of t.players) {
+          const count = playCounts.get(p) ?? 0;
+          if (count !== fairTarget) {
+            warnings.push({
+              type: 'play_count',
+              message: `${p} plays ${count}/${roundsInStage} rounds in ${stage.stageLabel} (target ${fairTarget}).`,
+            });
+          }
         }
       }
     }
@@ -300,6 +319,7 @@ export function validateManualPairings(
     const partnerSeen = new Set<string>();
     for (const r of window.roundsInWindow) {
       for (const team of [r.teamA, r.teamB]) {
+        if (!isCompletePair(team)) continue;
         const key = [...team].sort().join('|');
         if (partnerSeen.has(key)) {
           warnings.push({
@@ -321,7 +341,8 @@ export function validateManualPairings(
   // yet as if they were missing, which isn't a real problem mid-entry.
   const totalConfiguredRounds = stages.reduce((sum, s) => sum + (s.roundEnd - s.roundStart + 1), 0);
   const distinctRoundNumbers = new Set(rounds.map(r => r.roundNumber)).size;
-  if (totalConfiguredRounds > 0 && distinctRoundNumbers >= totalConfiguredRounds) {
+  const everyPairComplete = rounds.every(r => isCompletePair(r.teamA) && isCompletePair(r.teamB));
+  if (totalConfiguredRounds > 0 && distinctRoundNumbers >= totalConfiguredRounds && everyPairComplete) {
     const allPartnersSeen = new Set<string>();
     for (const r of rounds) {
       for (const team of [r.teamA, r.teamB]) allPartnersSeen.add([...team].sort().join('|'));
