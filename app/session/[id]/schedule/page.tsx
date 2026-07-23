@@ -401,7 +401,7 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
           </div>
         )}
       </main>
-      <SessionNav sessionId={id} />
+      <SessionNav sessionId={id} format={session?.format} />
     </>
   );
 }

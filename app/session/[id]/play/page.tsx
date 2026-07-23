@@ -70,7 +70,7 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
     setEnding(true);
     try {
       await markSessionCompleted(id);
-      router.push(`/session/${id}/results`);
+      router.push(session?.format === 'team_championship' ? `/session/${id}/team-championship/results` : `/session/${id}/results`);
     } finally {
       setEnding(false);
     }
@@ -258,7 +258,8 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
     setSavingCourtId(null);
     if (firstIncompleteRound(updatedRounds) === undefined) {
       await markSessionCompleted(id);
-      setTimeout(() => router.push(`/session/${id}/results`), 1800);
+      const resultsUrl = session?.format === 'team_championship' ? `/session/${id}/team-championship/results` : `/session/${id}/results`;
+      setTimeout(() => router.push(resultsUrl), 1800);
     }
   }
 
@@ -454,7 +455,7 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
           );
         })}
       </main>
-      <SessionNav sessionId={id} />
+      <SessionNav sessionId={id} format={session?.format} />
     </>
   );
 }
