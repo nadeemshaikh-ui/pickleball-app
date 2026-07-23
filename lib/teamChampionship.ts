@@ -504,3 +504,207 @@ export function computeRapidFireBonus(state: RapidFireState, config: RapidFireCo
   }
   return bonus;
 }
+
+// ---------------------------------------------------------------------
+// Awards — every category below is derived purely from `rounds` (and
+// rapid_fire_log for the two Rapid Fire ones). None of these invent new
+// tracking; they're different lenses on data already collected.
+// ---------------------------------------------------------------------
+
+export interface DuoRecord {
+  playerA: string;
+  playerB: string;
+  teamId: string;
+  wins: number;
+  losses: number;
+  matchesTogether: number;
+}
+
+// A DUO is the 2-person partnership sharing a court (same side), not the
+// cross-team individual matchups computeHeadToHead tracks. "Best Duo"
+// needs a minimum-matches floor (2, passed by the caller) so a single
+// lucky pairing doesn't outrank a partnership that's proven itself
+// repeatedly — see the caller for the actual threshold applied.
+export function computeDuoRecords(rounds: RoundRow[], teams: SquadSet): DuoRecord[] {
+  const squadOfPlayer = new Map<string, string>();
+  for (const t of teams) for (const p of t.players) squadOfPlayer.set(p, t.id);
+
+  const records = new Map<string, DuoRecord>();
+  for (const round of rounds) {
+    if (round.score_a === null || round.score_b === null || round.score_a === round.score_b) continue;
+    const aWon = round.score_a > round.score_b;
+    for (const [pair, won] of [
+      [round.team_a, aWon],
+      [round.team_b, !aWon],
+    ] as [[string, string], boolean][]) {
+      const [first, second] = [...pair].sort();
+      const teamId = squadOfPlayer.get(first) ?? '';
+      const key = `${first}|${second}`;
+      if (!records.has(key)) records.set(key, { playerA: first, playerB: second, teamId, wins: 0, losses: 0, matchesTogether: 0 });
+      const rec = records.get(key)!;
+      rec.matchesTogether++;
+      if (won) rec.wins++;
+      else rec.losses++;
+    }
+  }
+  return [...records.values()].sort((a, b) => b.wins / b.matchesTogether - a.wins / a.matchesTogether || b.matchesTogether - a.matchesTogether);
+}
+
+export interface StreakInfo {
+  name: string;
+  longestWinStreak: number;
+  longestLossStreak: number;
+}
+
+// Consecutive results in round-number order (court as tiebreak for same
+// round number) — a player who sits out a round simply has no entry for
+// it and the streak continues across the gap, since "streak" here means
+// "of matches actually played," not "of consecutive round numbers."
+export function computeStreaks(rounds: RoundRow[], teams: SquadSet): StreakInfo[] {
+  const sorted = [...rounds]
+    .filter(r => r.score_a !== null && r.score_b !== null && r.score_a !== r.score_b)
+    .sort((a, b) => (a.round_number !== b.round_number ? a.round_number - b.round_number : a.court - b.court));
+
+  const results = new Map<string, boolean[]>();
+  for (const t of teams) for (const p of t.players) results.set(p, []);
+
+  for (const round of sorted) {
+    const aWon = round.score_a! > round.score_b!;
+    for (const p of round.team_a) results.get(p)?.push(aWon);
+    for (const p of round.team_b) results.get(p)?.push(!aWon);
+  }
+
+  return [...results.entries()].map(([name, outcomes]) => {
+    let longestWin = 0;
+    let longestLoss = 0;
+    let currentWin = 0;
+    let currentLoss = 0;
+    for (const won of outcomes) {
+      if (won) {
+        currentWin++;
+        currentLoss = 0;
+      } else {
+        currentLoss++;
+        currentWin = 0;
+      }
+      longestWin = Math.max(longestWin, currentWin);
+      longestLoss = Math.max(longestLoss, currentLoss);
+    }
+    return { name, longestWinStreak: longestWin, longestLossStreak: longestLoss };
+  });
+}
+
+export interface MatchMargin {
+  roundNumber: number;
+  court: number;
+  stageLabel: string;
+  teamA: [string, string];
+  teamB: [string, string];
+  scoreA: number;
+  scoreB: number;
+  margin: number;
+}
+
+// Biggest Blowout = max margin, Nail-Biter = min margin — same underlying
+// list, caller picks the end. A margin-1 finish reads as a golden-point
+// nail-biter regardless of which scoring rule was in effect.
+export function computeMatchMargins(rounds: RoundRow[], stages: StageConfig[]): MatchMargin[] {
+  return rounds
+    .filter((r): r is RoundRow & { score_a: number; score_b: number } => r.score_a !== null && r.score_b !== null && r.score_a !== r.score_b)
+    .map(r => {
+      const stage = stageForRound(r.round_number, stages);
+      return {
+        roundNumber: r.round_number,
+        court: r.court,
+        stageLabel: stage?.stageLabel ?? '',
+        teamA: r.team_a,
+        teamB: r.team_b,
+        scoreA: r.score_a,
+        scoreB: r.score_b,
+        margin: Math.abs(r.score_a - r.score_b),
+      };
+    })
+    .filter(m => m.stageLabel !== '');
+}
+
+// Win% within just the LAST configured stage (highest points-per-win,
+// i.e. Championship) — "showed up when it mattered most." Caller applies
+// a minimum-matches floor.
+export function computeClutchStats(rounds: RoundRow[], teams: SquadSet, stages: StageConfig[]): PlayerMatchStats[] {
+  if (stages.length === 0) return [];
+  const lastStage = stages[stages.length - 1];
+  const clutchRounds = rounds.filter(r => r.round_number >= lastStage.roundStart && r.round_number <= lastStage.roundEnd);
+  return computePlayerStats(clutchRounds, teams);
+}
+
+export interface ImprovementInfo {
+  name: string;
+  firstStageWinPct: number;
+  lastStageWinPct: number;
+  delta: number;
+  firstStageMatches: number;
+  lastStageMatches: number;
+}
+
+// Win% in the first configured stage vs the last — "Most Improved" is the
+// biggest positive delta. Needs matches in BOTH stages to be meaningful;
+// caller applies a minimum-matches floor on each side.
+export function computeImprovement(rounds: RoundRow[], teams: SquadSet, stages: StageConfig[]): ImprovementInfo[] {
+  if (stages.length < 2) return [];
+  const firstStage = stages[0];
+  const lastStage = stages[stages.length - 1];
+  const firstStats = computePlayerStats(rounds.filter(r => r.round_number >= firstStage.roundStart && r.round_number <= firstStage.roundEnd), teams);
+  const lastStats = computePlayerStats(rounds.filter(r => r.round_number >= lastStage.roundStart && r.round_number <= lastStage.roundEnd), teams);
+  const lastByName = new Map(lastStats.map(s => [s.name, s]));
+
+  return firstStats.map(first => {
+    const last = lastByName.get(first.name);
+    return {
+      name: first.name,
+      firstStageWinPct: first.winPct,
+      lastStageWinPct: last?.winPct ?? 0,
+      delta: (last?.winPct ?? 0) - first.winPct,
+      firstStageMatches: first.matchesPlayed,
+      lastStageMatches: last?.matchesPlayed ?? 0,
+    };
+  });
+}
+
+export interface RapidFireContribution {
+  name: string;
+  pointsCredited: number;
+}
+
+// "Rapid Fire Hero" = on court the most times their OWN team scored (not
+// just on court in general — an opponent on court when the other team
+// scores gets no credit). "Finisher" is separate (see
+// computeRapidFireFinisher below) — the specific player on court for the
+// winning point.
+export function computeRapidFireContributions(log: RapidFireLogEntry[], teams: SquadSet): RapidFireContribution[] {
+  const squadOfPlayer = new Map<string, string>();
+  for (const t of teams) for (const p of t.players) squadOfPlayer.set(p, t.id);
+
+  const credit = new Map<string, number>();
+  for (const t of teams) for (const p of t.players) credit.set(p, 0);
+
+  for (const entry of log) {
+    for (const player of entry.onCourtPlayers) {
+      if (squadOfPlayer.get(player) === entry.scoringTeamId) {
+        credit.set(player, (credit.get(player) ?? 0) + 1);
+      }
+    }
+  }
+  return [...credit.entries()].map(([name, pointsCredited]) => ({ name, pointsCredited }));
+}
+
+// The player(s) on court, on the winning team, for the very last logged
+// point — the shot that actually ended it.
+export function computeRapidFireFinisher(log: RapidFireLogEntry[], state: RapidFireState, teams: SquadSet): string[] {
+  if (!state.isComplete || log.length === 0 || state.winnerTeamId === null) return [];
+  const squadOfPlayer = new Map<string, string>();
+  for (const t of teams) for (const p of t.players) squadOfPlayer.set(p, t.id);
+
+  const lastEntry = log[log.length - 1];
+  if (lastEntry.scoringTeamId !== state.winnerTeamId) return [];
+  return lastEntry.onCourtPlayers.filter(p => squadOfPlayer.get(p) === state.winnerTeamId);
+}

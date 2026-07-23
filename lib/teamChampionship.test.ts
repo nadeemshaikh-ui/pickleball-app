@@ -11,6 +11,13 @@ import {
   computeMVP,
   computeTeamMVPs,
   computeHeadToHead,
+  computeDuoRecords,
+  computeStreaks,
+  computeMatchMargins,
+  computeClutchStats,
+  computeImprovement,
+  computeRapidFireContributions,
+  computeRapidFireFinisher,
   type StageConfig,
   type RapidFireConfig,
 } from './teamChampionship';
@@ -363,5 +370,104 @@ describe('computeHeadToHead', () => {
     const unscored: RoundRow = { id: 'r1', session_id: 's', round_number: 1, court: 1, team_a: ['H1', 'H2'], team_b: ['C1', 'C2'], sitting_out: [], score_a: null, score_b: null };
     const tie: RoundRow = { ...round(2, ['H1', 'H2'], ['C1', 'C2'], 10, 10) };
     expect(computeHeadToHead([unscored, tie], teams)).toEqual([]);
+  });
+});
+
+describe('computeDuoRecords', () => {
+  it('tracks the partnership (same side of the court), not individuals', () => {
+    const rounds: RoundRow[] = [
+      round(1, ['H1', 'H2'], ['C1', 'C2'], 15, 10), // H1+H2 win as a duo
+      round(2, ['H1', 'H2'], ['C3', 'C4'], 15, 10), // H1+H2 win again
+      round(3, ['H1', 'H3'], ['C1', 'C2'], 15, 10), // different duo (H1+H3)
+    ];
+    const duos = computeDuoRecords(rounds, teams);
+    const h1h2 = duos.find(d => [d.playerA, d.playerB].includes('H1') && [d.playerA, d.playerB].includes('H2'))!;
+    expect(h1h2.wins).toBe(2);
+    expect(h1h2.losses).toBe(0);
+    expect(h1h2.matchesTogether).toBe(2);
+  });
+});
+
+describe('computeStreaks', () => {
+  it('finds the longest consecutive win and loss streak per player, in round order', () => {
+    const rounds: RoundRow[] = [
+      round(1, ['H1', 'H2'], ['C1', 'C2'], 15, 10), // H1 win 1
+      round(2, ['H1', 'H3'], ['C1', 'C4'], 15, 10), // H1 win 2
+      round(3, ['H1', 'H4'], ['C1', 'C2'], 15, 10), // H1 win 3
+      round(4, ['H1', 'H2'], ['C1', 'C3'], 10, 15), // H1 loss 1
+      round(5, ['H1', 'H3'], ['C1', 'C4'], 10, 15), // H1 loss 2
+    ];
+    const streaks = computeStreaks(rounds, teams);
+    const h1 = streaks.find(s => s.name === 'H1')!;
+    expect(h1.longestWinStreak).toBe(3);
+    expect(h1.longestLossStreak).toBe(2);
+  });
+});
+
+describe('computeMatchMargins', () => {
+  it('computes the score margin per match with its stage', () => {
+    const rounds: RoundRow[] = [round(1, ['H1', 'H2'], ['C1', 'C2'], 15, 3)];
+    const [margin] = computeMatchMargins(rounds, stages);
+    expect(margin.margin).toBe(12);
+    expect(margin.stageLabel).toBe('Foundation');
+  });
+});
+
+describe('computeClutchStats', () => {
+  it('scopes win% to just the last configured stage', () => {
+    const rounds: RoundRow[] = [
+      round(1, ['H1', 'H2'], ['C1', 'C2'], 5, 15), // H1 loses in Foundation - irrelevant
+      round(11, ['H1', 'H2'], ['C1', 'C2'], 15, 5), // H1 wins in Championship (last stage)
+    ];
+    const clutch = computeClutchStats(rounds, teams, stages);
+    const h1 = clutch.find(s => s.name === 'H1')!;
+    expect(h1.matchesPlayed).toBe(1);
+    expect(h1.wins).toBe(1);
+  });
+});
+
+describe('computeImprovement', () => {
+  it('compares win% in the first vs last configured stage', () => {
+    const rounds: RoundRow[] = [
+      round(1, ['H1', 'H2'], ['C1', 'C2'], 5, 15), // H1 loses in Foundation
+      round(11, ['H1', 'H2'], ['C1', 'C2'], 15, 5), // H1 wins in Championship
+    ];
+    const improvement = computeImprovement(rounds, teams, stages);
+    const h1 = improvement.find(i => i.name === 'H1')!;
+    expect(h1.firstStageWinPct).toBe(0);
+    expect(h1.lastStageWinPct).toBe(1);
+    expect(h1.delta).toBe(1);
+  });
+});
+
+describe('computeRapidFireContributions / computeRapidFireFinisher', () => {
+  const config: RapidFireConfig = { targetPoints: 3, bonusPoints: 10 };
+  it('only credits on-court players from the team that actually scored', () => {
+    const log = [
+      { eventOrder: 1, scoringTeamId: 'home', onCourtPlayers: ['H1', 'H2', 'C1', 'C2'] },
+      { eventOrder: 2, scoringTeamId: 'home', onCourtPlayers: ['H1', 'H2', 'C1', 'C2'] },
+      { eventOrder: 3, scoringTeamId: 'challengers', onCourtPlayers: ['H1', 'H2', 'C1', 'C2'] },
+    ];
+    const contributions = computeRapidFireContributions(log, teams);
+    expect(contributions.find(c => c.name === 'H1')?.pointsCredited).toBe(2);
+    expect(contributions.find(c => c.name === 'C1')?.pointsCredited).toBe(1);
+  });
+
+  it('finisher is whoever from the winning team was on court for the last point', () => {
+    const log = [
+      { eventOrder: 1, scoringTeamId: 'home', onCourtPlayers: ['H1', 'H2', 'C1', 'C2'] },
+      { eventOrder: 2, scoringTeamId: 'home', onCourtPlayers: ['H3', 'H4', 'C1', 'C2'] },
+      { eventOrder: 3, scoringTeamId: 'home', onCourtPlayers: ['H3', 'H4', 'C1', 'C2'] },
+    ];
+    const state = computeRapidFireState(log, config, teams);
+    expect(state.isComplete).toBe(true);
+    const finishers = computeRapidFireFinisher(log, state, teams);
+    expect(finishers.sort()).toEqual(['H3', 'H4']);
+  });
+
+  it('returns no finisher if the tournament is incomplete', () => {
+    const log = [{ eventOrder: 1, scoringTeamId: 'home', onCourtPlayers: ['H1', 'H2', 'C1', 'C2'] }];
+    const state = computeRapidFireState(log, config, teams);
+    expect(computeRapidFireFinisher(log, state, teams)).toEqual([]);
   });
 });
