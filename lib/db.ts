@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import type { ScrambleRound } from './shuffle';
 import type { SquadSet } from './squads';
 import type { StageConfig, RapidFireConfig } from './teamChampionship';
+import type { MatchScoringRule } from './matchScoring';
 
 export type Format = 'scramble' | 'squad_rivalry' | 'court_blocks' | 'fixed_partners' | 'king_of_court' | 'team_championship';
 
@@ -58,6 +59,7 @@ export interface SessionRow {
   booker_upi_vpa: string | null;
   stage_config: StageConfig[] | null;
   rapid_fire_config: RapidFireConfig | null;
+  match_scoring_rule: MatchScoringRule | null;
 }
 
 export interface RoundRow {
@@ -104,6 +106,7 @@ export interface CreateSessionOptions {
   // null out for formats that don't use them.
   stageConfig?: StageConfig[] | null;
   rapidFireConfig?: RapidFireConfig | null;
+  matchScoringRule?: MatchScoringRule | null;
   // A circle session in this MVP has no players/dues/branding/stats parity
   // with club sessions — see 20260723000000_circles_schema.sql's scope
   // note. circleId is mutually exclusive with clubId at the DB level (XOR
@@ -138,6 +141,7 @@ export async function createSession(options: CreateSessionOptions): Promise<stri
     booker_upi_vpa: options.bookerUpiVpa,
     stage_config: options.stageConfig ?? null,
     rapid_fire_config: options.rapidFireConfig ?? null,
+    match_scoring_rule: options.matchScoringRule ?? null,
     status: 'in_progress',
   });
   if (error) throw error;
@@ -347,6 +351,31 @@ export async function addCourtToSession(sessionId: string, newLabel: string): Pr
   const { error } = await supabase
     .from('sessions')
     .update({ court_labels: [...session.court_labels, newLabel] })
+    .eq('id', sessionId);
+  if (error) throw error;
+}
+
+// The inverse of addCourtToSession — removes only the LAST court, and only
+// if nothing currently uses it. Removing an arbitrary middle court would
+// mean renumbering every round on higher-numbered courts, which risks
+// silently reshuffling already-scored/paired data; last-court-only avoids
+// that entirely, matching how add always appends at the end.
+export async function removeLastCourtFromSession(sessionId: string): Promise<void> {
+  const session = await getSession(sessionId);
+  if (session.court_labels.length <= 1) throw new Error('A session needs at least 1 court.');
+  const lastCourtNumber = session.court_labels.length;
+  const { count, error: countError } = await supabase
+    .from('rounds')
+    .select('*', { count: 'exact', head: true })
+    .eq('session_id', sessionId)
+    .eq('court', lastCourtNumber);
+  if (countError) throw countError;
+  if ((count ?? 0) > 0) {
+    throw new Error(`Court ${session.court_labels[lastCourtNumber - 1]} still has rounds assigned to it — reassign or delete them first.`);
+  }
+  const { error } = await supabase
+    .from('sessions')
+    .update({ court_labels: session.court_labels.slice(0, -1) })
     .eq('id', sessionId);
   if (error) throw error;
 }

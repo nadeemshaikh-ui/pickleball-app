@@ -16,6 +16,7 @@ import {
 import { generateInitialKingOfCourtRound } from '@/lib/kingOfCourt';
 import { generateSquadRivalryScheduleN, squadIdFor, type SquadSet } from '@/lib/squads';
 import type { StageConfig } from '@/lib/teamChampionship';
+import { MATCH_SCORING_RULE_INFO, type MatchScoringRule } from '@/lib/matchScoring';
 import { createSession, insertRounds, uploadPlayerPhoto, uploadSquadLogo, getMostRecentSession } from '@/lib/db';
 import { saveRoster, loadRoster } from '@/lib/savedRoster';
 import { getPlayerPhoto, savePlayerPhoto, preloadPlayerPhotos } from '@/lib/playerPhotos';
@@ -218,6 +219,7 @@ function SetupPageInner() {
   const [enableRapidFire, setEnableRapidFire] = useState(true);
   const [rapidFireTarget, setRapidFireTarget] = useState(31);
   const [rapidFireBonus, setRapidFireBonus] = useState(10);
+  const [matchScoringRule, setMatchScoringRule] = useState<MatchScoringRule>('golden_14');
 
   const [lockedPairs, setLockedPairs] = useState<LockedPair[]>(draft.lockedPairs ?? []);
   const [skillBalanced, setSkillBalanced] = useState(false);
@@ -805,6 +807,7 @@ function SetupPageInner() {
           rapidFireConfig: enableRapidFire
             ? { targetPoints: rapidFireTarget, bonusPoints: rapidFireBonus }
             : null,
+          matchScoringRule,
         });
         // No insertRounds call — pairings are entered by hand, round by
         // round, on a screen that doesn't exist yet (Phase 4 of the locked
@@ -1430,6 +1433,28 @@ function SetupPageInner() {
               );
             })()}
             <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 10 }}>Every player needs a team, split evenly.</p>
+          </div>
+
+          <h2>Match Ending Rule</h2>
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>
+              One rule for the whole tournament — applies to all 15 matches consistently.
+            </p>
+            {(Object.keys(MATCH_SCORING_RULE_INFO) as MatchScoringRule[]).map(rule => (
+              <label key={rule} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="matchScoringRule"
+                  checked={matchScoringRule === rule}
+                  onChange={() => setMatchScoringRule(rule)}
+                  style={{ marginTop: 3 }}
+                />
+                <span>
+                  <span style={{ display: 'block', fontWeight: 700, fontSize: 14 }}>{MATCH_SCORING_RULE_INFO[rule].label}</span>
+                  <span style={{ display: 'block', fontSize: 12, color: 'var(--muted)' }}>{MATCH_SCORING_RULE_INFO[rule].description}</span>
+                </span>
+              </label>
+            ))}
           </div>
 
           <h2>Stages</h2>

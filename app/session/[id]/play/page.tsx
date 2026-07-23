@@ -22,6 +22,8 @@ import ConfirmModal from '@/components/ConfirmModal';
 import SquadVersusHero from '@/components/SquadVersusHero';
 import SquadStandingsCard from '@/components/SquadStandingsCard';
 import { computeSquadTotalsN } from '@/lib/analytics';
+import { validateMatchScore } from '@/lib/matchScoring';
+import { computeTeamChampionshipStandings } from '@/lib/teamChampionship';
 
 export default function PlayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -133,17 +135,16 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
       setScoreError(court.id, "Pickleball games can't end in a tie — check the score.");
       return;
     }
-    // Team Championship match rule: every match is played to 15 (at 14-14 a
-    // golden point decides it, 15-14). So the winning score is always
-    // exactly 15 and the loser is 0-14 — anything else (21-19, 11-9,
-    // 16-14) is a mis-entry for this format. Scoped to team_championship
-    // only: other formats in this app play to different targets and must
-    // not be constrained here.
+    // Team Championship's match-ending rule is chosen once at setup (see
+    // lib/matchScoring.ts) — one of 3 real tournament conventions, not the
+    // single hardcoded "always to 15" rule this used to be. Scoped to
+    // team_championship only: other formats play to different targets and
+    // must not be constrained here.
     if (session.format === 'team_championship') {
-      const hi = Math.max(Number(a), Number(b));
-      const lo = Math.min(Number(a), Number(b));
-      if (hi !== 15 || lo < 0 || lo > 14) {
-        setScoreError(court.id, 'Team Championship matches are played to 15 (golden point at 14-14). The winning score must be exactly 15 and the loser 0-14.');
+      const rule = session.match_scoring_rule ?? 'golden_14';
+      const result = validateMatchScore(Number(a), Number(b), rule);
+      if (!result.valid) {
+        setScoreError(court.id, result.error ?? 'Invalid score for this tournament\'s match-ending rule.');
         return;
       }
     }
@@ -283,6 +284,21 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
         {session && session.format === 'squad_rivalry' && session.squads && session.squads.length > 2 && (
           <SquadStandingsCard squads={session.squads} totalsByTeam={computeSquadTotalsN(rounds, session.squads)} />
         )}
+        {session && session.format === 'team_championship' && session.squads && session.squads.length === 2 && session.stage_config && (
+          <>
+            <SquadVersusHero
+              goldLabel={session.squads[0].label || 'Team 1'}
+              blackLabel={session.squads[1].label || 'Team 2'}
+              goldLogoUrl={session.squads[0].logoUrl ?? null}
+              blackLogoUrl={session.squads[1].logoUrl ?? null}
+              goldScore={computeTeamChampionshipStandings(rounds, session.squads, session.stage_config).totalsByTeam.get(session.squads[0].id) ?? 0}
+              blackScore={computeTeamChampionshipStandings(rounds, session.squads, session.stage_config).totalsByTeam.get(session.squads[1].id) ?? 0}
+            />
+            <p style={{ textAlign: 'center', fontSize: 12, marginTop: -8, marginBottom: 8 }}>
+              <a href={`/session/${id}/team-championship/results`}>View full stage-by-stage standings →</a>
+            </p>
+          </>
+        )}
         <h1>Live Scoring</h1>
         <p style={{ color: 'var(--muted)', marginTop: 4 }}>
           Round {currentRoundNumber ?? session?.round_count ?? '—'} of {session?.round_count ?? '…'} — tap a score box to enter, it saves automatically
@@ -317,10 +333,18 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
             courts.length === 2 &&
             JSON.stringify([...courts[0].sitting_out].sort()) === JSON.stringify([...courts[1].sitting_out].sort());
 
+          const tcStage =
+            session?.format === 'team_championship' && session.stage_config
+              ? session.stage_config.find(s => roundNumber >= s.roundStart && roundNumber <= s.roundEnd)
+              : null;
+
           return (
             <div key={roundNumber} className={`round-card ${isCurrent ? 'is-current' : ''} ${isDone ? 'is-done' : ''}`}>
               <div className="round-card-header">
-                <span className="round-label">Round {roundNumber}</span>
+                <span className="round-label">
+                  Round {roundNumber}
+                  {tcStage && <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--muted)' }}> · {tcStage.stageLabel} · {tcStage.pointsPerWin} pt/win</span>}
+                </span>
                 <span className={`round-status-badge ${isDone ? '' : 'pending'}`}>
                   {isDone ? 'Done' : 'Pending'}
                 </span>

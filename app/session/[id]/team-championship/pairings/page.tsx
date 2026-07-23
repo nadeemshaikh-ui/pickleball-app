@@ -1,8 +1,8 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
-import { getSession, getRounds, insertRounds, updateRoundTeams, updateRoundCourt, swapRoundOrder, clearRoundScore, addCourtToSession, type RoundRow, type SessionRow } from '@/lib/db';
+import { getSession, getRounds, insertRounds, updateRoundTeams, updateRoundCourt, swapRoundOrder, clearRoundScore, addCourtToSession, removeLastCourtFromSession, type RoundRow, type SessionRow } from '@/lib/db';
 import { generateSquadRivalryScheduleN } from '@/lib/squads';
 import { validateManualPairings } from '@/lib/teamChampionship';
 
@@ -23,9 +23,9 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [savingRoundId, setSavingRoundId] = useState<string | null>(null);
-  const [justSavedId, setJustSavedId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, [string, string, string, string]>>({});
   const [addingCourt, setAddingCourt] = useState(false);
+  const [removingCourt, setRemovingCourt] = useState(false);
 
   async function load() {
     const [s, r] = await Promise.all([getSession(id), getRounds(id)]);
@@ -64,6 +64,36 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
     }
   }
 
+  // Pure manual entry, no algorithm — blank team_a/team_b slots for every
+  // round/court, for a captain who wants to type in pre-agreed pairings
+  // from scratch rather than start from (and un-learn) a suggestion.
+  async function handleStartManual() {
+    if (!session) return;
+    if (!session.stage_config) {
+      setError('This session is missing stage setup and cannot start pairings — go back to setup and recreate it.');
+      return;
+    }
+    setGenerating(true);
+    setError(null);
+    try {
+      const courtCount = session.court_labels.length || 1;
+      const roundNumbers = session.stage_config.flatMap(s =>
+        Array.from({ length: s.roundEnd - s.roundStart + 1 }, (_, i) => s.roundStart + i)
+      );
+      const blankRounds = roundNumbers.map(roundNumber => ({
+        roundNumber,
+        courts: Array.from({ length: courtCount }, () => ({ teamA: ['', ''] as [string, string], teamB: ['', ''] as [string, string] })),
+        sittingOutPerCourt: Array.from({ length: courtCount }, () => []),
+      }));
+      await insertRounds(session.id, blankRounds);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to start manual pairings.');
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   async function handleSaveRound(round: RoundRow) {
     if (round.score_a !== null && round.score_b !== null) {
       setError('This round already has a score and is locked — pairings can\'t be changed after a result is recorded. Clear the score first if this was a mistake.');
@@ -83,8 +113,6 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
     try {
       await updateRoundTeams(round.id, [draft[0], draft[1]], [draft[2], draft[3]]);
       await load();
-      setJustSavedId(round.id);
-      setTimeout(() => setJustSavedId(prev => (prev === round.id ? null : prev)), 2500);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save this round.');
     } finally {
@@ -166,6 +194,20 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
     }
   }
 
+  async function handleRemoveCourt() {
+    if (!session) return;
+    setRemovingCourt(true);
+    setError(null);
+    try {
+      await removeLastCourtFromSession(session.id);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to remove court.');
+    } finally {
+      setRemovingCourt(false);
+    }
+  }
+
   function updateDraftSlot(roundId: string, slot: number, value: string) {
     setDrafts(prev => {
       const current = prev[roundId] ?? ['', '', '', ''];
@@ -209,21 +251,36 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
 
       {error && <p style={{ color: 'var(--danger)', fontWeight: 600 }}>{error}</p>}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: 'var(--muted)', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
         <span>{session.court_labels.length} court{session.court_labels.length === 1 ? '' : 's'} available</span>
-        <button className="btn-secondary" onClick={handleAddCourt} disabled={addingCourt} style={{ fontSize: 12, padding: '4px 10px' }}>
-          {addingCourt ? 'Adding…' : '+ Add Court'}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            className="btn-secondary"
+            onClick={handleRemoveCourt}
+            disabled={removingCourt || session.court_labels.length <= 1}
+            style={{ fontSize: 13, padding: '8px 14px', minHeight: 40 }}
+          >
+            {removingCourt ? 'Removing…' : '− Remove Court'}
+          </button>
+          <button className="btn-secondary" onClick={handleAddCourt} disabled={addingCourt} style={{ fontSize: 13, padding: '8px 14px', minHeight: 40 }}>
+            {addingCourt ? 'Adding…' : '+ Add Court'}
+          </button>
+        </div>
       </div>
 
       {rounds.length === 0 && (
-        <div className="card" style={{ marginBottom: 16 }}>
-          <p style={{ fontSize: 13, margin: '0 0 10px' }}>
-            No pairings yet. Generate a balanced starting point, then edit any round by hand.
+        <div className="card" style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <p style={{ fontSize: 13, margin: 0 }}>
+            No pairings yet — generate a balanced starting point and hand-edit it, or start fully blank and enter every pairing yourself.
           </p>
-          <button className="btn-primary" onClick={handleGenerate} disabled={generating}>
-            {generating ? 'Generating…' : 'Generate Suggested Pairings'}
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <button className="btn-primary" onClick={handleGenerate} disabled={generating} style={{ minHeight: 48, fontSize: 15 }}>
+              {generating ? 'Generating…' : 'Generate Suggested Pairings'}
+            </button>
+            <button className="btn-secondary" onClick={handleStartManual} disabled={generating} style={{ minHeight: 48, fontSize: 15 }}>
+              {generating ? 'Starting…' : 'Start Manual Entry (blank)'}
+            </button>
+          </div>
         </div>
       )}
 
@@ -262,16 +319,31 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
                       {courtsInRound.map(round => {
                         const draft = drafts[round.id] ?? [round.team_a[0], round.team_a[1], round.team_b[0], round.team_b[1]];
                         const isScored = round.score_a !== null && round.score_b !== null;
+                        // Persistent, not a timed flash — comparing the
+                        // current draft against what's actually saved in
+                        // the DB means "Saved" stays visible until the
+                        // draft genuinely changes again, instead of
+                        // vanishing the instant a DIFFERENT round is saved
+                        // (a single shared justSavedId used to do exactly
+                        // that — real feedback from testing this live).
+                        const isSaved =
+                          !isScored &&
+                          draft[0] === round.team_a[0] &&
+                          draft[1] === round.team_a[1] &&
+                          draft[2] === round.team_b[0] &&
+                          draft[3] === round.team_b[1] &&
+                          draft.every(name => name !== '');
+                        const selectStyle: CSSProperties = { minHeight: 48, fontSize: 16, padding: '10px 12px', width: '100%', boxSizing: 'border-box' };
                         return (
-                          <div key={round.id} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 10, border: '1px solid var(--border)', borderRadius: 8 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--muted)', flexWrap: 'wrap' }}>
+                          <div key={round.id} style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 12, border: '1px solid var(--border)', borderRadius: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: 'var(--muted)', flexWrap: 'wrap' }}>
                               <span>Court</span>
                               <select
                                 value={round.court}
                                 onChange={e => handleChangeCourt(round, Number(e.target.value))}
                                 disabled={isScored || changingCourtId === round.id}
                                 aria-label={`Change court for round ${round.round_number} court ${round.court}`}
-                                style={{ fontSize: 12, fontWeight: 700 }}
+                                style={{ fontSize: 14, fontWeight: 700, minHeight: 40, padding: '6px 10px' }}
                               >
                                 {Array.from({ length: courtCount }, (_, i) => i + 1).map(c => (
                                   <option key={c} value={c}>{c}</option>
@@ -283,7 +355,7 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
                                 onChange={e => handleChangeOrder(round, Number(e.target.value))}
                                 disabled={isScored || changingOrderId === round.id}
                                 aria-label={`Change round order for round ${round.round_number} court ${round.court}`}
-                                style={{ fontSize: 12, fontWeight: 700 }}
+                                style={{ fontSize: 14, fontWeight: 700, minHeight: 40, padding: '6px 10px' }}
                               >
                                 {stageRoundNumbers.map(n => (
                                   <option key={n} value={n}>{n}</option>
@@ -292,9 +364,9 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
                               {(changingOrderId === round.id || changingCourtId === round.id) && <span>Saving…</span>}
                               {isScored && <span>🔒 Locked</span>}
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)' }}>{rosterByTeam[0]?.label}</span>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>{rosterByTeam[0]?.label}</span>
                                 {[0, 1].map(slot => (
                                   <select
                                     key={slot}
@@ -302,6 +374,7 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
                                     onChange={e => updateDraftSlot(round.id, slot, e.target.value)}
                                     disabled={isScored}
                                     aria-label={`Round ${round.round_number} court ${round.court} ${rosterByTeam[0]?.label} player ${slot + 1}`}
+                                    style={selectStyle}
                                   >
                                     <option value="">Select…</option>
                                     {allPlayers.map(p => (
@@ -310,8 +383,8 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
                                   </select>
                                 ))}
                               </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)' }}>{rosterByTeam[1]?.label}</span>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>{rosterByTeam[1]?.label}</span>
                                 {[2, 3].map(slot => (
                                   <select
                                     key={slot}
@@ -319,6 +392,7 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
                                     onChange={e => updateDraftSlot(round.id, slot, e.target.value)}
                                     disabled={isScored}
                                     aria-label={`Round ${round.round_number} court ${round.court} ${rosterByTeam[1]?.label} player ${slot - 1}`}
+                                    style={selectStyle}
                                   >
                                     <option value="">Select…</option>
                                     {allPlayers.map(p => (
@@ -333,27 +407,30 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
                                 Scored {round.score_a}-{round.score_b} — locked. Unlock to correct a mistaken pairing/court/order (this clears the recorded score).
                               </p>
                             )}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <button
-                                className="btn-secondary"
-                                style={{ alignSelf: 'flex-start' }}
-                                onClick={() => handleSaveRound(round)}
-                                disabled={isScored || savingRoundId === round.id}
-                              >
-                                {savingRoundId === round.id ? 'Saving…' : isScored ? 'Locked' : 'Save Round'}
-                              </button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                              {isSaved ? (
+                                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--success, #16a34a)', display: 'inline-flex', alignItems: 'center', gap: 4, minHeight: 44 }}>
+                                  ✓ Saved
+                                </span>
+                              ) : (
+                                <button
+                                  className="btn-secondary"
+                                  style={{ alignSelf: 'flex-start', minHeight: 44, fontSize: 14, padding: '10px 16px' }}
+                                  onClick={() => handleSaveRound(round)}
+                                  disabled={isScored || savingRoundId === round.id}
+                                >
+                                  {savingRoundId === round.id ? 'Saving…' : isScored ? 'Locked' : 'Save Round'}
+                                </button>
+                              )}
                               {isScored && (
                                 <button
                                   className="btn-secondary"
-                                  style={{ alignSelf: 'flex-start' }}
+                                  style={{ alignSelf: 'flex-start', minHeight: 44, fontSize: 14, padding: '10px 16px' }}
                                   onClick={() => handleUnlock(round)}
                                   disabled={unlockingId === round.id}
                                 >
                                   {unlockingId === round.id ? 'Unlocking…' : 'Unlock'}
                                 </button>
-                              )}
-                              {justSavedId === round.id && (
-                                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--success, #16a34a)' }}>✓ Saved</span>
                               )}
                             </div>
                           </div>
