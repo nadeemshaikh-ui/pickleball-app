@@ -252,7 +252,7 @@ export default function TournamentsPage() {
                     {new Date(t.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
                   </Link>
                   {canDelete && (
-                    <button className="icon-btn" aria-label={`Delete ${t.name}`} onClick={() => setDeleteTarget(t)}>
+                    <button className="icon-btn" aria-label={`Delete ${t.name}`} onClick={() => { setError(null); setDeleteTarget(t); }}>
                       <Trash2 size={14} />
                     </button>
                   )}

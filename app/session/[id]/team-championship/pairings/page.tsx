@@ -309,14 +309,28 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
       )}
 
       {warnings.length > 0 && (
-        <div className="card" style={{ marginBottom: 16, borderColor: 'var(--warning, #b45309)' }}>
-          <p style={{ fontSize: 12, fontWeight: 700, margin: '0 0 6px' }}>Heads up ({warnings.length}) — not blocking, just flagging:</p>
-          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: 'var(--muted)' }}>
+        <details className="card" style={{ marginBottom: 16, borderColor: 'var(--warning, #b45309)' }}>
+          <summary style={{ fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            ⚠️ {warnings.length} pairing warning{warnings.length === 1 ? '' : 's'} — not blocking, tap to review
+          </summary>
+          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, color: 'var(--muted)' }}>
+            {(['repeat_partner', 'missing_partner', 'play_count'] as const).map(type => {
+              const count = warnings.filter(w => w.type === type).length;
+              if (count === 0) return null;
+              const typeLabel = type === 'repeat_partner' ? 'Repeat partners' : type === 'missing_partner' ? 'Never partnered' : 'Uneven play count';
+              return (
+                <p key={type} style={{ margin: 0, fontWeight: 700 }}>
+                  {typeLabel}: {count}
+                </p>
+              );
+            })}
+          </div>
+          <ul style={{ margin: '10px 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--muted)', maxHeight: 300, overflowY: 'auto' }}>
             {warnings.map((w, i) => (
               <li key={i}>{w.message}</li>
             ))}
           </ul>
-        </div>
+        </details>
       )}
 
       {stages.map(stage => {
