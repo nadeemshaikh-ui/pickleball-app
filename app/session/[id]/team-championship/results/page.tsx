@@ -49,6 +49,20 @@ export default function TeamChampionshipResultsPage({ params }: { params: Promis
     : null;
 
   const maxLeaguePoints = stages.reduce((sum, s) => sum + s.pointsPerWin * (s.roundEnd - s.roundStart + 1), 0);
+  const courtCount = session.court_labels.length || 1;
+  // A round with no pairing entered at all (never reaches `rounds`) and a
+  // round that's paired but not yet scored both silently show as "0
+  // contribution" in the totals above, with nothing distinguishing either
+  // from a stage that's actually finished — an organizer glancing at a
+  // 0-point stage on tournament night can't tell "nobody's won here yet"
+  // from "this stage hasn't been played." Surfaced explicitly per stage.
+  const unscoredByStage = stages.map(stage => {
+    const expectedSlots = courtCount * (stage.roundEnd - stage.roundStart + 1);
+    const scoredSlots = rounds.filter(
+      r => r.round_number >= stage.roundStart && r.round_number <= stage.roundEnd && r.score_a !== null && r.score_b !== null
+    ).length;
+    return { stageLabel: stage.stageLabel, scoredSlots, expectedSlots };
+  });
   const grandTotals = new Map(teams.map(t => [t.id, (totalsByTeam.get(t.id) ?? 0) + (rapidFireBonus?.get(t.id) ?? 0)]));
   const leader = [...grandTotals.entries()].sort((a, b) => b[1] - a[1])[0];
   const leaderTeam = leader ? teams.find(t => t.id === leader[0]) : null;
@@ -78,14 +92,25 @@ export default function TeamChampionshipResultsPage({ params }: { params: Promis
             </tr>
           </thead>
           <tbody>
-            {stageBreakdown.map(stage => (
-              <tr key={stage.stageLabel} style={{ borderBottom: '1px solid var(--border)' }}>
-                <td style={{ padding: '8px 6px' }}>{stage.stageLabel}</td>
-                {teams.map(t => (
-                  <td key={t.id} style={{ textAlign: 'right', padding: '8px 6px' }}>{stage.totalsByTeam.get(t.id) ?? 0}</td>
-                ))}
-              </tr>
-            ))}
+            {stageBreakdown.map(stage => {
+              const unscored = unscoredByStage.find(u => u.stageLabel === stage.stageLabel);
+              const isIncomplete = unscored && unscored.scoredSlots < unscored.expectedSlots;
+              return (
+                <tr key={stage.stageLabel} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '8px 6px' }}>
+                    {stage.stageLabel}
+                    {isIncomplete && (
+                      <span style={{ display: 'block', fontSize: 10, color: 'var(--warning, #b45309)', fontWeight: 700 }}>
+                        {unscored.scoredSlots}/{unscored.expectedSlots} matches scored
+                      </span>
+                    )}
+                  </td>
+                  {teams.map(t => (
+                    <td key={t.id} style={{ textAlign: 'right', padding: '8px 6px' }}>{stage.totalsByTeam.get(t.id) ?? 0}</td>
+                  ))}
+                </tr>
+              );
+            })}
             <tr style={{ borderBottom: '1px solid var(--border)', fontWeight: 700 }}>
               <td style={{ padding: '8px 6px' }}>League total (of {maxLeaguePoints})</td>
               {teams.map(t => (

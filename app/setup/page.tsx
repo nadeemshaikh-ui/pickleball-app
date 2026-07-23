@@ -204,10 +204,18 @@ function SetupPageInner() {
   // for the Home/Challengers roster split, since it's structurally
   // identical. squadGoldLabel/squadBlackLabel double as the team names for
   // this format too, to avoid duplicating the same 2-label-input UI.
+  // Defaults to the real tournament's actual shape (Foundation/Momentum/
+  // Championship, 1/2/3 pts) rather than a single stage the organizer has
+  // to expand and hand-fill correctly — a pre-launch audit found this was
+  // previously silent-misconfiguration-prone (no validation ever checked
+  // stage count or point-value shape, only that each row was individually
+  // valid). Still fully editable — this is just a correct starting point.
   const [stageRows, setStageRows] = useState<{ label: string; rounds: number; pointsPerWin: number }[]>([
-    { label: 'Stage 1', rounds: 5, pointsPerWin: 1 },
+    { label: 'Foundation', rounds: 5, pointsPerWin: 1 },
+    { label: 'Momentum', rounds: 5, pointsPerWin: 2 },
+    { label: 'Championship', rounds: 5, pointsPerWin: 3 },
   ]);
-  const [enableRapidFire, setEnableRapidFire] = useState(false);
+  const [enableRapidFire, setEnableRapidFire] = useState(true);
   const [rapidFireTarget, setRapidFireTarget] = useState(31);
   const [rapidFireBonus, setRapidFireBonus] = useState(10);
 

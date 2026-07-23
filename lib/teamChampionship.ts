@@ -63,7 +63,7 @@ export function computeTeamChampionshipStandings(
 }
 
 export interface PairingWarning {
-  type: 'play_count' | 'repeat_partner';
+  type: 'play_count' | 'repeat_partner' | 'missing_partner';
   message: string;
 }
 
@@ -157,6 +157,35 @@ export function validateManualPairings(
           });
         } else {
           partnerSeen.add(key);
+        }
+      }
+    }
+  }
+
+  // "Each player must partner with EVERY teammate" — a full-coverage rule,
+  // distinct from repeat-avoidance above (that catches a pair appearing
+  // TWICE; this catches a pair that never appears at all). Only checked
+  // once every configured round has a real pairing entered — checking
+  // partway through would flag pairs the captain simply hasn't reached
+  // yet as if they were missing, which isn't a real problem mid-entry.
+  const totalConfiguredRounds = stages.reduce((sum, s) => sum + (s.roundEnd - s.roundStart + 1), 0);
+  const distinctRoundNumbers = new Set(rounds.map(r => r.roundNumber)).size;
+  if (totalConfiguredRounds > 0 && distinctRoundNumbers >= totalConfiguredRounds) {
+    const allPartnersSeen = new Set<string>();
+    for (const r of rounds) {
+      for (const team of [r.teamA, r.teamB]) allPartnersSeen.add([...team].sort().join('|'));
+    }
+    for (const t of teams) {
+      const players = t.players;
+      for (let i = 0; i < players.length; i++) {
+        for (let j = i + 1; j < players.length; j++) {
+          const key = [players[i], players[j]].sort().join('|');
+          if (!allPartnersSeen.has(key)) {
+            warnings.push({
+              type: 'missing_partner',
+              message: `${players[i]} & ${players[j]} (${t.label ?? t.id}) never partner across the whole tournament.`,
+            });
+          }
         }
       }
     }
