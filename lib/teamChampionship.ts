@@ -62,6 +62,157 @@ export function computeTeamChampionshipStandings(
   return { totalsByTeam, stageBreakdown };
 }
 
+export interface TeamMatchRecord {
+  wins: number;
+  losses: number;
+}
+
+// Match win/loss record (not points) — a team can lead on points while
+// having played fewer matches, or vice versa once stage weighting kicks
+// in; a real leaderboard needs both, not just the weighted total.
+export function computeTeamMatchRecords(rounds: RoundRow[], teams: SquadSet, stages: StageConfig[]): Map<string, TeamMatchRecord> {
+  const squadOfPlayer = new Map<string, string>();
+  for (const t of teams) for (const p of t.players) squadOfPlayer.set(p, t.id);
+
+  const records = new Map(teams.map(t => [t.id, { wins: 0, losses: 0 }]));
+  for (const round of rounds) {
+    if (round.score_a === null || round.score_b === null || round.score_a === round.score_b) continue;
+    if (!stageForRound(round.round_number, stages)) continue;
+
+    const aWon = round.score_a > round.score_b;
+    const winningTeam = aWon ? round.team_a : round.team_b;
+    const losingTeam = aWon ? round.team_b : round.team_a;
+    const winnerId = winningTeam[0] !== undefined ? squadOfPlayer.get(winningTeam[0]) : undefined;
+    const loserId = losingTeam[0] !== undefined ? squadOfPlayer.get(losingTeam[0]) : undefined;
+    if (winnerId && records.has(winnerId)) records.get(winnerId)!.wins++;
+    if (loserId && records.has(loserId)) records.get(loserId)!.losses++;
+  }
+  return records;
+}
+
+export interface RoundResult {
+  roundNumber: number;
+  court: number;
+  stageLabel: string;
+  pointsPerWin: number;
+  teamA: [string, string];
+  teamB: [string, string];
+  scoreA: number | null;
+  scoreB: number | null;
+  winnerTeamId: string | null;
+}
+
+// Round-by-round breakdown for the results screen — "which round they won,
+// how many points from which match" needs the actual per-match record,
+// not just the aggregate totals computeTeamChampionshipStandings produces.
+export function computeRoundResults(rounds: RoundRow[], teams: SquadSet, stages: StageConfig[]): RoundResult[] {
+  const squadOfPlayer = new Map<string, string>();
+  for (const t of teams) for (const p of t.players) squadOfPlayer.set(p, t.id);
+
+  return rounds
+    .map(round => {
+      const stage = stageForRound(round.round_number, stages);
+      if (!stage) return null;
+      let winnerTeamId: string | null = null;
+      if (round.score_a !== null && round.score_b !== null && round.score_a !== round.score_b) {
+        const winningTeam = round.score_a > round.score_b ? round.team_a : round.team_b;
+        winnerTeamId = (winningTeam[0] !== undefined ? squadOfPlayer.get(winningTeam[0]) : undefined) ?? null;
+      }
+      return {
+        roundNumber: round.round_number,
+        court: round.court,
+        stageLabel: stage.stageLabel,
+        pointsPerWin: stage.pointsPerWin,
+        teamA: round.team_a,
+        teamB: round.team_b,
+        scoreA: round.score_a,
+        scoreB: round.score_b,
+        winnerTeamId,
+      };
+    })
+    .filter((r): r is RoundResult => r !== null)
+    .sort((a, b) => (a.roundNumber !== b.roundNumber ? a.roundNumber - b.roundNumber : a.court - b.court));
+}
+
+export interface PlayerMatchStats {
+  name: string;
+  teamId: string;
+  matchesPlayed: number;
+  wins: number;
+  losses: number;
+  winPct: number;
+  pointsFor: number;
+  pointsAgainst: number;
+  pointDiff: number;
+}
+
+// Per-player analytics for the results/leaderboard screen — matches
+// played/won/lost and point differential across every scored round they
+// appeared in, regardless of stage (a player's tournament-wide record,
+// not scoped to one stage — stage scoping is what computeTeamChampionshipStandings
+// is for).
+export function computePlayerStats(rounds: RoundRow[], teams: SquadSet): PlayerMatchStats[] {
+  const squadOfPlayer = new Map<string, string>();
+  for (const t of teams) for (const p of t.players) squadOfPlayer.set(p, t.id);
+
+  const stats = new Map<string, PlayerMatchStats>();
+  for (const t of teams) {
+    for (const p of t.players) {
+      stats.set(p, { name: p, teamId: t.id, matchesPlayed: 0, wins: 0, losses: 0, winPct: 0, pointsFor: 0, pointsAgainst: 0, pointDiff: 0 });
+    }
+  }
+
+  for (const round of rounds) {
+    if (round.score_a === null || round.score_b === null || round.score_a === round.score_b) continue;
+    const aWon = round.score_a > round.score_b;
+    for (const p of round.team_a) {
+      const s = stats.get(p);
+      if (!s) continue;
+      s.matchesPlayed++;
+      s.pointsFor += round.score_a;
+      s.pointsAgainst += round.score_b;
+      if (aWon) s.wins++;
+      else s.losses++;
+    }
+    for (const p of round.team_b) {
+      const s = stats.get(p);
+      if (!s) continue;
+      s.matchesPlayed++;
+      s.pointsFor += round.score_b;
+      s.pointsAgainst += round.score_a;
+      if (aWon) s.losses++;
+      else s.wins++;
+    }
+  }
+
+  const result = [...stats.values()];
+  for (const s of result) {
+    s.winPct = s.matchesPlayed > 0 ? s.wins / s.matchesPlayed : 0;
+    s.pointDiff = s.pointsFor - s.pointsAgainst;
+  }
+  return result;
+}
+
+// MVP = most wins, tie-broken by win% then point differential — simple,
+// explainable criteria a captain can verify by eye against the leaderboard
+// rather than an opaque score. Returns null if nobody has played yet.
+export function computeMVP(stats: PlayerMatchStats[]): PlayerMatchStats | null {
+  const played = stats.filter(s => s.matchesPlayed > 0);
+  if (played.length === 0) return null;
+  return [...played].sort((a, b) => b.wins - a.wins || b.winPct - a.winPct || b.pointDiff - a.pointDiff)[0];
+}
+
+// One MVP per team, same criteria as the overall MVP — for "best player on
+// each side" alongside the single tournament-wide MVP.
+export function computeTeamMVPs(stats: PlayerMatchStats[], teams: SquadSet): Map<string, PlayerMatchStats | null> {
+  const result = new Map<string, PlayerMatchStats | null>();
+  for (const t of teams) {
+    const teamStats = stats.filter(s => s.teamId === t.id);
+    result.set(t.id, computeMVP(teamStats));
+  }
+  return result;
+}
+
 export interface PairingWarning {
   type: 'play_count' | 'repeat_partner' | 'missing_partner';
   message: string;

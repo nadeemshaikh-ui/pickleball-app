@@ -1,5 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import { computeTeamChampionshipStandings, validateManualPairings, computeRapidFireState, computeRapidFireBonus, findFinalRoundPairs, type StageConfig, type RapidFireConfig } from './teamChampionship';
+import {
+  computeTeamChampionshipStandings,
+  validateManualPairings,
+  computeRapidFireState,
+  computeRapidFireBonus,
+  findFinalRoundPairs,
+  computeTeamMatchRecords,
+  computeRoundResults,
+  computePlayerStats,
+  computeMVP,
+  computeTeamMVPs,
+  type StageConfig,
+  type RapidFireConfig,
+} from './teamChampionship';
 import type { RoundRow } from './db';
 import type { SquadSet } from './squads';
 
@@ -219,5 +232,93 @@ describe('computeRapidFireState / computeRapidFireBonus', () => {
       fourPerTeam
     );
     expect(anotherPoint.onCourtPlayers).toEqual(['H1', 'H3', 'C1', 'C2']);
+  });
+});
+
+describe('computeTeamMatchRecords', () => {
+  it('counts match wins/losses, not points', () => {
+    const rounds: RoundRow[] = [
+      round(1, ['H1', 'H2'], ['C1', 'C2'], 15, 10), // home win
+      round(2, ['H3', 'H4'], ['C3', 'C4'], 10, 15), // challengers win
+      round(11, ['H1', 'H3'], ['C1', 'C3'], 15, 5), // home win, worth 3 pts but still just 1 match
+    ];
+    const records = computeTeamMatchRecords(rounds, teams, stages);
+    expect(records.get('home')).toEqual({ wins: 2, losses: 1 });
+    expect(records.get('challengers')).toEqual({ wins: 1, losses: 2 });
+  });
+});
+
+describe('computeRoundResults', () => {
+  it('attaches stage label and points-per-win to every scored round', () => {
+    const rounds: RoundRow[] = [round(6, ['H1', 'H2'], ['C1', 'C2'], 15, 10)];
+    const [result] = computeRoundResults(rounds, teams, stages);
+    expect(result.stageLabel).toBe('Momentum');
+    expect(result.pointsPerWin).toBe(2);
+    expect(result.winnerTeamId).toBe('home');
+  });
+
+  it('reports null winnerTeamId for an unscored round', () => {
+    const unscored: RoundRow = { id: 'r1', session_id: 's', round_number: 1, court: 1, team_a: ['H1', 'H2'], team_b: ['C1', 'C2'], sitting_out: [], score_a: null, score_b: null };
+    const [result] = computeRoundResults([unscored], teams, stages);
+    expect(result.winnerTeamId).toBeNull();
+  });
+
+  it('sorts by round number then court', () => {
+    const r1 = round(2, ['H1', 'H2'], ['C1', 'C2'], 15, 10);
+    const r2 = { ...round(1, ['H3', 'H4'], ['C3', 'C4'], 15, 10), court: 2 };
+    const r3 = { ...round(1, ['H1', 'H2'], ['C1', 'C2'], 15, 10), court: 1 };
+    const results = computeRoundResults([r1, r2, r3], teams, stages);
+    expect(results.map(r => `${r.roundNumber}-${r.court}`)).toEqual(['1-1', '1-2', '2-1']);
+  });
+});
+
+describe('computePlayerStats', () => {
+  it('tracks matches played, wins, losses, and point differential per player', () => {
+    const rounds: RoundRow[] = [
+      round(1, ['H1', 'H2'], ['C1', 'C2'], 15, 10),
+      round(2, ['H1', 'H3'], ['C1', 'C3'], 10, 15),
+    ];
+    const stats = computePlayerStats(rounds, teams);
+    const h1 = stats.find(s => s.name === 'H1')!;
+    expect(h1.matchesPlayed).toBe(2);
+    expect(h1.wins).toBe(1);
+    expect(h1.losses).toBe(1);
+    expect(h1.winPct).toBe(0.5);
+    expect(h1.pointsFor).toBe(25);
+    expect(h1.pointsAgainst).toBe(25);
+    expect(h1.pointDiff).toBe(0);
+
+    const h4 = stats.find(s => s.name === 'H4')!;
+    expect(h4.matchesPlayed).toBe(0);
+    expect(h4.winPct).toBe(0);
+  });
+});
+
+describe('computeMVP / computeTeamMVPs', () => {
+  it('picks the player with the most wins', () => {
+    const rounds: RoundRow[] = [
+      round(1, ['H1', 'H2'], ['C1', 'C2'], 15, 10),
+      round(2, ['H1', 'H3'], ['C1', 'C3'], 15, 10),
+      round(3, ['H1', 'H4'], ['C1', 'C4'], 15, 10),
+    ];
+    const stats = computePlayerStats(rounds, teams);
+    const mvp = computeMVP(stats);
+    expect(mvp?.name).toBe('H1');
+    expect(mvp?.wins).toBe(3);
+  });
+
+  it('returns null when nobody has played yet', () => {
+    expect(computeMVP(computePlayerStats([], teams))).toBeNull();
+  });
+
+  it('computes one MVP per team independently', () => {
+    const rounds: RoundRow[] = [
+      round(1, ['H1', 'H2'], ['C1', 'C2'], 15, 10), // H1,H2 win; C1,C2 lose
+      round(2, ['H1', 'H3'], ['C3', 'C4'], 5, 15), // H1,H3 lose; C3,C4 win
+    ];
+    const stats = computePlayerStats(rounds, teams);
+    const mvps = computeTeamMVPs(stats, teams);
+    expect(mvps.get('home')?.wins).toBe(1);
+    expect(mvps.get('challengers')?.wins).toBe(1);
   });
 });
