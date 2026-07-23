@@ -304,7 +304,7 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
                                     aria-label={`Round ${round.round_number} court ${round.court} ${rosterByTeam[0]?.label} player ${slot + 1}`}
                                   >
                                     <option value="">Select…</option>
-                                    {rosterByTeam[0]?.players.map(p => (
+                                    {allPlayers.map(p => (
                                       <option key={p} value={p}>{p}</option>
                                     ))}
                                   </select>
@@ -321,7 +321,7 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
                                     aria-label={`Round ${round.round_number} court ${round.court} ${rosterByTeam[1]?.label} player ${slot - 1}`}
                                   >
                                     <option value="">Select…</option>
-                                    {rosterByTeam[1]?.players.map(p => (
+                                    {allPlayers.map(p => (
                                       <option key={p} value={p}>{p}</option>
                                     ))}
                                   </select>
