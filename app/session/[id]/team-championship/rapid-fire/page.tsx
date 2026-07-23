@@ -25,6 +25,11 @@ export default function RapidFirePage({ params }: { params: Promise<{ id: string
   const [error, setError] = useState<string | null>(null);
   const [scoring, setScoring] = useState(false);
   const [courtOverride, setCourtOverride] = useState<string[] | null>(null);
+  // Tap-tap sub flow, not dropdowns — real feedback: subbing needs to be
+  // "easy... on the spot... with ease." Tap an on-court player (marks them
+  // outgoing), then tap a bench player to complete the swap immediately.
+  // Tapping the same on-court player again cancels the pick.
+  const [outgoingPick, setOutgoingPick] = useState<string | null>(null);
   const scoringRef = useRef(false);
 
   async function load() {
@@ -50,6 +55,7 @@ export default function RapidFirePage({ params }: { params: Promise<{ id: string
     try {
       await recordRapidFirePoint(id, teamId, onCourtPlayers);
       setCourtOverride(null);
+      setOutgoingPick(null);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to record point.');
@@ -61,6 +67,16 @@ export default function RapidFirePage({ params }: { params: Promise<{ id: string
 
   function handleSub(currentPlayers: string[], outgoing: string, incoming: string) {
     setCourtOverride(currentPlayers.map(p => (p === outgoing ? incoming : p)));
+    setOutgoingPick(null);
+  }
+
+  function handleTapOnCourt(player: string) {
+    setOutgoingPick(prev => (prev === player ? null : player));
+  }
+
+  function handleTapBench(currentPlayers: string[], incoming: string) {
+    if (!outgoingPick) return;
+    handleSub(currentPlayers, outgoingPick, incoming);
   }
 
   // Captain still picks WHO rotates in, on the spot — this only makes the
@@ -148,26 +164,72 @@ export default function RapidFirePage({ params }: { params: Promise<{ id: string
           </div>
 
           <h2>Sub (manual)</h2>
+          <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 8px' }}>
+            {outgoingPick ? `Tap who's coming in for ${outgoingPick}.` : 'Tap an on-court player to sub them out.'}
+          </p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
             {teams.map(team => {
               const onCourt = onCourtPlayers.filter(p => team.players.includes(p));
               const bench = team.players.filter(p => !onCourt.includes(p));
               return (
-                <div key={team.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div key={team.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>{team.label ?? team.id}</div>
-                  {onCourt.map(p => (
-                    <label key={p} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-                      {p} →
-                      <select
-                        value=""
-                        disabled={bench.length === 0}
-                        onChange={e => { if (e.target.value) handleSub(onCourtPlayers, p, e.target.value); }}
-                      >
-                        <option value="">Sub in…</option>
-                        {bench.map(b => <option key={b} value={b}>{b}</option>)}
-                      </select>
-                    </label>
-                  ))}
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase' }}>On Court</span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {onCourt.map(p => {
+                        const isPicked = outgoingPick === p;
+                        return (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => handleTapOnCourt(p)}
+                            style={{
+                              minHeight: 44,
+                              padding: '8px 14px',
+                              borderRadius: 999,
+                              border: isPicked ? '2px solid var(--warning, #b45309)' : '1px solid var(--border)',
+                              background: isPicked ? 'var(--warning, #b45309)' : 'white',
+                              color: isPicked ? 'white' : 'var(--foreground)',
+                              fontSize: 14,
+                              fontWeight: 700,
+                            }}
+                          >
+                            {p}{isPicked ? ' ✕' : ''}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase' }}>Bench</span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {bench.length === 0 && <span style={{ fontSize: 12, color: 'var(--muted)' }}>No bench players</span>}
+                      {bench.map(b => (
+                        <button
+                          key={b}
+                          type="button"
+                          onClick={() => handleTapBench(onCourtPlayers, b)}
+                          disabled={!outgoingPick}
+                          style={{
+                            minHeight: 44,
+                            padding: '8px 14px',
+                            borderRadius: 999,
+                            border: '1px solid var(--border)',
+                            background: 'white',
+                            color: 'var(--foreground)',
+                            fontSize: 14,
+                            fontWeight: 700,
+                            opacity: outgoingPick ? 1 : 0.5,
+                          }}
+                        >
+                          {b}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               );
             })}
