@@ -23,6 +23,7 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [savingRoundId, setSavingRoundId] = useState<string | null>(null);
+  const [justSavedId, setJustSavedId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, [string, string, string, string]>>({});
   const [addingCourt, setAddingCourt] = useState(false);
 
@@ -82,6 +83,8 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
     try {
       await updateRoundTeams(round.id, [draft[0], draft[1]], [draft[2], draft[3]]);
       await load();
+      setJustSavedId(round.id);
+      setTimeout(() => setJustSavedId(prev => (prev === round.id ? null : prev)), 2500);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save this round.');
     } finally {
@@ -238,105 +241,124 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
       {stages.map(stage => {
         const stageRounds = rounds.filter(r => r.round_number >= stage.roundStart && r.round_number <= stage.roundEnd);
         if (stageRounds.length === 0) return null;
+        const stageRoundNumbers = Array.from({ length: stage.roundEnd - stage.roundStart + 1 }, (_, i) => stage.roundStart + i);
+        const courtCount = session.court_labels.length || 1;
+        // Grouped by round number, courts side by side within one box —
+        // matches the same visual pattern the scoring screen
+        // (app/session/[id]/play/page.tsx) already uses, so a captain
+        // sees "Round 6" as one unit (all 3 courts) instead of 3 separate
+        // unrelated-looking cards.
+        const roundNumbersInStage = [...new Set(stageRounds.map(r => r.round_number))].sort((a, b) => a - b);
         return (
           <section key={stage.stageLabel} style={{ marginBottom: 20 }}>
             <h2>{stage.stageLabel} <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 400 }}>({stage.pointsPerWin} pt/win)</span></h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {stageRounds.map(round => {
-                const draft = drafts[round.id] ?? [round.team_a[0], round.team_a[1], round.team_b[0], round.team_b[1]];
-                const stageRoundNumbers = Array.from({ length: stage.roundEnd - stage.roundStart + 1 }, (_, i) => stage.roundStart + i);
-                const courtCount = session.court_labels.length || 1;
-                const isScored = round.score_a !== null && round.score_b !== null;
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {roundNumbersInStage.map(roundNumber => {
+                const courtsInRound = stageRounds.filter(r => r.round_number === roundNumber).sort((a, b) => a.court - b.court);
                 return (
-                  <div key={round.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--muted)', flexWrap: 'wrap' }}>
-                      <span>Round</span>
-                      <select
-                        value={round.round_number}
-                        onChange={e => handleChangeOrder(round, Number(e.target.value))}
-                        disabled={isScored || changingOrderId === round.id}
-                        aria-label={`Change round order for round ${round.round_number} court ${round.court}`}
-                        style={{ fontSize: 12, fontWeight: 700 }}
-                      >
-                        {stageRoundNumbers.map(n => (
-                          <option key={n} value={n}>{n}</option>
-                        ))}
-                      </select>
-                      <span>· Court</span>
-                      <select
-                        value={round.court}
-                        onChange={e => handleChangeCourt(round, Number(e.target.value))}
-                        disabled={isScored || changingCourtId === round.id}
-                        aria-label={`Change court for round ${round.round_number} court ${round.court}`}
-                        style={{ fontSize: 12, fontWeight: 700 }}
-                      >
-                        {Array.from({ length: courtCount }, (_, i) => i + 1).map(c => (
-                          <option key={c} value={c}>{c}</option>
-                        ))}
-                      </select>
-                      {(changingOrderId === round.id || changingCourtId === round.id) && <span>Saving…</span>}
-                      {isScored && <span>🔒 Locked</span>}
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)' }}>{rosterByTeam[0]?.label}</span>
-                        {[0, 1].map(slot => (
-                          <select
-                            key={slot}
-                            value={draft[slot]}
-                            onChange={e => updateDraftSlot(round.id, slot, e.target.value)}
-                            disabled={isScored}
-                            aria-label={`Round ${round.round_number} court ${round.court} ${rosterByTeam[0]?.label} player ${slot + 1}`}
-                          >
-                            <option value="">Select…</option>
-                            {rosterByTeam[0]?.players.map(p => (
-                              <option key={p} value={p}>{p}</option>
-                            ))}
-                          </select>
-                        ))}
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)' }}>{rosterByTeam[1]?.label}</span>
-                        {[2, 3].map(slot => (
-                          <select
-                            key={slot}
-                            value={draft[slot]}
-                            onChange={e => updateDraftSlot(round.id, slot, e.target.value)}
-                            disabled={isScored}
-                            aria-label={`Round ${round.round_number} court ${round.court} ${rosterByTeam[1]?.label} player ${slot - 1}`}
-                          >
-                            <option value="">Select…</option>
-                            {rosterByTeam[1]?.players.map(p => (
-                              <option key={p} value={p}>{p}</option>
-                            ))}
-                          </select>
-                        ))}
-                      </div>
-                    </div>
-                    {isScored && (
-                      <p style={{ fontSize: 11, color: 'var(--muted)', margin: 0 }}>
-                        Scored {round.score_a}-{round.score_b} — locked. Unlock to correct a mistaken pairing/court/order (this clears the recorded score).
-                      </p>
-                    )}
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button
-                        className="btn-secondary"
-                        style={{ alignSelf: 'flex-start' }}
-                        onClick={() => handleSaveRound(round)}
-                        disabled={isScored || savingRoundId === round.id}
-                      >
-                        {savingRoundId === round.id ? 'Saving…' : isScored ? 'Locked' : 'Save Round'}
-                      </button>
-                      {isScored && (
-                        <button
-                          className="btn-secondary"
-                          style={{ alignSelf: 'flex-start' }}
-                          onClick={() => handleUnlock(round)}
-                          disabled={unlockingId === round.id}
-                        >
-                          {unlockingId === round.id ? 'Unlocking…' : 'Unlock'}
-                        </button>
-                      )}
+                  <div key={roundNumber} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ fontSize: 13, fontWeight: 800 }}>Round {roundNumber}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {courtsInRound.map(round => {
+                        const draft = drafts[round.id] ?? [round.team_a[0], round.team_a[1], round.team_b[0], round.team_b[1]];
+                        const isScored = round.score_a !== null && round.score_b !== null;
+                        return (
+                          <div key={round.id} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 10, border: '1px solid var(--border)', borderRadius: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--muted)', flexWrap: 'wrap' }}>
+                              <span>Court</span>
+                              <select
+                                value={round.court}
+                                onChange={e => handleChangeCourt(round, Number(e.target.value))}
+                                disabled={isScored || changingCourtId === round.id}
+                                aria-label={`Change court for round ${round.round_number} court ${round.court}`}
+                                style={{ fontSize: 12, fontWeight: 700 }}
+                              >
+                                {Array.from({ length: courtCount }, (_, i) => i + 1).map(c => (
+                                  <option key={c} value={c}>{c}</option>
+                                ))}
+                              </select>
+                              <span>· Order</span>
+                              <select
+                                value={round.round_number}
+                                onChange={e => handleChangeOrder(round, Number(e.target.value))}
+                                disabled={isScored || changingOrderId === round.id}
+                                aria-label={`Change round order for round ${round.round_number} court ${round.court}`}
+                                style={{ fontSize: 12, fontWeight: 700 }}
+                              >
+                                {stageRoundNumbers.map(n => (
+                                  <option key={n} value={n}>{n}</option>
+                                ))}
+                              </select>
+                              {(changingOrderId === round.id || changingCourtId === round.id) && <span>Saving…</span>}
+                              {isScored && <span>🔒 Locked</span>}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)' }}>{rosterByTeam[0]?.label}</span>
+                                {[0, 1].map(slot => (
+                                  <select
+                                    key={slot}
+                                    value={draft[slot]}
+                                    onChange={e => updateDraftSlot(round.id, slot, e.target.value)}
+                                    disabled={isScored}
+                                    aria-label={`Round ${round.round_number} court ${round.court} ${rosterByTeam[0]?.label} player ${slot + 1}`}
+                                  >
+                                    <option value="">Select…</option>
+                                    {rosterByTeam[0]?.players.map(p => (
+                                      <option key={p} value={p}>{p}</option>
+                                    ))}
+                                  </select>
+                                ))}
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)' }}>{rosterByTeam[1]?.label}</span>
+                                {[2, 3].map(slot => (
+                                  <select
+                                    key={slot}
+                                    value={draft[slot]}
+                                    onChange={e => updateDraftSlot(round.id, slot, e.target.value)}
+                                    disabled={isScored}
+                                    aria-label={`Round ${round.round_number} court ${round.court} ${rosterByTeam[1]?.label} player ${slot - 1}`}
+                                  >
+                                    <option value="">Select…</option>
+                                    {rosterByTeam[1]?.players.map(p => (
+                                      <option key={p} value={p}>{p}</option>
+                                    ))}
+                                  </select>
+                                ))}
+                              </div>
+                            </div>
+                            {isScored && (
+                              <p style={{ fontSize: 11, color: 'var(--muted)', margin: 0 }}>
+                                Scored {round.score_a}-{round.score_b} — locked. Unlock to correct a mistaken pairing/court/order (this clears the recorded score).
+                              </p>
+                            )}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <button
+                                className="btn-secondary"
+                                style={{ alignSelf: 'flex-start' }}
+                                onClick={() => handleSaveRound(round)}
+                                disabled={isScored || savingRoundId === round.id}
+                              >
+                                {savingRoundId === round.id ? 'Saving…' : isScored ? 'Locked' : 'Save Round'}
+                              </button>
+                              {isScored && (
+                                <button
+                                  className="btn-secondary"
+                                  style={{ alignSelf: 'flex-start' }}
+                                  onClick={() => handleUnlock(round)}
+                                  disabled={unlockingId === round.id}
+                                >
+                                  {unlockingId === round.id ? 'Unlocking…' : 'Unlock'}
+                                </button>
+                              )}
+                              {justSavedId === round.id && (
+                                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--success, #16a34a)' }}>✓ Saved</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -347,6 +369,14 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
       })}
 
       {allPlayers.length === 0 && <p style={{ color: 'var(--muted)' }}>No players found for this session.</p>}
+
+      {rounds.length > 0 && (
+        <div className="card" style={{ marginTop: 20, textAlign: 'center' }}>
+          <Link href={`/session/${id}/schedule`} className="btn-primary" style={{ display: 'inline-block' }}>
+            Continue to Schedule →
+          </Link>
+        </div>
+      )}
     </main>
   );
 }

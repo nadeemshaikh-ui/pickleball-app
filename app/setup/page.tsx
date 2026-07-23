@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { X, RotateCcw, Camera, Flame, ListOrdered, Scale, Lock } from 'lucide-react';
 import {
@@ -260,6 +260,16 @@ function SetupPageInner() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The error banner sits just above the submit button, at the bottom of a
+  // long single-scroll form — a validation failure from something earlier
+  // on the page (e.g. team-assignment) previously rendered an error the
+  // user had no way to see without already having scrolled all the way
+  // down. Same invisible-error bug class already fixed elsewhere in this
+  // app (Generate Stage) — scroll it into view whenever it appears.
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   // Splits the long form into 3 screens instead of one continuous scroll —
   // pure display gating, no change to validation/generation logic below.
   const [subStep, setSubStep] = useState<'players' | 'format' | 'cost'>('players');
@@ -440,6 +450,30 @@ function SetupPageInner() {
       while (copy.length <= playerIndex) copy.push(null);
       const current = copy[playerIndex];
       copy[playerIndex] = current === null ? 0 : current + 1 < squadCountForCycle ? current + 1 : null;
+      return copy;
+    });
+  }
+
+  // Team Championship's own assignment interaction — deliberately NOT the
+  // tap-to-cycle above (which showed no team selection state, so a captain
+  // couldn't tell what "one more tap" would do without trying it). Pick a
+  // team first (activeTeamMode), then every tap on an unassigned player adds
+  // them to that team; each assigned player gets an explicit × to remove.
+  const [activeTeamMode, setActiveTeamMode] = useState<0 | 1 | null>(null);
+  function assignToActiveTeam(playerIndex: number) {
+    if (activeTeamMode === null) return;
+    setManualSquadAssignment(prev => {
+      const copy = [...prev];
+      while (copy.length <= playerIndex) copy.push(null);
+      copy[playerIndex] = activeTeamMode;
+      return copy;
+    });
+  }
+  function unassignPlayer(playerIndex: number) {
+    setManualSquadAssignment(prev => {
+      const copy = [...prev];
+      while (copy.length <= playerIndex) copy.push(null);
+      copy[playerIndex] = null;
       return copy;
     });
   }
@@ -852,7 +886,7 @@ function SetupPageInner() {
             At least {minPlayers} for {courtCount} court{courtCount === 1 ? '' : 's'} (4 per court). No upper limit.
           </p>
         </div>
-        {error && <p style={{ color: 'var(--danger)', marginTop: 12, fontWeight: 600 }}>{error}</p>}
+        {error && <p ref={errorRef} style={{ color: 'var(--danger)', marginTop: 12, fontWeight: 600 }}>{error}</p>}
         <button className="btn-primary" onClick={handlePlayerCountConfirm} style={{ width: '100%', marginTop: 20 }}>
           Next: Enter Names
         </button>
@@ -1274,45 +1308,114 @@ function SetupPageInner() {
 
           <h2>Split Players Into Teams</h2>
           <div className="card">
-            <strong>Tap a player to cycle Unassigned → {squadGoldLabel.trim() || 'Team 1'} → {squadBlackLabel.trim() || 'Team 2'}</strong>
+            <strong>1. Pick a team below, 2. tap players to add them to it.</strong>
             {(() => {
               const trimmedNames = names.map(n => n.trim());
               const indexed = trimmedNames.map((name, playerIndex) => ({ name, playerIndex })).filter(p => p.name);
               const unassigned = indexed.filter(p => (manualSquadAssignment[p.playerIndex] ?? null) === null);
               const teamOne = indexed.filter(p => manualSquadAssignment[p.playerIndex] === 0);
               const teamTwo = indexed.filter(p => manualSquadAssignment[p.playerIndex] === 1);
-              const chip = (p: { name: string; playerIndex: number }, bg: string, color: string) => (
+              const teamOneLabel = squadGoldLabel.trim() || 'Team 1';
+              const teamTwoLabel = squadBlackLabel.trim() || 'Team 2';
+
+              const teamModeButton = (mode: 0 | 1, label: string, activeBg: string) => (
+                <button
+                  type="button"
+                  onClick={() => setActiveTeamMode(prev => (prev === mode ? null : mode))}
+                  style={{
+                    minHeight: 44,
+                    padding: '10px 16px',
+                    borderRadius: 8,
+                    border: activeTeamMode === mode ? `2px solid ${activeBg}` : '1px solid var(--border)',
+                    background: activeTeamMode === mode ? activeBg : 'white',
+                    color: activeTeamMode === mode ? 'white' : 'var(--foreground)',
+                    fontSize: 14,
+                    fontWeight: 800,
+                  }}
+                >
+                  {activeTeamMode === mode ? `✓ Adding to ${label}` : `Assign to ${label}`}
+                </button>
+              );
+
+              const unassignedChip = (p: { name: string; playerIndex: number }) => (
                 <button
                   key={p.playerIndex}
                   type="button"
-                  onClick={() => cycleSquadPlayer(p.playerIndex, 2)}
-                  style={{ minHeight: 40, padding: '6px 14px', borderRadius: 999, border: '1px solid var(--border)', background: bg, color, fontSize: 13, fontWeight: 700 }}
+                  onClick={() => assignToActiveTeam(p.playerIndex)}
+                  disabled={activeTeamMode === null}
+                  style={{
+                    minHeight: 40,
+                    padding: '6px 14px',
+                    borderRadius: 999,
+                    border: '1px solid var(--border)',
+                    background: 'white',
+                    color: 'var(--foreground)',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    opacity: activeTeamMode === null ? 0.5 : 1,
+                  }}
                 >
                   {p.name}
                 </button>
               );
+
+              const assignedChip = (p: { name: string; playerIndex: number }, bg: string) => (
+                <span
+                  key={p.playerIndex}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    minHeight: 40,
+                    padding: '6px 8px 6px 14px',
+                    borderRadius: 999,
+                    background: bg,
+                    color: 'white',
+                    fontSize: 13,
+                    fontWeight: 700,
+                  }}
+                >
+                  {p.name}
+                  <button
+                    type="button"
+                    onClick={() => unassignPlayer(p.playerIndex)}
+                    aria-label={`Remove ${p.name}`}
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', color: 'white', border: 'none' }}
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              );
+
               return (
                 <>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                    {teamModeButton(0, teamOneLabel, 'var(--primary, #1a1a1a)')}
+                    {teamModeButton(1, teamTwoLabel, 'var(--muted)')}
+                  </div>
+                  {activeTeamMode === null && unassigned.length > 0 && (
+                    <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>Pick a team above, then tap players below to add them.</p>
+                  )}
                   {unassigned.length > 0 && (
                     <div style={{ marginTop: 10 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>
-                        Unassigned
+                        Unassigned ({unassigned.length})
                       </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{unassigned.map(p => chip(p, 'white', 'var(--foreground)'))}</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{unassigned.map(unassignedChip)}</div>
                     </div>
                   )}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 14 }}>
                     <div>
                       <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--foreground)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6, borderBottom: '2px solid var(--primary, #1a1a1a)', paddingBottom: 4 }}>
-                        {squadGoldLabel.trim() || 'Team 1'} ({teamOne.length})
+                        {teamOneLabel} ({teamOne.length})
                       </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{teamOne.map(p => chip(p, 'var(--primary, #1a1a1a)', 'white'))}</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{teamOne.map(p => assignedChip(p, 'var(--primary, #1a1a1a)'))}</div>
                     </div>
                     <div>
                       <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--foreground)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6, borderBottom: '2px solid var(--muted)', paddingBottom: 4 }}>
-                        {squadBlackLabel.trim() || 'Team 2'} ({teamTwo.length})
+                        {teamTwoLabel} ({teamTwo.length})
                       </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{teamTwo.map(p => chip(p, 'var(--muted)', 'white'))}</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{teamTwo.map(p => assignedChip(p, 'var(--muted)'))}</div>
                     </div>
                   </div>
                 </>
@@ -1710,7 +1813,7 @@ function SetupPageInner() {
         </div>
       )}
 
-      {error && <p style={{ color: 'var(--danger)', marginTop: 12, fontWeight: 600 }}>{error}</p>}
+      {error && <p ref={errorRef} style={{ color: 'var(--danger)', marginTop: 12, fontWeight: 600 }}>{error}</p>}
 
       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
         <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setSubStep('format')}>
