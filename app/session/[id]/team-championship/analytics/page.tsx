@@ -4,7 +4,7 @@ import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Star } from 'lucide-react';
 import { getSession, getRounds, type RoundRow, type SessionRow } from '@/lib/db';
-import { computePlayerStats, computeMVP, computeTeamMVPs } from '@/lib/teamChampionship';
+import { computePlayerStats, computeMVP, computeTeamMVPs, computeHeadToHead } from '@/lib/teamChampionship';
 
 type SortKey = 'wins' | 'winPct' | 'pointDiff' | 'matchesPlayed';
 
@@ -40,6 +40,10 @@ export default function TeamChampionshipAnalyticsPage({ params }: { params: Prom
   const playerStats = computePlayerStats(rounds, teams);
   const overallMVP = computeMVP(playerStats);
   const teamMVPs = computeTeamMVPs(playerStats, teams);
+  // A single meeting isn't a rivalry, it's just a match — only surface
+  // pairs who've actually faced each other more than once, which this
+  // bracket structure doesn't guarantee will happen at all.
+  const rivalries = computeHeadToHead(rounds, teams).filter(r => r.meetings >= 2);
 
   const sortedPlayerStats = [...playerStats]
     .filter(s => s.matchesPlayed > 0)
@@ -83,6 +87,31 @@ export default function TeamChampionshipAnalyticsPage({ params }: { params: Prom
           );
         })}
       </div>
+
+      {rivalries.length > 0 && (
+        <>
+          <h2>Head-to-Head Rivalries</h2>
+          <div className="card" style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>
+              Players who&apos;ve faced each other more than once — every individual matchup that occurs whenever the two teams meet.
+            </p>
+            {rivalries.map(r => {
+              const isEven = r.aWins === r.bWins;
+              const leaderName = isEven ? null : r.aWins > r.bWins ? r.playerA : r.playerB;
+              return (
+                <div key={`${r.playerA}-${r.playerB}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                  <span>
+                    <strong style={{ fontWeight: leaderName === r.playerA ? 800 : 400 }}>{r.playerA}</strong>
+                    {' '}{r.aWins}–{r.bWins}{' '}
+                    <strong style={{ fontWeight: leaderName === r.playerB ? 800 : 400 }}>{r.playerB}</strong>
+                  </span>
+                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>{r.meetings} meetings</span>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       <h2>Player Leaderboard</h2>
       <div className="card" style={{ marginBottom: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>

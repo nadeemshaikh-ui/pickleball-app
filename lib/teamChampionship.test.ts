@@ -10,6 +10,7 @@ import {
   computePlayerStats,
   computeMVP,
   computeTeamMVPs,
+  computeHeadToHead,
   type StageConfig,
   type RapidFireConfig,
 } from './teamChampionship';
@@ -331,5 +332,36 @@ describe('computeMVP / computeTeamMVPs', () => {
     const mvps = computeTeamMVPs(stats, teams);
     expect(mvps.get('home')?.wins).toBe(1);
     expect(mvps.get('challengers')?.wins).toBe(1);
+  });
+});
+
+describe('computeHeadToHead', () => {
+  it('tallies every individual cross-team matchup, not just pair-vs-pair', () => {
+    // H1,H2 (home) vs C1,C2 (challengers), home wins -> 4 individual
+    // results: H1 beats C1, H1 beats C2, H2 beats C1, H2 beats C2.
+    const rounds: RoundRow[] = [round(1, ['H1', 'H2'], ['C1', 'C2'], 15, 10)];
+    const records = computeHeadToHead(rounds, teams);
+    expect(records).toHaveLength(4);
+    const h1c1 = records.find(r => [r.playerA, r.playerB].includes('H1') && [r.playerA, r.playerB].includes('C1'))!;
+    expect(h1c1.meetings).toBe(1);
+    const h1Won = h1c1.playerA === 'H1' ? h1c1.aWins === 1 : h1c1.bWins === 1;
+    expect(h1Won).toBe(true);
+  });
+
+  it('accumulates multiple meetings between the same two players', () => {
+    const rounds: RoundRow[] = [
+      round(1, ['H1', 'H2'], ['C1', 'C2'], 15, 10), // H1 beats C1
+      round(2, ['H1', 'H3'], ['C1', 'C4'], 10, 15), // C1 beats H1
+    ];
+    const records = computeHeadToHead(rounds, teams);
+    const h1c1 = records.find(r => [r.playerA, r.playerB].includes('H1') && [r.playerA, r.playerB].includes('C1'))!;
+    expect(h1c1.meetings).toBe(2);
+    expect(h1c1.aWins + h1c1.bWins).toBe(2);
+  });
+
+  it('ignores unscored and tied rounds', () => {
+    const unscored: RoundRow = { id: 'r1', session_id: 's', round_number: 1, court: 1, team_a: ['H1', 'H2'], team_b: ['C1', 'C2'], sitting_out: [], score_a: null, score_b: null };
+    const tie: RoundRow = { ...round(2, ['H1', 'H2'], ['C1', 'C2'], 10, 10) };
+    expect(computeHeadToHead([unscored, tie], teams)).toEqual([]);
   });
 });

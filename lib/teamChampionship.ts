@@ -213,6 +213,48 @@ export function computeTeamMVPs(stats: PlayerMatchStats[], teams: SquadSet): Map
   return result;
 }
 
+export interface HeadToHeadRecord {
+  playerA: string;
+  playerB: string;
+  aWins: number;
+  bWins: number;
+  meetings: number;
+}
+
+// Individual cross-team rivalries — not pair-vs-pair (the fixed 2-person
+// partnerships that share a court), but every individual player-vs-player
+// matchup that occurs whenever their teams meet. A round with
+// team_a=[a1,a2] vs team_b=[b1,b2] produces 4 individual results: a1-b1,
+// a1-b2, a2-b1, a2-b2. Only meaningful for pairs who've actually faced
+// each other more than once (see caller for the >=2 meetings filter this
+// bracket structure doesn't guarantee) — a single meeting isn't a
+// "rivalry," it's just a match.
+export function computeHeadToHead(rounds: RoundRow[], teams: SquadSet): HeadToHeadRecord[] {
+  const squadOfPlayer = new Map<string, string>();
+  for (const t of teams) for (const p of t.players) squadOfPlayer.set(p, t.id);
+
+  const records = new Map<string, HeadToHeadRecord>();
+  for (const round of rounds) {
+    if (round.score_a === null || round.score_b === null || round.score_a === round.score_b) continue;
+    const aWon = round.score_a > round.score_b;
+    for (const pA of round.team_a) {
+      for (const pB of round.team_b) {
+        const [first, second] = [pA, pB].sort();
+        const key = `${first}|${second}`;
+        if (!records.has(key)) {
+          records.set(key, { playerA: first, playerB: second, aWins: 0, bWins: 0, meetings: 0 });
+        }
+        const rec = records.get(key)!;
+        rec.meetings++;
+        const firstWon = (first === pA && aWon) || (first === pB && !aWon);
+        if (firstWon) rec.aWins++;
+        else rec.bWins++;
+      }
+    }
+  }
+  return [...records.values()].sort((a, b) => b.meetings - a.meetings || Math.abs(b.aWins - b.bWins) - Math.abs(a.aWins - a.bWins));
+}
+
 export interface PairingWarning {
   type: 'play_count' | 'repeat_partner' | 'missing_partner';
   message: string;
