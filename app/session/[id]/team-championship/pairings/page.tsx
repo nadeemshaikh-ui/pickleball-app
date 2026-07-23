@@ -338,7 +338,12 @@ export default function TeamChampionshipPairingsPage({ params }: { params: Promi
                 const courtsInRound = stageRounds.filter(r => r.round_number === roundNumber).sort((a, b) => a.court - b.court);
                 return (
                   <div key={roundNumber} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div style={{ fontSize: 13, fontWeight: 800 }}>Round {roundNumber}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 13, fontWeight: 800 }}>Round {roundNumber}</span>
+                      <Link href={`/session/${id}/team-championship/round/${roundNumber}`} className="text-link-btn" style={{ fontSize: 12 }}>
+                        Open Round {roundNumber} →
+                      </Link>
+                    </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       {courtsInRound.map(round => {
                         const draft = drafts[round.id] ?? [round.team_a[0], round.team_a[1], round.team_b[0], round.team_b[1]];

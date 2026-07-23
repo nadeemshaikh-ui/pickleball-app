@@ -215,6 +215,27 @@ export async function getMostRecentSession(clubId: string): Promise<SessionRow |
   return data as SessionRow | null;
 }
 
+// "Start a Team Championship" always jumped straight to a blank setup
+// wizard with zero awareness of an already-started tournament — real
+// tournament feedback: every time an organizer backed out and re-entered,
+// they silently abandoned their in-progress session and had to redo
+// everything from scratch. This finds the most recent NOT-completed/voided
+// Team Championship session for the club, so the setup page can offer
+// "Resume" instead of blindly starting over.
+export async function findInProgressTeamChampionshipSession(clubId: string): Promise<SessionRow | null> {
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('club_id', clubId)
+    .eq('format', 'team_championship')
+    .eq('status', 'in_progress')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data as SessionRow | null;
+}
+
 export async function listSessions(clubId: string, limit = 30): Promise<SessionRow[]> {
   const { data, error } = await supabase
     .from('sessions')

@@ -17,7 +17,7 @@ import { generateInitialKingOfCourtRound } from '@/lib/kingOfCourt';
 import { generateSquadRivalryScheduleN, squadIdFor, type SquadSet } from '@/lib/squads';
 import type { StageConfig } from '@/lib/teamChampionship';
 import { MATCH_SCORING_RULE_INFO, type MatchScoringRule } from '@/lib/matchScoring';
-import { createSession, insertRounds, uploadPlayerPhoto, uploadSquadLogo, getMostRecentSession } from '@/lib/db';
+import { createSession, insertRounds, uploadPlayerPhoto, uploadSquadLogo, getMostRecentSession, findInProgressTeamChampionshipSession, type SessionRow } from '@/lib/db';
 import { saveRoster, loadRoster } from '@/lib/savedRoster';
 import { getPlayerPhoto, savePlayerPhoto, preloadPlayerPhotos } from '@/lib/playerPhotos';
 import { listPlayers, getSkillRatingsForNames, getOwnPlayer, type PlayerRow } from '@/lib/players';
@@ -101,6 +101,30 @@ function SetupPageInner() {
   const { current: currentGroup, loading: groupLoading } = useCurrentGroup();
   const circleId = !currentClubId && currentGroup.type === 'circle' ? currentGroup.circleId : null;
   const presetFormat = searchParams.get('format') === 'team_championship';
+
+  // "Start a Team Championship" used to jump straight into a blank wizard
+  // every time, with no idea an unfinished tournament already existed —
+  // real feedback: every back-out-and-re-enter silently abandoned the
+  // in-progress session. Checked once, only for the preset-format entry
+  // point (the normal format picker isn't scoped to one format, so it
+  // doesn't make sense to prompt there).
+  const [inProgressSession, setInProgressSession] = useState<SessionRow | null | 'checking'>(presetFormat ? 'checking' : null);
+  const [resumeChoiceMade, setResumeChoiceMade] = useState(false);
+
+  useEffect(() => {
+    if (!presetFormat || !currentClubId) return;
+    let cancelled = false;
+    findInProgressTeamChampionshipSession(currentClubId)
+      .then(s => {
+        if (!cancelled) setInProgressSession(s);
+      })
+      .catch(() => {
+        if (!cancelled) setInProgressSession(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [presetFormat, currentClubId]);
 
   // Restores in-progress setup form state after a back-navigation or
   // accidental reload — without this, leaving /setup mid-fill (even via the
@@ -226,6 +250,12 @@ function SetupPageInner() {
       { label: 'Championship', rounds: 5, pointsPerWin: 3 },
     ]
   );
+  // A distinct tournament name/logo, separate from the club's own branding
+  // (which is all group_name/logo_url_1 defaulted to before) — real
+  // feedback: no way to name THIS tournament or give it its own logo,
+  // distinct from either the club's branding or an individual team's logo.
+  const [tcTournamentName, setTcTournamentName] = useState('');
+  const [tcLogoFile, setTcLogoFile] = useState<File | null>(null);
   const [enableRapidFire, setEnableRapidFire] = useState(draft.enableRapidFire ?? true);
   const [rapidFireTarget, setRapidFireTarget] = useState(draft.rapidFireTarget ?? 31);
   const [rapidFireBonus, setRapidFireBonus] = useState(draft.rapidFireBonus ?? 10);
@@ -732,8 +762,11 @@ function SetupPageInner() {
       // Branding now comes from the club (Club Settings), not entered per
       // session — this is just what gets stamped onto this session's row so
       // GroupHeader keeps working unchanged for historical sessions too.
-      const logoUrl1: string | null = currentClub?.logo_url ?? null;
+      let logoUrl1: string | null = currentClub?.logo_url ?? null;
       const logoUrl2: string | null = currentClub?.logo_url_2 ?? null;
+      if (format === 'team_championship' && tcLogoFile) {
+        logoUrl1 = await uploadSquadLogo(tcLogoFile);
+      }
 
       const parsedCourtCost = courtCost.trim() === '' ? null : Number(courtCost);
       const parsedBallCost = ballCost.trim() === '' ? 200 : Number(ballCost);
@@ -754,7 +787,7 @@ function SetupPageInner() {
         players: trimmed,
         courtLabels: trimmedCourtLabels,
         roundDurationMinutes: parsedDuration,
-        groupName: currentClub?.name ?? null,
+        groupName: format === 'team_championship' && tcTournamentName.trim() ? tcTournamentName.trim() : currentClub?.name ?? null,
         logoUrl1,
         logoUrl2,
         startTime: startTime.trim() || null,
@@ -897,6 +930,38 @@ function SetupPageInner() {
           <a href="/circles/join" className="btn-secondary" style={{ display: 'inline-block' }}>
             Join a Circle
           </a>
+        </div>
+      </main>
+    );
+  }
+
+  if (inProgressSession === 'checking') {
+    return <main className="page"><p>Checking for an in-progress tournament…</p></main>;
+  }
+
+  if (inProgressSession !== null && !resumeChoiceMade) {
+    const foundSession = inProgressSession;
+    const teamNames = foundSession.squads?.map(t => t.label ?? t.id).join(' vs ') ?? 'Team Championship';
+    return (
+      <main className="page">
+        <h1>Unfinished Team Championship</h1>
+        <div className="card" style={{ marginTop: 12 }}>
+          <p style={{ fontWeight: 700, margin: '0 0 4px' }}>{foundSession.group_name || teamNames}</p>
+          <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>
+            Started {new Date(foundSession.created_at).toLocaleString()} — {teamNames}
+          </p>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
+          <button
+            className="btn-primary"
+            style={{ minHeight: 48 }}
+            onClick={() => router.push(`/session/${foundSession.id}/team-championship/pairings`)}
+          >
+            Resume This Tournament
+          </button>
+          <button className="btn-secondary" style={{ minHeight: 48 }} onClick={() => setResumeChoiceMade(true)}>
+            Start a New One Instead
+          </button>
         </div>
       </main>
     );
@@ -1328,6 +1393,31 @@ function SetupPageInner() {
 
       {format === 'team_championship' && (
         <>
+          <h2>Tournament Name & Logo</h2>
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div>
+              <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>Tournament Name</label>
+              <input
+                value={tcTournamentName}
+                onChange={e => setTcTournamentName(e.target.value)}
+                placeholder="e.g. Battle for Glory"
+                aria-label="Tournament name"
+                style={{ width: '100%', boxSizing: 'border-box', minHeight: 48, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
+              />
+              <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>Leave blank to use your club&apos;s name.</p>
+            </div>
+            <div>
+              <label style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: 6 }}>Tournament Logo (optional)</label>
+              <input
+                type="file"
+                accept="image/*"
+                aria-label="Tournament logo"
+                onChange={e => setTcLogoFile(e.target.files?.[0] ?? null)}
+              />
+              {tcLogoFile && <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{tcLogoFile.name} selected.</p>}
+            </div>
+          </div>
+
           <h2>Name Your Teams</h2>
           <div className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
             <div style={{ flex: '1 1 200px', minWidth: 0 }}>
