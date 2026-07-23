@@ -63,6 +63,22 @@ export default function RapidFirePage({ params }: { params: Promise<{ id: string
     setCourtOverride(currentPlayers.map(p => (p === outgoing ? incoming : p)));
   }
 
+  // Captain still picks WHO rotates in, on the spot — this only makes the
+  // WHEN (every 3 points) impossible to miss, a structural nudge rather
+  // than an automatic swap. Counts backward through the log: how many
+  // trailing points in a row were scored by the exact same on-court
+  // foursome as right now. Any substitution naturally resets this to 0/1,
+  // since the on-court set changes.
+  function pointsSinceRotation(currentOnCourt: string[]): number {
+    const currentKey = [...currentOnCourt].sort().join('|');
+    let count = 0;
+    for (let i = log.length - 1; i >= 0; i--) {
+      if ([...log[i].onCourtPlayers].sort().join('|') === currentKey) count++;
+      else break;
+    }
+    return count;
+  }
+
   if (error && !session) return <main className="page"><p style={{ color: 'var(--danger)' }}>{error}</p></main>;
   if (!session) return <main className="page"><p>Loading…</p></main>;
   if (session.format !== 'team_championship' || !session.squads || !session.rapid_fire_config) {
@@ -77,6 +93,7 @@ export default function RapidFirePage({ params }: { params: Promise<{ id: string
   );
   const state = computeRapidFireState(log, config, teams, finalRoundPairs);
   const onCourtPlayers = courtOverride ?? state.onCourtPlayers;
+  const sinceRotation = pointsSinceRotation(onCourtPlayers);
   const bonus = state.isComplete ? computeRapidFireBonus(state, config) : null;
   const winnerLabel = state.winnerTeamId ? (teams.find(t => t.id === state.winnerTeamId)?.label ?? state.winnerTeamId) : null;
 
@@ -111,8 +128,23 @@ export default function RapidFirePage({ params }: { params: Promise<{ id: string
       ) : (
         <>
           <h2>On Court Now</h2>
-          <div className="card" style={{ marginBottom: 16 }}>
-            <p style={{ fontSize: 15, fontWeight: 700, textAlign: 'center' }}>{onCourtPlayers.join(' & ')}</p>
+          <div
+            className="card"
+            style={{
+              marginBottom: 16,
+              borderColor: sinceRotation >= 3 ? 'var(--warning, #b45309)' : undefined,
+              borderWidth: sinceRotation >= 3 ? 2 : undefined,
+            }}
+          >
+            <p style={{ fontSize: 15, fontWeight: 700, textAlign: 'center', margin: 0 }}>{onCourtPlayers.join(' & ')}</p>
+            <p style={{ fontSize: 11, color: 'var(--muted)', textAlign: 'center', margin: '4px 0 0' }}>
+              {sinceRotation} point{sinceRotation === 1 ? '' : 's'} played by this pairing
+            </p>
+            {sinceRotation >= 3 && (
+              <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning, #b45309)', textAlign: 'center', margin: '8px 0 0' }}>
+                ⏱ Time to rotate — captain, pick who&apos;s coming on next.
+              </p>
+            )}
           </div>
 
           <h2>Sub (manual)</h2>

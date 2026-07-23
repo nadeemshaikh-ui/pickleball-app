@@ -162,24 +162,34 @@ export default function TeamChampionshipAnalyticsPage({ params }: { params: Prom
       {rivalries.length > 0 && (
         <>
           <h2>Head-to-Head Rivalries</h2>
-          <div className="card" style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>
-              Players who&apos;ve faced each other more than once — every individual matchup that occurs whenever the two teams meet.
-            </p>
-            {rivalries.map(r => {
-              const isEven = r.aWins === r.bWins;
-              const leaderName = isEven ? null : r.aWins > r.bWins ? r.playerA : r.playerB;
-              return (
-                <div key={`${r.playerA}-${r.playerB}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-                  <span>
-                    <strong style={{ fontWeight: leaderName === r.playerA ? 800 : 400 }}>{r.playerA}</strong>
-                    {' '}{r.aWins}–{r.bWins}{' '}
-                    <strong style={{ fontWeight: leaderName === r.playerB ? 800 : 400 }}>{r.playerB}</strong>
-                  </span>
-                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>{r.meetings} meetings</span>
-                </div>
-              );
-            })}
+          <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 8px' }}>
+            Players who&apos;ve faced each other more than once — every individual matchup that occurs whenever the two teams meet.
+          </p>
+          <div style={{ overflowX: 'auto', marginBottom: 16 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                  <th style={{ textAlign: 'left', padding: '10px 8px', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>Matchup</th>
+                  <th style={{ textAlign: 'right', padding: '10px 8px', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>Meetings</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rivalries.map((r, i) => {
+                  const isEven = r.aWins === r.bWins;
+                  const leaderName = isEven ? null : r.aWins > r.bWins ? r.playerA : r.playerB;
+                  return (
+                    <tr key={`${r.playerA}-${r.playerB}`} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 1 ? 'var(--surface-2, rgba(127,127,127,0.06))' : undefined }}>
+                      <td style={{ padding: '10px 8px', fontWeight: 700 }}>
+                        <span style={{ fontWeight: leaderName === r.playerA ? 900 : 700 }}>{r.playerA}</span>
+                        {' '}{r.aWins}–{r.bWins}{' '}
+                        <span style={{ fontWeight: leaderName === r.playerB ? 900 : 700 }}>{r.playerB}</span>
+                      </td>
+                      <td style={{ padding: '10px 8px', textAlign: 'right', color: 'var(--muted)', fontWeight: 700 }}>{r.meetings}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </>
       )}
@@ -287,32 +297,39 @@ export default function TeamChampionshipAnalyticsPage({ params }: { params: Prom
         ))}
       </div>
       <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 15 }}>
           <thead>
-            <tr style={{ borderBottom: '2px solid var(--border)' }}>
-              <th style={{ textAlign: 'left', padding: '8px 6px' }}>Player</th>
-              <th style={{ textAlign: 'left', padding: '8px 6px' }}>Team</th>
-              <th style={{ textAlign: 'right', padding: '8px 6px' }}>MP</th>
-              <th style={{ textAlign: 'right', padding: '8px 6px' }}>W</th>
-              <th style={{ textAlign: 'right', padding: '8px 6px' }}>L</th>
-              <th style={{ textAlign: 'right', padding: '8px 6px' }}>Win%</th>
-              <th style={{ textAlign: 'right', padding: '8px 6px' }}>+/-</th>
+            <tr style={{ borderBottom: '3px solid var(--foreground)' }}>
+              <th style={{ textAlign: 'left', padding: '12px 10px', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--muted)' }}>Player</th>
+              <th style={{ textAlign: 'left', padding: '12px 10px', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--muted)' }}>Team</th>
+              <th style={{ textAlign: 'right', padding: '12px 10px', fontSize: 12, textTransform: 'uppercase', color: 'var(--muted)' }}>MP</th>
+              <th style={{ textAlign: 'right', padding: '12px 10px', fontSize: 12, textTransform: 'uppercase', color: 'var(--muted)' }}>W</th>
+              <th style={{ textAlign: 'right', padding: '12px 10px', fontSize: 12, textTransform: 'uppercase', color: 'var(--muted)' }}>L</th>
+              <th style={{ textAlign: 'right', padding: '12px 10px', fontSize: 12, textTransform: 'uppercase', color: 'var(--muted)' }}>Win%</th>
+              <th style={{ textAlign: 'right', padding: '12px 10px', fontSize: 12, textTransform: 'uppercase', color: 'var(--muted)' }}>+/-</th>
             </tr>
           </thead>
           <tbody>
-            {sortedPlayerStats.map(s => {
+            {sortedPlayerStats.map((s, i) => {
               const team = teams.find(t => t.id === s.teamId);
+              const isMVP = overallMVP?.name === s.name;
               return (
-                <tr key={s.name} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '8px 6px', fontWeight: overallMVP?.name === s.name ? 800 : 400 }}>
-                    {overallMVP?.name === s.name && '★ '}{s.name}
+                <tr
+                  key={s.name}
+                  style={{
+                    borderBottom: '1px solid var(--border)',
+                    background: isMVP ? 'rgba(212,175,55,0.12)' : i % 2 === 1 ? 'var(--surface-2, rgba(127,127,127,0.06))' : undefined,
+                  }}
+                >
+                  <td style={{ padding: '12px 10px', fontWeight: isMVP ? 800 : 700 }}>
+                    {isMVP && '★ '}{s.name}
                   </td>
-                  <td style={{ padding: '8px 6px', fontSize: 11, color: 'var(--muted)' }}>{team?.label ?? s.teamId}</td>
-                  <td style={{ textAlign: 'right', padding: '8px 6px' }}>{s.matchesPlayed}</td>
-                  <td style={{ textAlign: 'right', padding: '8px 6px' }}>{s.wins}</td>
-                  <td style={{ textAlign: 'right', padding: '8px 6px' }}>{s.losses}</td>
-                  <td style={{ textAlign: 'right', padding: '8px 6px' }}>{(s.winPct * 100).toFixed(0)}%</td>
-                  <td style={{ textAlign: 'right', padding: '8px 6px', color: s.pointDiff > 0 ? 'var(--success, #16a34a)' : s.pointDiff < 0 ? 'var(--danger)' : undefined }}>
+                  <td style={{ padding: '12px 10px', fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>{team?.label ?? s.teamId}</td>
+                  <td style={{ textAlign: 'right', padding: '12px 10px', fontWeight: 700 }}>{s.matchesPlayed}</td>
+                  <td style={{ textAlign: 'right', padding: '12px 10px', fontWeight: 700 }}>{s.wins}</td>
+                  <td style={{ textAlign: 'right', padding: '12px 10px', fontWeight: 700 }}>{s.losses}</td>
+                  <td style={{ textAlign: 'right', padding: '12px 10px', fontWeight: 800 }}>{(s.winPct * 100).toFixed(0)}%</td>
+                  <td style={{ textAlign: 'right', padding: '12px 10px', fontWeight: 800, color: s.pointDiff > 0 ? 'var(--success, #16a34a)' : s.pointDiff < 0 ? 'var(--danger)' : undefined }}>
                     {s.pointDiff >= 0 ? '+' : ''}{s.pointDiff}
                   </td>
                 </tr>
@@ -320,7 +337,7 @@ export default function TeamChampionshipAnalyticsPage({ params }: { params: Prom
             })}
             {sortedPlayerStats.length === 0 && (
               <tr>
-                <td colSpan={7} style={{ padding: 16, textAlign: 'center', color: 'var(--muted)' }}>No matches scored yet.</td>
+                <td colSpan={7} style={{ padding: 20, textAlign: 'center', color: 'var(--muted)' }}>No matches scored yet.</td>
               </tr>
             )}
           </tbody>

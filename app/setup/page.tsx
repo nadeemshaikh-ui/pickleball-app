@@ -1911,14 +1911,24 @@ function SetupPageInner() {
         <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setSubStep('players')}>
           ← Back
         </button>
-        <button className="btn-primary" style={{ flex: 1 }} onClick={() => setSubStep('cost')}>
-          Next: Cost & Details
-        </button>
+        {format === 'team_championship' ? (
+          // Tournament sessions don't take per-session court/ball dues -
+          // payment is a separate concern from how a tournament plays out,
+          // and will get its own dedicated flow later rather than reusing
+          // the club-session dues page here.
+          <button className="btn-primary" style={{ flex: 1 }} onClick={handleGenerate} disabled={submitting}>
+            {submitting ? 'Generating…' : 'Generate Schedule'}
+          </button>
+        ) : (
+          <button className="btn-primary" style={{ flex: 1 }} onClick={() => setSubStep('cost')}>
+            Next: Cost & Details
+          </button>
+        )}
       </div>
       </>
       )}
 
-      {subStep === 'cost' && (
+      {subStep === 'cost' && format !== 'team_championship' && (
       <>
       <h2>Court & Ball Cost (optional)</h2>
       <div className="card" style={{ display: 'flex', gap: 12 }}>

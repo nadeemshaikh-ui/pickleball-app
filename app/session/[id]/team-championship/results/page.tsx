@@ -78,20 +78,20 @@ export default function TeamChampionshipResultsPage({ params }: { params: Promis
       <h1>Standings</h1>
 
       {leaderTeam && (
-        <div className="card" style={{ textAlign: 'center', padding: 20, marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 700 }}>
-            <Trophy size={14} /> Leading
+        <div className="card" style={{ textAlign: 'center', padding: 24, marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 13, color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: 0.6 }}>
+            <Trophy size={16} /> Leading
           </div>
-          <div style={{ fontSize: 26, fontWeight: 900, marginTop: 4 }}>{leaderTeam.label ?? leaderTeam.id}</div>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 10, fontSize: 13 }}>
+          <div style={{ fontSize: 32, fontWeight: 900, marginTop: 6 }}>{leaderTeam.label ?? leaderTeam.id}</div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 14, fontSize: 14 }}>
             {teams.map(t => {
               const record = matchRecords.get(t.id) ?? { wins: 0, losses: 0 };
               const isLeading = t.id === leaderTeam.id;
               return (
-                <div key={t.id} style={{ opacity: isLeading ? 1 : 0.6 }}>
-                  <div style={{ fontWeight: 700 }}>{t.label ?? t.id}</div>
-                  <div style={{ color: 'var(--muted)' }}>{record.wins}W – {record.losses}L</div>
-                  <div style={{ fontWeight: 900, fontSize: 18 }}>{grandTotals.get(t.id) ?? 0} pts</div>
+                <div key={t.id} style={{ opacity: isLeading ? 1 : 0.65 }}>
+                  <div style={{ fontWeight: 800 }}>{t.label ?? t.id}</div>
+                  <div style={{ color: 'var(--muted)', fontWeight: 600 }}>{record.wins}W – {record.losses}L</div>
+                  <div style={{ fontWeight: 900, fontSize: 24 }}>{grandTotals.get(t.id) ?? 0} pts</div>
                 </div>
               );
             })}
@@ -109,53 +109,53 @@ export default function TeamChampionshipResultsPage({ params }: { params: Promis
 
       <h2>Stage Points</h2>
       <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 15 }}>
           <thead>
-            <tr style={{ borderBottom: '2px solid var(--border)' }}>
-              <th style={{ textAlign: 'left', padding: '8px 6px' }}>Stage</th>
+            <tr style={{ borderBottom: '3px solid var(--foreground)' }}>
+              <th style={{ textAlign: 'left', padding: '12px 10px', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--muted)' }}>Stage</th>
               {teams.map(t => (
-                <th key={t.id} style={{ textAlign: 'right', padding: '8px 6px' }}>{t.label ?? t.id}</th>
+                <th key={t.id} style={{ textAlign: 'right', padding: '12px 10px', fontSize: 13, fontWeight: 800 }}>{t.label ?? t.id}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {stageBreakdown.map(stage => {
+            {stageBreakdown.map((stage, i) => {
               const unscored = unscoredByStage.find(u => u.stageLabel === stage.stageLabel);
               const isIncomplete = unscored && unscored.scoredSlots < unscored.expectedSlots;
               return (
-                <tr key={stage.stageLabel} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '8px 6px' }}>
+                <tr key={stage.stageLabel} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 1 ? 'var(--surface-2, rgba(127,127,127,0.06))' : undefined }}>
+                  <td style={{ padding: '12px 10px', fontWeight: 700 }}>
                     {stage.stageLabel}
                     {isIncomplete && (
-                      <span style={{ display: 'block', fontSize: 10, color: 'var(--warning, #b45309)', fontWeight: 700 }}>
+                      <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--warning, #b45309)' }}>
                         {unscored.scoredSlots}/{unscored.expectedSlots} matches scored
                       </span>
                     )}
                   </td>
                   {teams.map(t => (
-                    <td key={t.id} style={{ textAlign: 'right', padding: '8px 6px' }}>{stage.totalsByTeam.get(t.id) ?? 0}</td>
+                    <td key={t.id} style={{ textAlign: 'right', padding: '12px 10px', fontWeight: 700 }}>{stage.totalsByTeam.get(t.id) ?? 0}</td>
                   ))}
                 </tr>
               );
             })}
-            <tr style={{ borderBottom: '1px solid var(--border)', fontWeight: 700 }}>
-              <td style={{ padding: '8px 6px' }}>League total (of {maxLeaguePoints})</td>
+            <tr style={{ borderBottom: '1px solid var(--border)', fontWeight: 800, background: 'var(--surface-2, rgba(127,127,127,0.06))' }}>
+              <td style={{ padding: '12px 10px' }}>League total (of {maxLeaguePoints})</td>
               {teams.map(t => (
-                <td key={t.id} style={{ textAlign: 'right', padding: '8px 6px' }}>{totalsByTeam.get(t.id) ?? 0}</td>
+                <td key={t.id} style={{ textAlign: 'right', padding: '12px 10px' }}>{totalsByTeam.get(t.id) ?? 0}</td>
               ))}
             </tr>
             {rapidFireBonus && (
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                <td style={{ padding: '8px 6px' }}>Rapid Fire bonus</td>
+                <td style={{ padding: '12px 10px', fontWeight: 700 }}>Rapid Fire bonus</td>
                 {teams.map(t => (
-                  <td key={t.id} style={{ textAlign: 'right', padding: '8px 6px' }}>{rapidFireBonus.get(t.id) ?? 0}</td>
+                  <td key={t.id} style={{ textAlign: 'right', padding: '12px 10px', fontWeight: 700 }}>{rapidFireBonus.get(t.id) ?? 0}</td>
                 ))}
               </tr>
             )}
-            <tr style={{ fontWeight: 900, fontSize: 15 }}>
-              <td style={{ padding: '8px 6px' }}>Total</td>
+            <tr style={{ fontWeight: 900, fontSize: 20, borderTop: '3px solid var(--foreground)' }}>
+              <td style={{ padding: '14px 10px' }}>Total</td>
               {teams.map(t => (
-                <td key={t.id} style={{ textAlign: 'right', padding: '8px 6px' }}>{grandTotals.get(t.id) ?? 0}</td>
+                <td key={t.id} style={{ textAlign: 'right', padding: '14px 10px' }}>{grandTotals.get(t.id) ?? 0}</td>
               ))}
             </tr>
           </tbody>
@@ -167,27 +167,40 @@ export default function TeamChampionshipResultsPage({ params }: { params: Promis
         const stageRoundResults = roundResults.filter(r => r.stageLabel === stage.stageLabel);
         if (stageRoundResults.length === 0) return null;
         return (
-          <div key={stage.stageLabel} className="card" style={{ marginBottom: 12 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, margin: '0 0 8px' }}>
-              {stage.stageLabel} <span style={{ fontWeight: 400, color: 'var(--muted)' }}>({stage.pointsPerWin} pt/win)</span>
+          <div key={stage.stageLabel} style={{ marginBottom: 20 }}>
+            <p style={{ fontSize: 14, fontWeight: 800, margin: '0 0 8px' }}>
+              {stage.stageLabel} <span style={{ fontWeight: 500, color: 'var(--muted)' }}>({stage.pointsPerWin} pt/win)</span>
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {stageRoundResults.map(r => {
-                const winnerTeam = r.winnerTeamId ? teams.find(t => t.id === r.winnerTeamId) : null;
-                return (
-                  <div key={`${r.roundNumber}-${r.court}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-                    <Link href={`/session/${id}/team-championship/round/${r.roundNumber}`} style={{ color: 'var(--muted)', flexShrink: 0, width: 90 }}>
-                      R{r.roundNumber} · Court {r.court}
-                    </Link>
-                    <span style={{ flex: 1, textAlign: 'center' }}>
-                      {r.teamA.join(' & ')} <strong>{r.scoreA ?? '–'}</strong> vs <strong>{r.scoreB ?? '–'}</strong> {r.teamB.join(' & ')}
-                    </span>
-                    <span style={{ flexShrink: 0, width: 90, textAlign: 'right', fontWeight: 700 }}>
-                      {winnerTeam ? `${winnerTeam.label ?? winnerTeam.id} +${r.pointsPerWin}` : 'Unscored'}
-                    </span>
-                  </div>
-                );
-              })}
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                    <th style={{ textAlign: 'left', padding: '8px 8px', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>Round</th>
+                    <th style={{ textAlign: 'center', padding: '8px 8px', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>Match</th>
+                    <th style={{ textAlign: 'right', padding: '8px 8px', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>Winner</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stageRoundResults.map((r, i) => {
+                    const winnerTeam = r.winnerTeamId ? teams.find(t => t.id === r.winnerTeamId) : null;
+                    return (
+                      <tr key={`${r.roundNumber}-${r.court}`} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 1 ? 'var(--surface-2, rgba(127,127,127,0.06))' : undefined }}>
+                        <td style={{ padding: '10px 8px' }}>
+                          <Link href={`/session/${id}/team-championship/round/${r.roundNumber}`} style={{ color: 'var(--muted)', fontWeight: 700 }}>
+                            R{r.roundNumber} · C{r.court}
+                          </Link>
+                        </td>
+                        <td style={{ padding: '10px 8px', textAlign: 'center' }}>
+                          {r.teamA.join(' & ')} <strong>{r.scoreA ?? '–'}</strong> vs <strong>{r.scoreB ?? '–'}</strong> {r.teamB.join(' & ')}
+                        </td>
+                        <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 700 }}>
+                          {winnerTeam ? `${winnerTeam.label ?? winnerTeam.id} +${r.pointsPerWin}` : 'Unscored'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         );
