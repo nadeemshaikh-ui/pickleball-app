@@ -1,5 +1,4 @@
 import type { RoundRow } from './db';
-import type { Squads } from './shuffle';
 import type { SquadSet } from './squads';
 
 export interface PlayerStats {
@@ -59,27 +58,7 @@ export function computeLeaderboard(rounds: RoundRow[]): PlayerStats[] {
   return list;
 }
 
-export function computeSquadTotals(rounds: RoundRow[], squads: Squads): { gold: number; black: number } {
-  const goldSet = new Set(squads.gold);
-  let gold = 0;
-  let black = 0;
-
-  for (const round of rounds) {
-    if (round.score_a === null || round.score_b === null) continue;
-    const teamAIsGold = round.team_a.every(p => goldSet.has(p));
-    if (teamAIsGold) {
-      gold += round.score_a;
-      black += round.score_b;
-    } else {
-      black += round.score_a;
-      gold += round.score_b;
-    }
-  }
-
-  return { gold, black };
-}
-
-// N-squad generalization of computeSquadTotals — a round's team is always
+// N-squad generalization of the original 2-squad totals function — a round's team is always
 // drawn entirely from one squad (lib/squads.ts's generator never mixes
 // players from two squads onto the same team), so any one player on a team
 // identifies which squad the whole team belongs to. Additive/isolated: not

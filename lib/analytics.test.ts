@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeLeaderboard, computeSquadTotals, computeSquadTotalsN } from './analytics';
+import { computeLeaderboard, computeSquadTotalsN } from './analytics';
 import type { RoundRow } from './db';
 import type { SquadSet } from './squads';
 
@@ -40,21 +40,8 @@ describe('computeLeaderboard', () => {
   });
 });
 
-describe('computeSquadTotals', () => {
-  it('sums points for each squad across all rounds', () => {
-    const rounds: RoundRow[] = [
-      { id: '1', session_id: 's', round_number: 1, court: 1, team_a: ['G1', 'G2'], team_b: ['B1', 'B2'], sitting_out: [], score_a: 15, score_b: 10 },
-      { id: '2', session_id: 's', round_number: 1, court: 2, team_a: ['G3', 'G4'], team_b: ['B3', 'B4'], sitting_out: [], score_a: 10, score_b: 15 },
-    ];
-    const squads = { gold: ['G1', 'G2', 'G3', 'G4', 'G5'], black: ['B1', 'B2', 'B3', 'B4', 'B5'] };
-    const totals = computeSquadTotals(rounds, squads);
-    expect(totals.gold).toBe(25);
-    expect(totals.black).toBe(25);
-  });
-});
-
 describe('computeSquadTotalsN', () => {
-  it('N=2 equivalence: same totals as computeSquadTotals for the same data', () => {
+  it('sums points for each squad across all rounds (N=2)', () => {
     const rounds: RoundRow[] = [
       { id: '1', session_id: 's', round_number: 1, court: 1, team_a: ['G1', 'G2'], team_b: ['B1', 'B2'], sitting_out: [], score_a: 15, score_b: 10 },
       { id: '2', session_id: 's', round_number: 1, court: 2, team_a: ['G3', 'G4'], team_b: ['B3', 'B4'], sitting_out: [], score_a: 10, score_b: 15 },

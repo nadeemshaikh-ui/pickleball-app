@@ -12,7 +12,7 @@ import { Home } from 'lucide-react';
 // real bug, found via live feedback: a captain scoring rounds through
 // /play (which Team Championship reuses, no dedicated scoring screen)
 // would tap "Results" here and land on the wrong page entirely.
-export default function SessionNav({ sessionId, format }: { sessionId: string; format?: string }) {
+export default function SessionNav({ sessionId, format, clubId }: { sessionId: string; format?: string; clubId?: string }) {
   const pathname = usePathname();
 
   const isTeamChampionship = format === 'team_championship';
@@ -26,8 +26,10 @@ export default function SessionNav({ sessionId, format }: { sessionId: string; f
 
   return (
     <nav className="session-nav" aria-label="Session navigation">
-      {/* Only exit from inside a session — GlobalNav is hidden on /session/* routes */}
-      <Link href="/" aria-label="Home" title="Home">
+      {/* Only exit from inside a session — GlobalNav is hidden on /session/* routes.
+          Goes to the club's own dashboard (members, stats, awards) rather than the
+          generic app root, once the session's club is known. */}
+      <Link href={clubId ? `/clubs/${clubId}` : '/'} aria-label="Club Home" title="Club Home">
         <Home size={16} />
       </Link>
       {tabs.map(tab => (

@@ -198,7 +198,7 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
 
         {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
         <h1>Results</h1>
-        {session && <SessionDate createdAt={session.created_at} venue={session.venue} />}
+        {session && <SessionDate createdAt={session.created_at} eventDate={session.event_date} venue={session.venue} />}
 
         {squadTotals && session && session.squads && session.squads.length === 2 && (
           <div className="card" style={{ marginTop: 16 }}>
@@ -402,7 +402,7 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
           Start New Session
         </Link>
       </main>
-      <SessionNav sessionId={id} />
+      <SessionNav sessionId={id} clubId={session?.club_id} />
     </>
   );
 }

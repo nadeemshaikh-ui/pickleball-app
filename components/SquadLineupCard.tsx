@@ -1,8 +1,8 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Share2 } from 'lucide-react';
-import { shareElementAsImage } from '@/lib/shareImage';
+import { renderElementToImage, shareCachedImage } from '@/lib/shareImage';
 
 interface SquadLineupCardProps {
   goldLabel: string;
@@ -22,13 +22,37 @@ export default function SquadLineupCard({ goldLabel, blackLabel, goldLogoUrl, bl
   const captureRef = useRef<HTMLDivElement>(null);
   const [sharing, setSharing] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+
+  // Pre-render ahead of the click so the share stays inside the browser's
+  // user-gesture window (see lib/shareImage.ts) — rendering inside the
+  // click handler can silently break navigator.share() on mobile.
+  useEffect(() => {
+    if (!captureRef.current) {
+      setImageFile(null);
+      return;
+    }
+    renderElementToImage(captureRef.current, filename)
+      .then(file => {
+        setImageFile(file);
+        setShareError(null);
+      })
+      .catch(e => {
+        setImageFile(null);
+        setShareError(e instanceof Error ? `Couldn't prepare the image: ${e.message}` : "Couldn't prepare the image.");
+      });
+  }, [filename, goldLabel, blackLabel, goldLogoUrl, blackLogoUrl, goldPlayers, blackPlayers]);
 
   async function handleShare() {
-    if (!captureRef.current) return;
     setSharing(true);
     setShareError(null);
     try {
-      const result = await shareElementAsImage(captureRef.current, filename);
+      const file = imageFile ?? (captureRef.current ? await renderElementToImage(captureRef.current, filename) : null);
+      if (!file) {
+        setShareError("Couldn't prepare the image — try again.");
+        return;
+      }
+      const result = await shareCachedImage(file);
       if (result === 'downloaded') {
         setShareError("Image downloaded — attach it to WhatsApp manually (direct share isn't supported on this browser).");
       }

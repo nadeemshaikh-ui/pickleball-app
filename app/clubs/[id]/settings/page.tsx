@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { UserPlus, Share2, AlertTriangle, Code2, AlertOctagon } from 'lucide-react';
 import {
   listMyClubs,
+  getClubById,
+  isSuperAdmin,
   listPendingJoinRequests,
   approveJoinRequest,
   rejectJoinRequest,
@@ -13,6 +15,7 @@ import {
   updateClubDescription,
   listClubMembers,
   setDangerZoneAccess,
+  setMemberRole,
   removeMember,
   restoreMember,
   resetClubData,
@@ -22,7 +25,7 @@ import {
 } from '@/lib/clubs';
 import { listPlayers } from '@/lib/players';
 import { getCurrentUser } from '@/lib/auth';
-import { shareElementAsImage } from '@/lib/shareImage';
+import { renderElementToImage, shareCachedImage } from '@/lib/shareImage';
 import ConfirmModal from '@/components/ConfirmModal';
 import { isDevModeEnabled, setDevModeEnabled } from '@/lib/devMode';
 import { fetchRecentErrorsForClub, type AppErrorRow } from '@/lib/errorLog';
@@ -59,19 +62,31 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
   const [devMode, setDevMode] = useState(false);
   const [memberActionError, setMemberActionError] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<{ userId: string; name: string } | null>(null);
+  const [inviteImageFile, setInviteImageFile] = useState<File | null>(null);
   const inviteCaptureRef = useRef<HTMLDivElement>(null);
 
   async function load() {
-    const memberships = await listMyClubs();
+    const [memberships, superAdmin] = await Promise.all([
+      listMyClubs(),
+      isSuperAdmin().catch(() => false),
+    ]);
     const mine = memberships.find(m => m.club_id === id);
-    setIsAdmin(mine?.role === 'admin');
-    if (mine) {
-      setClub(mine.club);
-      setName(mine.club.name);
-      setUpiVpa(mine.club.upi_vpa ?? '');
-      setDescription(mine.club.description ?? '');
+    const hasAdminAccess = mine?.role === 'admin' || superAdmin;
+    setIsAdmin(hasAdminAccess);
+
+    let currentClubData = mine?.club ?? null;
+    if (!currentClubData && superAdmin) {
+      currentClubData = await getClubById(id);
     }
-    if (mine?.role === 'admin') {
+
+    if (currentClubData) {
+      setClub(currentClubData);
+      setName(currentClubData.name);
+      setUpiVpa(currentClubData.upi_vpa ?? '');
+      setDescription(currentClubData.description ?? '');
+    }
+
+    if (hasAdminAccess) {
       const [req, memberRows, playerRows, user, errorRows] = await Promise.all([
         listPendingJoinRequests(id),
         listClubMembers(id),
@@ -84,7 +99,7 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
       setMembers(memberRows);
       setMemberNames(new Map(playerRows.filter(p => p.user_id).map(p => [p.user_id as string, p.name])));
       setOwnUserId(user?.id ?? null);
-      setOwnDangerZoneAccess(memberRows.find(m => m.user_id === user?.id)?.danger_zone_access ?? false);
+      setOwnDangerZoneAccess(superAdmin || (memberRows.find(m => m.user_id === user?.id)?.danger_zone_access ?? false));
       setErrors(errorRows);
     }
     setLoading(false);
@@ -97,6 +112,16 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
       if (userId === ownUserId) setOwnDangerZoneAccess(!current);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to update access.');
+    }
+  }
+
+  async function handleSetRole(userId: string, role: 'admin' | 'member') {
+    setMemberActionError(null);
+    try {
+      await setMemberRole(id, userId, role);
+      setMembers(prev => prev.map(m => (m.user_id === userId ? { ...m, role } : m)));
+    } catch (e) {
+      setMemberActionError(e instanceof Error ? e.message : 'Failed to update role.');
     }
   }
 
@@ -129,6 +154,25 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
     setDevMode(isDevModeEnabled());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Pre-render the invite image as soon as the join code is ready, well
+  // before the user clicks share — rendering inside the click handler burns
+  // the browser's user-gesture window on some mobile browsers, so
+  // navigator.share() gets silently rejected even though canShare() said
+  // yes. Same fix already applied to the session recap and Team
+  // Championship stage share buttons.
+  useEffect(() => {
+    if (!club?.join_code || !inviteCaptureRef.current) return;
+    renderElementToImage(inviteCaptureRef.current, `invite-${id}.png`)
+      .then(file => {
+        setInviteImageFile(file);
+        setImageShareError(null);
+      })
+      .catch(e => {
+        setInviteImageFile(null);
+        setImageShareError(e instanceof Error ? `Couldn't prepare the image: ${e.message}` : "Couldn't prepare the image.");
+      });
+  }, [club, id]);
 
   async function handleSaveBranding() {
     setSaving(true);
@@ -204,10 +248,14 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
   }
 
   async function handleShareInvite() {
-    if (!inviteCaptureRef.current) return;
     setImageShareError(null);
     try {
-      const result = await shareElementAsImage(inviteCaptureRef.current, `invite-${id}.png`);
+      const file = inviteImageFile ?? (inviteCaptureRef.current ? await renderElementToImage(inviteCaptureRef.current, `invite-${id}.png`) : null);
+      if (!file) {
+        setImageShareError("Couldn't prepare the image — try again.");
+        return;
+      }
+      const result = await shareCachedImage(file);
       if (result === 'downloaded') {
         setImageShareError('Image downloaded — attach it to WhatsApp manually (direct share isn\'t supported on this browser).');
       }
@@ -347,33 +395,46 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
       {memberActionError && <p style={{ color: 'var(--danger)', fontWeight: 600 }}>{memberActionError}</p>}
       <div className="card">
         <p style={{ fontSize: 14, marginBottom: 10 }}>{memberCount} member{memberCount === 1 ? '' : 's'}</p>
-        {members.filter(m => !m.removed_at).map(m => (
-          <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-            <span style={{ flex: 1, fontSize: 13 }}>
-              {memberNames.get(m.user_id) ?? 'Unknown'}
-              {m.role === 'admin' && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, color: 'var(--primary)' }}>ADMIN</span>}
-            </span>
-            {m.role === 'admin' && (
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={m.danger_zone_access}
-                  onChange={() => handleToggleDangerZone(m.user_id, m.danger_zone_access)}
-                />
-                Danger Zone
-              </label>
-            )}
-            {m.user_id !== ownUserId && (
+        {members.filter(m => !m.removed_at).map(m => {
+          const adminCount = members.filter(x => !x.removed_at && x.role === 'admin').length;
+          const isLastAdmin = m.role === 'admin' && adminCount <= 1;
+          return (
+            <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
+              <span style={{ flex: 1, fontSize: 13 }}>
+                {memberNames.get(m.user_id) ?? 'Unknown'}
+                {m.role === 'admin' && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, color: 'var(--primary)' }}>ADMIN</span>}
+              </span>
+              {m.role === 'admin' && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={m.danger_zone_access}
+                    onChange={() => handleToggleDangerZone(m.user_id, m.danger_zone_access)}
+                  />
+                  Reset Access
+                </label>
+              )}
               <button
                 className="btn-secondary"
-                style={{ minHeight: 28, padding: '3px 10px', fontSize: 12, borderColor: 'var(--danger)', color: 'var(--danger)' }}
-                onClick={() => setRemoveTarget({ userId: m.user_id, name: memberNames.get(m.user_id) ?? 'this member' })}
+                style={{ minHeight: 28, padding: '3px 10px', fontSize: 12 }}
+                onClick={() => handleSetRole(m.user_id, m.role === 'admin' ? 'member' : 'admin')}
+                disabled={isLastAdmin}
+                title={isLastAdmin ? "Club needs at least one admin — promote someone else first" : undefined}
               >
-                Remove
+                {m.role === 'admin' ? 'Make Member' : 'Make Admin'}
               </button>
-            )}
-          </div>
-        ))}
+              {m.user_id !== ownUserId && (
+                <button
+                  className="btn-secondary"
+                  style={{ minHeight: 28, padding: '3px 10px', fontSize: 12, borderColor: 'var(--danger)', color: 'var(--danger)' }}
+                  onClick={() => setRemoveTarget({ userId: m.user_id, name: memberNames.get(m.user_id) ?? 'this member' })}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          );
+        })}
 
         {members.some(m => m.removed_at) && (
           <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
@@ -439,7 +500,7 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
         )}
       </div>
 
-      <h2 style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: 6 }}><AlertTriangle size={18} /> Danger Zone</h2>
+      <h2 style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: 6 }}><AlertTriangle size={18} /> Data Reset</h2>
       <div className="card" style={{ borderColor: 'var(--danger)' }}>
         <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>
           Permanently deletes every session, match, badge, and streak record for this club — e.g. to start a new season.
@@ -457,7 +518,7 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
           </button>
         ) : (
           <p style={{ fontSize: 13, color: 'var(--muted)' }}>
-            You don&apos;t have Danger Zone access. Ask another admin to grant it above.
+            You don&apos;t have Reset Access. Ask another admin to grant it above.
           </p>
         )}
       </div>

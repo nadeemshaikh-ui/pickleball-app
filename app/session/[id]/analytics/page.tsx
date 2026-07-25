@@ -14,7 +14,7 @@ import {
   computeNailBiters,
   computeMostGamesPlayed,
 } from '@/lib/gameStats';
-import { shareElementAsImage } from '@/lib/shareImage';
+import { renderElementToImage, shareCachedImage } from '@/lib/shareImage';
 import ShareBrandedHeader from '@/components/ShareBrandedHeader';
 import { formatLabel } from '@/lib/formatLabel';
 import SessionNav from '@/components/SessionNav';
@@ -44,6 +44,7 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
   const [session, setSession] = useState<SessionRow | null>(null);
   const [rounds, setRounds] = useState<RoundRow[]>([]);
   const [imageShareError, setImageShareError] = useState<string | null>(null);
+  const [analyticsImageFile, setAnalyticsImageFile] = useState<File | null>(null);
   const analyticsCaptureRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -55,11 +56,33 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
     load();
   }, [id]);
 
+  // Pre-render the analytics image as soon as its data exists, well before
+  // the user clicks share — see lib/shareImage.ts: rendering inside the
+  // click handler burns the browser's user-gesture window on some mobile
+  // browsers, so navigator.share() gets silently rejected even though
+  // canShare() said yes.
+  useEffect(() => {
+    if (!session || !analyticsCaptureRef.current) {
+      setAnalyticsImageFile(null);
+      return;
+    }
+    renderElementToImage(analyticsCaptureRef.current, `analytics-${id}.png`)
+      .then(file => {
+        setAnalyticsImageFile(file);
+        setImageShareError(null);
+      })
+      .catch(e => {
+        setAnalyticsImageFile(null);
+        setImageShareError(e instanceof Error ? `Couldn't prepare the image: ${e.message}` : "Couldn't prepare the image.");
+      });
+  }, [session, rounds, id]);
+
   async function handleShareAnalytics() {
-    if (!analyticsCaptureRef.current) return;
     setImageShareError(null);
     try {
-      const result = await shareElementAsImage(analyticsCaptureRef.current, `analytics-${id}.png`);
+      const file = analyticsImageFile ?? (analyticsCaptureRef.current ? await renderElementToImage(analyticsCaptureRef.current, `analytics-${id}.png`) : null);
+      if (!file) return;
+      const result = await shareCachedImage(file);
       if (result === 'downloaded') {
         setImageShareError('Image downloaded — attach it to WhatsApp manually (direct share isn\'t supported on this browser).');
       }
@@ -98,7 +121,7 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
           <ShareBrandedHeader clubId={session?.club_id} />
         {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
         <h1>Session Analytics</h1>
-        {session && <SessionDate createdAt={session.created_at} venue={session.venue} />}
+        {session && <SessionDate createdAt={session.created_at} eventDate={session.event_date} venue={session.venue} />}
         {session && (
           <p style={{ color: 'var(--muted)', marginTop: 4 }}>
             {formatLabel(session.format)} · {session.players.length} players
@@ -224,7 +247,7 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
         )}
         </div>
       </main>
-      <SessionNav sessionId={id} />
+      <SessionNav sessionId={id} clubId={session?.club_id} />
     </>
   );
 }

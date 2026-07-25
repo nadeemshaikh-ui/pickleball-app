@@ -64,9 +64,13 @@ describe('splitIntoNSquadsRespectingLocks', () => {
 });
 
 describe('generateSquadRivalryScheduleN', () => {
-  it('rejects fewer than 2 squads or 1 court', () => {
+  it('rejects fewer than 2 squads', () => {
     expect(() => generateSquadRivalryScheduleN(makePlayers(8), 1, 1, 3, 'x')).toThrow(/at least 2 squads/);
-    expect(() => generateSquadRivalryScheduleN(makePlayers(8), 2, 0, 3, 'x')).toThrow(/at least 1 court/);
+  });
+
+  it('no longer throws for a requested court count below 1 — self-heals to 1 court', () => {
+    const { courtCount } = generateSquadRivalryScheduleN(makePlayers(8), 2, 0, 3, 'x');
+    expect(courtCount).toBe(1);
   });
 
   it('N=2 structural equivalence: every round is gold-vs-black, squads never sit out a whole round, and match/sit-out counts match the old 2-squad generator for the same inputs', () => {
@@ -267,7 +271,14 @@ describe('generateSquadRivalryScheduleN', () => {
   });
 
   it('throws a clear error when a squad has too few players for the courts-per-matchup requirement', () => {
-    // 2 squads, 3 courts requested → courtsPerMatchup=3 → needs 6 players/squad, only has 4.
-    expect(() => generateSquadRivalryScheduleN(makePlayers(8), 2, 3, 2, 'toofew')).toThrow(/needs at least 6 players/);
+    // 13 players / 3 squads → resolveCourtCount(13, 4) clamps to 3 courts
+    // (floor(13/4)), but 3 squads can only ever field 1 simultaneous
+    // matchup, so that lone matchup gets all 3 courts (courtsPerMatchup=3,
+    // needs 6 players/squad) — the smallest squad (4, from a 5/4/4 split)
+    // can't supply that even though the total player count "fits" 3 courts
+    // overall. Still a genuine infeasibility, distinct from Item 1's
+    // resolveCourtCount fix (which only smooths the total-player-count
+    // case, not this per-squad-vs-courts-per-matchup one).
+    expect(() => generateSquadRivalryScheduleN(makePlayers(13), 3, 4, 2, 'toofew')).toThrow(/needs at least 6 players/);
   });
 });

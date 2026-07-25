@@ -10,7 +10,7 @@ import { fetchAuctionPlayersPublic, type AuctionPlayerPublicRow } from '@/lib/au
 import { fetchAuctionTeams, type AuctionTeamRow } from '@/lib/auctionTeams';
 import { formatRupees } from '@/lib/auctionMoney';
 import { useCurrentClub } from '@/lib/useCurrentClub';
-import { shareElementAsImage } from '@/lib/shareImage';
+import { renderElementToImage, shareCachedImage } from '@/lib/shareImage';
 import ShareBrandedHeader from '@/components/ShareBrandedHeader';
 
 export default function AuctionRostersPage() {
@@ -23,6 +23,7 @@ export default function AuctionRostersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
+  const [teamImageFiles, setTeamImageFiles] = useState<Map<string, File>>(new Map());
   const captureRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
@@ -38,12 +39,49 @@ export default function AuctionRostersPage() {
       .finally(() => setLoading(false));
   }, [currentClubId, clubLoading, auctionId]);
 
+  // Pre-render each team's roster image ahead of the click so the share
+  // stays inside the browser's user-gesture window (see lib/shareImage.ts)
+  // — rendering inside the click handler can silently break
+  // navigator.share() on mobile. Per-team (not a single ref) since each
+  // team card has its own capture target.
+  useEffect(() => {
+    if (teams.length === 0) {
+      setTeamImageFiles(new Map());
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const nextFiles = new Map<string, File>();
+      let renderError: string | null = null;
+      for (const team of teams) {
+        const el = captureRefs.current[team.id];
+        if (!el) continue;
+        try {
+          const file = await renderElementToImage(el, `${team.name.replace(/\s+/g, '-')}-roster.png`);
+          nextFiles.set(team.id, file);
+        } catch (e) {
+          renderError = e instanceof Error ? `Couldn't prepare the image: ${e.message}` : "Couldn't prepare the image.";
+        }
+      }
+      if (cancelled) return;
+      setTeamImageFiles(nextFiles);
+      setShareError(renderError);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [teams, players]);
+
   async function handleShareTeam(teamId: string, teamName: string) {
-    const el = captureRefs.current[teamId];
-    if (!el) return;
     setShareError(null);
     try {
-      const result = await shareElementAsImage(el, `${teamName.replace(/\s+/g, '-')}-roster.png`);
+      const el = captureRefs.current[teamId];
+      const file = teamImageFiles.get(teamId) ?? (el ? await renderElementToImage(el, `${teamName.replace(/\s+/g, '-')}-roster.png`) : null);
+      if (!file) {
+        setShareError("Couldn't prepare the image — try again.");
+        return;
+      }
+      const result = await shareCachedImage(file);
       if (result === 'downloaded') {
         setShareError("Image downloaded — attach it to WhatsApp manually (direct share isn't supported on this browser).");
       }

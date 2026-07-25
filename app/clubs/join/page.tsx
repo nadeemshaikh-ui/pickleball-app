@@ -59,7 +59,7 @@ export default function JoinClubPage() {
         <JoinClubStep
           onJoined={clubId => {
             setCurrentClubId(clubId);
-            router.push('/setup');
+            router.push(`/clubs/${clubId}`);
           }}
           onRequestStart={club => setPendingClub(club)}
         />

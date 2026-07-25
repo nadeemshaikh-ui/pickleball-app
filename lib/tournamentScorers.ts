@@ -30,21 +30,6 @@ export async function fetchCourtScorerCodes(tournamentId: string): Promise<Court
   return data as CourtScorerCodeRow[];
 }
 
-// Anon-reachable — a scorer holding a valid per-court code needs no account
-// and no club membership. Authorization is the code match inside the RPC,
-// not is_club_member; court scoping degrades gracefully until match rows
-// actually carry a court_label (see Batch C, the court scheduling engine).
-export async function recordScoreWithCode(matchId: string, scoreA: number, scoreB: number, courtLabel: string, code: string): Promise<void> {
-  const { error } = await supabase.rpc('record_tournament_match_score_with_code', {
-    p_match_id: matchId,
-    p_score_a: scoreA,
-    p_score_b: scoreB,
-    p_court_label: courtLabel,
-    p_code: code,
-  });
-  if (error) throw error;
-}
-
 // Admin-only toggle — companion to per-court scorer codes for club nights
 // where anyone with the /watch link is already trusted.
 export async function setTournamentSelfScore(tournamentId: string, enabled: boolean): Promise<void> {

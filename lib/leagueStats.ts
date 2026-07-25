@@ -66,14 +66,6 @@ export async function fetchLifetimeLeaderboard(clubId: string): Promise<Lifetime
   }));
 }
 
-export async function fetchPlayerOfTheMonth(clubId: string): Promise<RankedPlayer | null> {
-  const { data, error } = await supabase.from('league_player_month_stats').select('*').eq('club_id', clubId);
-  if (error) throw error;
-  const ranked = rankPlayers(data);
-  const eligible = ranked.find(p => !p.provisional);
-  return eligible ?? null;
-}
-
 export async function fetchPlayerOfTheMonthBoard(clubId: string): Promise<RankedPlayer[]> {
   const { data, error } = await supabase.from('league_player_month_stats').select('*').eq('club_id', clubId);
   if (error) throw error;
@@ -107,8 +99,9 @@ export async function fetchWeeklyLeaderboard(clubId: string): Promise<RankedPlay
   const since = startOfIsoWeek(new Date()).toISOString();
   const { data, error } = await supabase
     .from('rounds')
-    .select('team_a, team_b, score_a, score_b, sessions!inner(club_id, created_at)')
+    .select('team_a, team_b, score_a, score_b, sessions!inner(club_id, created_at, format)')
     .eq('sessions.club_id', clubId)
+    .neq('sessions.format', 'team_championship')
     .gte('sessions.created_at', since)
     .not('score_a', 'is', null)
     .not('score_b', 'is', null);
@@ -313,6 +306,7 @@ export async function fetchSessionCounts90Days(clubId: string): Promise<Map<stri
     .from('sessions')
     .select('players')
     .eq('club_id', clubId)
+    .neq('format', 'team_championship')
     .gte('created_at', since);
   if (error) throw error;
 
@@ -338,7 +332,7 @@ function quarterKey(dateStr: string): string {
 // considers quarters that have fully elapsed — the in-progress quarter is
 // excluded since a share computed mid-quarter isn't a fair read.
 export async function fetchQuarterlyRegulars(clubId: string): Promise<Set<string>> {
-  const { data, error } = await supabase.from('sessions').select('created_at, players').eq('club_id', clubId);
+  const { data, error } = await supabase.from('sessions').select('created_at, players').eq('club_id', clubId).neq('format', 'team_championship');
   if (error) throw error;
 
   const currentQuarter = quarterKey(new Date().toISOString());

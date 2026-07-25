@@ -27,7 +27,7 @@ import { fetchCurrentBadgeHolders, type BadgeHolder } from '@/lib/badgeHolders';
 import { preloadPlayerPhotos } from '@/lib/playerPhotos';
 import { getCurrentUser, isCurrentUserAdmin } from '@/lib/auth';
 import { listPlayers, getOwnPlayer, setEquippedBadge } from '@/lib/players';
-import { shareElementAsImage } from '@/lib/shareImage';
+import { renderElementToImage, shareCachedImage } from '@/lib/shareImage';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import Avatar from '@/components/Avatar';
 import BadgeMedallion from '@/components/BadgeMedallion';
@@ -70,6 +70,8 @@ export default function LeagueStatsPage() {
   const [expandedName, setExpandedName] = useState<string | null>(null);
   const [imageShareError, setImageShareError] = useState<string | null>(null);
   const statsCaptureRef = useRef<HTMLDivElement>(null);
+  const [statsImageFile, setStatsImageFile] = useState<File | null>(null);
+  const [badgeImageFile, setBadgeImageFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (clubLoading) return;
@@ -193,6 +195,44 @@ export default function LeagueStatsPage() {
       .sort((a, b) => Math.abs(b.score) - Math.abs(a.score));
   }
 
+  // Pre-render ahead of the click so the share stays inside the browser's
+  // user-gesture window (see lib/shareImage.ts) — rendering inside the
+  // click handler can silently break navigator.share() on mobile.
+  useEffect(() => {
+    if (!statsCaptureRef.current || lifetime.length === 0) {
+      setStatsImageFile(null);
+      return;
+    }
+    renderElementToImage(statsCaptureRef.current, 'lifetime-stats.png')
+      .then(file => {
+        setStatsImageFile(file);
+        setImageShareError(null);
+      })
+      .catch(e => {
+        setStatsImageFile(null);
+        setImageShareError(e instanceof Error ? `Couldn't prepare the image: ${e.message}` : "Couldn't prepare the image.");
+      });
+  }, [lifetime, mvpCounts, streaks, flightByName, duos, streakRecords, streakBests, equippedByName, gameStatsByName, maxRivalryByName, ladderWinsByName, badgeHolders, ownPlayerName, sortKey, nameFilter, expandedName]);
+
+  // Pre-render ahead of the click so the share stays inside the browser's
+  // user-gesture window (see lib/shareImage.ts) — rendering inside the
+  // click handler can silently break navigator.share() on mobile.
+  useEffect(() => {
+    if (!shareCardBadge || !shareCardRef.current) {
+      setBadgeImageFile(null);
+      return;
+    }
+    renderElementToImage(shareCardRef.current, `badge-${shareCardBadge.id}.png`)
+      .then(file => {
+        setBadgeImageFile(file);
+        setImageShareError(null);
+      })
+      .catch(e => {
+        setBadgeImageFile(null);
+        setImageShareError(e instanceof Error ? `Couldn't prepare the image: ${e.message}` : "Couldn't prepare the image.");
+      });
+  }, [shareCardBadge, ownPlayerName, ownPhotoUrl, currentClubId]);
+
   if (loading || clubLoading) return <main className="page"><p>Loading…</p></main>;
   if (!currentClubId) return <main className="page"><p>Join or create a club first — see <a href="/clubs">Clubs</a>.</p></main>;
   if (loadError) return <main className="page"><p style={{ color: 'var(--danger)' }}>{loadError}</p></main>;
@@ -212,10 +252,14 @@ export default function LeagueStatsPage() {
   // 'rank' keeps the incoming Wilson-score order from fetchLifetimeLeaderboard
 
   async function handleShareStats() {
-    if (!statsCaptureRef.current) return;
     setImageShareError(null);
     try {
-      const result = await shareElementAsImage(statsCaptureRef.current, 'lifetime-stats.png');
+      const file = statsImageFile ?? (statsCaptureRef.current ? await renderElementToImage(statsCaptureRef.current, 'lifetime-stats.png') : null);
+      if (!file) {
+        setImageShareError("Couldn't prepare the image — try again.");
+        return;
+      }
+      const result = await shareCachedImage(file);
       if (result === 'downloaded') {
         setImageShareError('Image downloaded — attach it to WhatsApp manually (direct share isn\'t supported on this browser).');
       }
@@ -492,10 +536,14 @@ export default function LeagueStatsPage() {
                 className="btn-primary"
                 disabled={sharingBadge}
                 onClick={async () => {
-                  if (!shareCardRef.current) return;
                   setSharingBadge(true);
                   try {
-                    const result = await shareElementAsImage(shareCardRef.current, `badge-${shareCardBadge.id}.png`);
+                    const file = badgeImageFile ?? (shareCardRef.current ? await renderElementToImage(shareCardRef.current, `badge-${shareCardBadge.id}.png`) : null);
+                    if (!file) {
+                      setImageShareError("Couldn't prepare the image — try again.");
+                      return;
+                    }
+                    const result = await shareCachedImage(file);
                     if (result === 'shared') setShareCardBadge(null);
                   } catch {
                     // user cancelled the share sheet — leave the card open

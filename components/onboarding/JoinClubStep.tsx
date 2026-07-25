@@ -81,9 +81,24 @@ export default function JoinClubStep({ onJoined, onRequestStart }: JoinClubStepP
         style={{ width: '100%', minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
       />
       {searching && <p style={{ fontSize: 13, color: 'var(--muted)' }}>Searching…</p>}
+      {results.length > 1 && new Set(results.map(c => c.name)).size < results.length && (
+        <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>
+          More than one club shares a name below — check who created it if you're not sure which is yours.
+        </p>
+      )}
       {results.map(c => (
         <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ flex: 1, fontWeight: 700 }}>{c.name}</span>
+          {c.logo_url ? (
+            <img src={c.logo_url} alt="" width={32} height={32} style={{ borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+          ) : (
+            <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--border)', flexShrink: 0 }} />
+          )}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 700 }}>{c.name}</div>
+            <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+              Created {new Date(c.created_at).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+            </div>
+          </div>
           <button
             className="btn-secondary"
             style={{ minHeight: 32, padding: '4px 12px', fontSize: 13 }}

@@ -40,6 +40,12 @@ export interface SessionRow {
   created_at: string;
   format: Format;
   players: string[];
+  // Late Arrivals plan — subset of `players` not available for tonight's
+  // schedule at setup time. `players` stays the full roster on purpose
+  // (roster history, dues, and every existing query that reads it are
+  // unaffected); this is the only new column the plan needs. Use
+  // activePlayers() below rather than inlining the subtraction.
+  absent_players: string[];
   squads: SquadSet | null;
   round_count: number;
   status: 'setup' | 'in_progress' | 'completed' | 'voided';
@@ -50,6 +56,7 @@ export interface SessionRow {
   logo_url_1: string | null;
   logo_url_2: string | null;
   start_time: string | null;
+  event_date: string | null;
   court_cost: number | null;
   ball_cost: number;
   is_ladder: boolean;
@@ -60,6 +67,10 @@ export interface SessionRow {
   stage_config: StageConfig[] | null;
   rapid_fire_config: RapidFireConfig | null;
   match_scoring_rule: MatchScoringRule | null;
+  // Null/empty = any signed-in club member with session access can log a
+  // score (today's behavior). Non-empty = only these players (by name) plus
+  // club admins may log scores for this session.
+  designated_scorers: string[] | null;
 }
 
 export interface RoundRow {
@@ -78,11 +89,39 @@ function randomSessionId(): string {
   return Math.random().toString(36).slice(2, 8);
 }
 
+// players minus absent_players — the roster that's actually available
+// right now. Always compute it through this helper rather than inlining
+// the subtraction elsewhere.
+export function activePlayers(session: Pick<SessionRow, 'players' | 'absent_players'>): string[] {
+  const absentSet = new Set(session.absent_players);
+  return session.players.filter(p => !absentSet.has(p));
+}
+
+// Mid-session tick present/absent. Blocks a tick that would leave fewer
+// than 4 active players rather than writing a session into an unplayable
+// state — same floor generateScrambleSchedule enforces at generation time.
+export async function setAbsentPlayers(
+  sessionId: string,
+  players: string[],
+  absentPlayers: string[],
+  squads?: SquadSet
+): Promise<void> {
+  const activeCount = players.filter(p => !absentPlayers.includes(p)).length;
+  if (activeCount < 4) {
+    throw new Error('At least 4 players must be active — this change would leave fewer.');
+  }
+  const update: { absent_players: string[]; squads?: SquadSet } = { absent_players: absentPlayers };
+  if (squads) update.squads = squads;
+  const { error } = await supabase.from('sessions').update(update).eq('id', sessionId);
+  if (error) throw error;
+}
+
 export interface CreateSessionOptions {
   // Optional so a circle session can omit it — pass exactly one of
   // clubId/circleId, never both, matching the DB's XOR check constraint.
   clubId?: string;
   players: string[];
+  absentPlayers: string[];
   format: Format;
   roundCount: number;
   squads: SquadSet | null;
@@ -93,6 +132,7 @@ export interface CreateSessionOptions {
   logoUrl1: string | null;
   logoUrl2: string | null;
   startTime: string | null;
+  eventDate: string | null;
   courtCost: number | null;
   ballCost: number;
   isLadder: boolean;
@@ -123,6 +163,7 @@ export async function createSession(options: CreateSessionOptions): Promise<stri
     circle_id: options.circleId ?? null,
     format: options.format,
     players: options.players,
+    absent_players: options.absentPlayers,
     squads: options.squads,
     round_count: options.roundCount,
     court_labels: options.courtLabels,
@@ -132,6 +173,7 @@ export async function createSession(options: CreateSessionOptions): Promise<stri
     logo_url_1: options.logoUrl1,
     logo_url_2: options.logoUrl2,
     start_time: options.startTime,
+    event_date: options.eventDate,
     court_cost: options.courtCost,
     ball_cost: options.ballCost,
     is_ladder: options.isLadder,
@@ -165,23 +207,75 @@ export async function insertRounds(sessionId: string, rounds: ScrambleRound[]): 
   if (error) throw error;
 }
 
-const MAX_LOGO_BYTES = 5 * 1024 * 1024; // 5MB
-
-export async function uploadGroupLogo(file: File): Promise<string> {
-  if (!file.type.startsWith('image/')) {
-    throw new Error('Logo must be an image file.');
+// Late-arrivals plan, Item 5 (time awareness) — a host running long or
+// short can nudge the round count without touching anything else. Both
+// operations only ever act on the LAST round: they never touch a round
+// that's already on court or already played, matching the "played rounds
+// are immutable" principle the wider plan uses for regeneration.
+export async function removeLastRound(sessionId: string): Promise<void> {
+  const rounds = await getRounds(sessionId);
+  if (rounds.length === 0) throw new Error('No rounds to remove.');
+  const maxRoundNumber = Math.max(...rounds.map(r => r.round_number));
+  const lastRoundRows = rounds.filter(r => r.round_number === maxRoundNumber);
+  if (lastRoundRows.some(r => r.score_a !== null || r.score_b !== null)) {
+    throw new Error("That round has already been played — it can't be removed.");
   }
-  if (file.size > MAX_LOGO_BYTES) {
-    throw new Error('Logo must be under 5MB.');
+  // Re-assert the unscored guard as part of the delete itself, not just the
+  // read above — someone can save a score for this exact round between
+  // that read and this call (round order isn't enforced elsewhere), and
+  // without this the delete would otherwise destroy a score that was just
+  // entered.
+  const { data: deletedRows, error: deleteError } = await supabase
+    .from('rounds')
+    .delete()
+    .eq('session_id', sessionId)
+    .eq('round_number', maxRoundNumber)
+    .is('score_a', null)
+    .is('score_b', null)
+    .select('id');
+  if (deleteError) throw deleteError;
+  if (!deletedRows || deletedRows.length !== lastRoundRows.length) {
+    throw new Error("That round was just played — it can't be removed.");
   }
-  const dotIndex = file.name.lastIndexOf('.');
-  const ext = dotIndex > 0 ? file.name.slice(dotIndex + 1) : 'png';
-  const path = `${Math.random().toString(36).slice(2)}.${ext}`;
-  const { error } = await supabase.storage.from('group-logos').upload(path, file);
-  if (error) throw error;
-  const { data } = supabase.storage.from('group-logos').getPublicUrl(path);
-  return data.publicUrl;
+  const { error: updateError } = await supabase
+    .from('sessions')
+    .update({ round_count: maxRoundNumber - 1 })
+    .eq('id', sessionId);
+  if (updateError) throw updateError;
 }
+
+// Repeats the last round's exact court/team pairings as a new round —
+// deliberately not a fresh fair-pairing generation (that's Item 3's job,
+// which needs the derived ledger this doesn't have access to). This is a
+// same-night time cushion, not a rebalance: matches the plan's "the app's
+// only job is to do the arithmetic honestly," not a decision-maker.
+export async function addRoundRepeatingLast(sessionId: string): Promise<void> {
+  const rounds = await getRounds(sessionId);
+  if (rounds.length === 0) throw new Error('No rounds yet to repeat.');
+  const maxRoundNumber = Math.max(...rounds.map(r => r.round_number));
+  const lastRoundRows = rounds.filter(r => r.round_number === maxRoundNumber);
+  const newRoundNumber = maxRoundNumber + 1;
+  const { error: insertError } = await supabase.from('rounds').insert(
+    lastRoundRows.map(r => ({
+      session_id: sessionId,
+      round_number: newRoundNumber,
+      court: r.court,
+      team_a: r.team_a,
+      team_b: r.team_b,
+      sitting_out: r.sitting_out,
+      score_a: null,
+      score_b: null,
+    }))
+  );
+  if (insertError) throw insertError;
+  const { error: updateError } = await supabase
+    .from('sessions')
+    .update({ round_count: newRoundNumber })
+    .eq('id', sessionId);
+  if (updateError) throw updateError;
+}
+
+const MAX_LOGO_BYTES = 5 * 1024 * 1024; // 5MB
 
 export async function uploadPlayerPhoto(file: File): Promise<string> {
   if (!file.type.startsWith('image/')) {
@@ -243,6 +337,18 @@ export async function listSessions(clubId: string, limit = 30): Promise<SessionR
     .eq('club_id', clubId)
     .order('created_at', { ascending: false })
     .limit(limit);
+  if (error) throw error;
+  return data as SessionRow[];
+}
+
+export async function listTeamChampionshipHistory(clubId: string): Promise<SessionRow[]> {
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('club_id', clubId)
+    .eq('format', 'team_championship')
+    .eq('status', 'completed')
+    .order('created_at', { ascending: false });
   if (error) throw error;
   return data as SessionRow[];
 }
@@ -318,86 +424,25 @@ export async function updateRoundCourt(roundId: string, court: number): Promise<
 // Team Championship only — lets a captain resequence which round number a
 // pairing is slotted into (the "order" pairs are submitted/played in), not
 // just who's in it or which court. Swaps round_number with whatever round
-// currently holds targetRoundNumber within the same session, so two rounds
-// never collide on the same round_number — an unconditional single-row
-// update could otherwise leave two rows claiming the same round_number
-// (violates nothing at the DB level, since there's no unique constraint on
-// (session_id, round_number, court), but would corrupt stage-boundary
-// point attribution in computeTeamChampionshipStandings, which looks up a
-// round's stage purely by round_number).
-export async function swapRoundOrder(sessionId: string, roundId: string, targetRoundNumber: number): Promise<void> {
-  const { data: current, error: currentError } = await supabase
-    .from('rounds')
-    .select('id, round_number, court')
-    .eq('id', roundId)
-    .single();
-  if (currentError) throw currentError;
-
-  const { data: target, error: targetError } = await supabase
-    .from('rounds')
-    .select('id, round_number, court')
-    .eq('session_id', sessionId)
-    .eq('round_number', targetRoundNumber)
-    .eq('court', current.court)
-    .maybeSingle();
-  if (targetError) throw targetError;
-  if (!target) throw new Error(`No round on this court currently has round number ${targetRoundNumber}.`);
-
-  const { error: updateCurrentError } = await supabase
-    .from('rounds')
-    .update({ round_number: targetRoundNumber })
-    .eq('id', current.id);
-  if (updateCurrentError) throw updateCurrentError;
-
-  const { error: updateTargetError } = await supabase
-    .from('rounds')
-    .update({ round_number: current.round_number })
-    .eq('id', target.id);
-  if (updateTargetError) throw updateTargetError;
-}
-
 export async function markSessionCompleted(sessionId: string): Promise<void> {
   const { error } = await supabase.from('sessions').update({ status: 'completed' }).eq('id', sessionId);
   if (error) throw error;
 }
 
-// Appends one court to a running session (Team Championship's manual-
-// pairing flow needs this when a court frees up mid-tournament). Only
-// affects rounds not yet generated/typed in — existing rounds keep
-// whatever court they were created on, this just raises the ceiling
-// every court-count reader (validateManualPairings, handleGenerate)
-// already derives fresh from court_labels.length.
-export async function addCourtToSession(sessionId: string, newLabel: string): Promise<void> {
-  const session = await getSession(sessionId);
-  const { error } = await supabase
-    .from('sessions')
-    .update({ court_labels: [...session.court_labels, newLabel] })
-    .eq('id', sessionId);
+// Pass an empty array to go back to "anyone with session access can score."
+// Admin-only at the DB level (RLS alone doesn't gate this column — the
+// general "sessions club member access" policy lets any member write any
+// session field — so this goes through an admin-checked RPC instead of a
+// direct .update()).
+export async function updateDesignatedScorers(sessionId: string, names: string[]): Promise<void> {
+  const { error } = await supabase.rpc('set_designated_scorers', { p_session_id: sessionId, p_names: names });
   if (error) throw error;
 }
 
-// The inverse of addCourtToSession — removes only the LAST court, and only
-// if nothing currently uses it. Removing an arbitrary middle court would
-// mean renumbering every round on higher-numbered courts, which risks
-// silently reshuffling already-scored/paired data; last-court-only avoids
-// that entirely, matching how add always appends at the end.
-export async function removeLastCourtFromSession(sessionId: string): Promise<void> {
-  const session = await getSession(sessionId);
-  if (session.court_labels.length <= 1) throw new Error('A session needs at least 1 court.');
-  const lastCourtNumber = session.court_labels.length;
-  const { count, error: countError } = await supabase
-    .from('rounds')
-    .select('*', { count: 'exact', head: true })
-    .eq('session_id', sessionId)
-    .eq('court', lastCourtNumber);
-  if (countError) throw countError;
-  if ((count ?? 0) > 0) {
-    throw new Error(`Court ${session.court_labels[lastCourtNumber - 1]} still has rounds assigned to it — reassign or delete them first.`);
-  }
-  const { error } = await supabase
-    .from('sessions')
-    .update({ court_labels: session.court_labels.slice(0, -1) })
-    .eq('id', sessionId);
+// Rounds cascade-delete with the session (supabase/schema.sql:13 — `on
+// delete cascade`), so this only needs to remove the sessions row.
+export async function deleteSession(sessionId: string): Promise<void> {
+  const { error } = await supabase.from('sessions').delete().eq('id', sessionId);
   if (error) throw error;
 }
 

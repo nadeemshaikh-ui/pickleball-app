@@ -17,7 +17,7 @@ import { flightForRating } from '@/lib/flights';
 import { computeBadges, buildBadgeInput, type Badge } from '@/lib/badges';
 import { getCurrentUser } from '@/lib/auth';
 import { getOwnPlayer } from '@/lib/players';
-import { shareElementAsImage } from '@/lib/shareImage';
+import { renderElementToImage, shareCachedImage } from '@/lib/shareImage';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import Avatar from '@/components/Avatar';
 import BadgeMedallion from '@/components/BadgeMedallion';
@@ -44,6 +44,7 @@ export default function WrappedPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [imageShareError, setImageShareError] = useState<string | null>(null);
+  const [wrappedImageFile, setWrappedImageFile] = useState<File | null>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -113,11 +114,34 @@ export default function WrappedPage() {
     init();
   }, [currentClubId, clubLoading, period]);
 
+  // Pre-render ahead of the click so the share stays inside the browser's
+  // user-gesture window (see lib/shareImage.ts) — rendering inside the
+  // click handler can silently break navigator.share() on mobile.
+  useEffect(() => {
+    if (!cardsRef.current || !data) {
+      setWrappedImageFile(null);
+      return;
+    }
+    renderElementToImage(cardsRef.current, `pickleball-wrapped-${period}.png`)
+      .then(file => {
+        setWrappedImageFile(file);
+        setImageShareError(null);
+      })
+      .catch(e => {
+        setWrappedImageFile(null);
+        setImageShareError(e instanceof Error ? `Couldn't prepare the image: ${e.message}` : "Couldn't prepare the image.");
+      });
+  }, [data, period]);
+
   async function handleShare() {
-    if (!cardsRef.current) return;
     setImageShareError(null);
     try {
-      const result = await shareElementAsImage(cardsRef.current, `pickleball-wrapped-${period}.png`);
+      const file = wrappedImageFile ?? (cardsRef.current ? await renderElementToImage(cardsRef.current, `pickleball-wrapped-${period}.png`) : null);
+      if (!file) {
+        setImageShareError("Couldn't prepare the image — try again.");
+        return;
+      }
+      const result = await shareCachedImage(file);
       if (result === 'downloaded') {
         setImageShareError('Image downloaded — attach it to WhatsApp manually (direct share isn\'t supported on this browser).');
       }

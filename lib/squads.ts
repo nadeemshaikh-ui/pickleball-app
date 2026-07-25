@@ -19,6 +19,7 @@ import {
   buildSitOutUnits,
   pairIntoPairs,
   validateLockedPairs,
+  resolveCourtCount,
   type LockedPair,
   type CourtMatch,
   type ScrambleRound,
@@ -43,6 +44,7 @@ export type SquadSet = Squad[];
 export interface SquadRivalryScheduleN {
   squads: SquadSet;
   rounds: ScrambleRound[];
+  courtCount: number;
 }
 
 // Squad ids 'gold'/'black' are stable/historical (badges, recap images,
@@ -101,14 +103,13 @@ export function splitIntoNSquadsRespectingLocks(
 export function generateSquadRivalryScheduleN(
   players: string[],
   squadCount: number,
-  courtCount: number,
+  requestedCourtCount: number,
   roundCount: number,
   seed: string,
   lockedPairs: LockedPair[] = [],
   manualSquads?: SquadSet
 ): SquadRivalryScheduleN {
   if (squadCount < 2) throw new Error(`Squad Rivalry needs at least 2 squads, got ${squadCount}`);
-  if (courtCount < 1) throw new Error(`Squad Rivalry requires at least 1 court, got ${courtCount}`);
   if (manualSquads) {
     if (manualSquads.length !== squadCount) {
       throw new Error(`Expected ${squadCount} manual squads, got ${manualSquads.length}`);
@@ -125,6 +126,7 @@ export function generateSquadRivalryScheduleN(
   validateLockedPairs(players, lockedPairs);
   const rand = seededRandom(seed);
   const squads: SquadSet = manualSquads ?? splitIntoNSquadsRespectingLocks(players, squadCount, lockedPairs, rand);
+  const courtCount = resolveCourtCount(players.length, requestedCourtCount);
 
   // A match is inherently 2 squads (a pickleball court seats 2 teams), so
   // no more than floor(squadCount/2) DISTINCT squad-pairs can ever face off
@@ -244,5 +246,5 @@ export function generateSquadRivalryScheduleN(
     lastPlayerSitOutBySquad = nextLastPlayerSitOutBySquad;
   }
 
-  return { squads, rounds };
+  return { squads, rounds, courtCount };
 }

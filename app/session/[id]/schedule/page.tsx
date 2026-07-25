@@ -4,7 +4,7 @@ import { use, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { getSession, getRounds, renamePlayerEverywhere, type RoundRow, type SessionRow } from '@/lib/db';
 import { getClubBranding } from '@/lib/clubs';
-import { shareElementAsImage } from '@/lib/shareImage';
+import { renderElementToImage, shareCachedImage } from '@/lib/shareImage';
 import { listPlayers, type PlayerRow } from '@/lib/players';
 import { flightForRating } from '@/lib/flights';
 import { preloadPlayerPhotos } from '@/lib/playerPhotos';
@@ -35,6 +35,7 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
   const [nameError, setNameError] = useState<string | null>(null);
   const [sharingImage, setSharingImage] = useState(false);
   const [imageShareError, setImageShareError] = useState<string | null>(null);
+  const [scheduleImageFile, setScheduleImageFile] = useState<File | null>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
   const [club, setClub] = useState<{ name: string; logo_url: string | null } | null>(null);
   const [ownPlayerName, setOwnPlayerName] = useState<string | null>(null);
@@ -79,6 +80,29 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
     reload();
   }, [id]);
 
+  // Pre-render the schedule image as soon as its data exists, well before
+  // the user clicks share — see lib/shareImage.ts: rendering inside the
+  // click handler burns the browser's user-gesture window on some mobile
+  // browsers, so navigator.share() gets silently rejected even though
+  // canShare() said yes. The schedule table can change right up until the
+  // share button is clicked, so this just re-renders whenever the
+  // underlying data changes, same as the team-championship stage page.
+  useEffect(() => {
+    if (!session || !tableCaptureRef.current) {
+      setScheduleImageFile(null);
+      return;
+    }
+    renderElementToImage(tableCaptureRef.current, `schedule-${id}.png`)
+      .then(file => {
+        setScheduleImageFile(file);
+        setImageShareError(null);
+      })
+      .catch(e => {
+        setScheduleImageFile(null);
+        setImageShareError(e instanceof Error ? `Couldn't prepare the image: ${e.message}` : "Couldn't prepare the image.");
+      });
+  }, [session, rounds, club, id]);
+
   const courtLabels = session?.court_labels ?? ['1', '2'];
 
   async function handleSaveNames() {
@@ -118,11 +142,15 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
   const sortedRoundNumbers = [...byRound.keys()].sort((a, b) => a - b);
 
   async function handleShareImage() {
-    if (!tableCaptureRef.current) return;
     setImageShareError(null);
     setSharingImage(true);
     try {
-      const result = await shareElementAsImage(tableCaptureRef.current, `schedule-${id}.png`);
+      const file = scheduleImageFile ?? (tableCaptureRef.current ? await renderElementToImage(tableCaptureRef.current, `schedule-${id}.png`) : null);
+      if (!file) {
+        setImageShareError("Couldn't prepare the image — try again.");
+        return;
+      }
+      const result = await shareCachedImage(file);
       if (result === 'downloaded') {
         setImageShareError('Image downloaded — attach it to WhatsApp manually (direct share isn\'t supported on this browser).');
       }
@@ -150,9 +178,13 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
         {sharingImage && <p style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'right', marginTop: -8 }}>Preparing image…</p>}
         {imageShareError && <p style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 14 }}>{imageShareError}</p>}
 
+        <Link href={`/session/${id}/play`} className="btn-primary" style={{ width: '100%', marginBottom: 16 }}>
+          Start Scoring →
+        </Link>
+
         {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
         <h1>Schedule</h1>
-        {session && <SessionDate createdAt={session.created_at} venue={session.venue} />}
+        {session && <SessionDate createdAt={session.created_at} eventDate={session.event_date} venue={session.venue} />}
         {session?.round_duration_minutes && (
           <p style={{ color: 'var(--muted)', marginTop: 4 }}>
             {session.round_count} rounds × ~{session.round_duration_minutes} min — about{' '}
@@ -401,7 +433,7 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
           </div>
         )}
       </main>
-      <SessionNav sessionId={id} format={session?.format} />
+      <SessionNav sessionId={id} format={session?.format} clubId={session?.club_id} />
     </>
   );
 }

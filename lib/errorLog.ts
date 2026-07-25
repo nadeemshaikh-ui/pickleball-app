@@ -47,3 +47,30 @@ export async function fetchRecentErrorsAllClubs(): Promise<AppErrorRow[]> {
   if (error) throw error;
   return data as AppErrorRow[];
 }
+
+// The e2e suite runs against this same Supabase project (see
+// e2e/setup/create-test-session.mjs) and leaves real rows behind — session
+// ids literally prefixed "e2e-" and club ids using the 0000...000eN
+// placeholder scheme. Flagging these lets the super-admin console separate
+// real user-facing errors from test-run noise instead of drowning one in
+// the other.
+export function isTestArtifactError(row: Pick<AppErrorRow, 'path'>): boolean {
+  return /e2e-|0{8}-0{4}-0{4}-0{4}-0{11}/.test(row.path ?? '');
+}
+
+// Plain-English cause for the handful of error strings that show up
+// repeatedly, so a non-engineer glancing at this list knows whether it's
+// actionable — not a general-purpose diagnosis engine, just the known
+// recurring ones.
+export function explainError(message: string): string | null {
+  if (message.includes('Cannot coerce the result to a single JSON object')) {
+    return 'A lookup expected exactly one row (e.g. one session or club) and found zero or more than one — usually means the record was deleted or never existed.';
+  }
+  if (message.includes('Auth session missing')) {
+    return "The visitor wasn't signed in when this page tried to load their session.";
+  }
+  if (message.toLowerCase().includes('failed to fetch') || message.toLowerCase().includes('networkerror')) {
+    return "The visitor's connection dropped mid-request — usually transient, not a code bug.";
+  }
+  return null;
+}

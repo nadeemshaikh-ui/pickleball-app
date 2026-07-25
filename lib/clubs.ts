@@ -21,6 +21,12 @@ export async function getClubBranding(clubId: string): Promise<{ name: string; l
   return data;
 }
 
+export async function getClubById(clubId: string): Promise<ClubRow | null> {
+  const { data, error } = await supabase.from('clubs').select('*').eq('id', clubId).maybeSingle();
+  if (error) throw error;
+  return data as ClubRow | null;
+}
+
 // Admin-only at the DB level (RLS + a raise inside the function itself).
 // Deletes every session/round/dues/confirmation/challenge/streak-record/
 // badge-holder-history row for this club and resets each player's elo/games
@@ -29,6 +35,15 @@ export async function getClubBranding(clubId: string): Promise<{ name: string; l
 // clubs' data.
 export async function resetClubData(clubId: string): Promise<void> {
   const { error } = await supabase.rpc('reset_club_data', { target_club_id: clubId });
+  if (error) throw error;
+}
+
+// Super-admin-only at the DB level. Permanently removes the club itself
+// (not just its session/stat data — see resetClubData for that) along with
+// its roster and everything that references it. Used from the super admin
+// console to clear out test/dummy clubs.
+export async function deleteClub(clubId: string): Promise<void> {
+  const { error } = await supabase.rpc('delete_club', { target_club_id: clubId });
   if (error) throw error;
 }
 
@@ -283,6 +298,24 @@ export async function listPendingJoinRequests(clubId: string): Promise<JoinReque
   return data as JoinRequestRow[];
 }
 
+export interface SuperAdminJoinRequestRow extends JoinRequestRow {
+  club_name: string;
+}
+
+// Super-admin-only in practice (RLS — see "join_requests super admin read"),
+// no clubId filter. Mirrors listPendingClubCreationRequests so the console
+// can show every club's pending join requests in one place instead of an
+// admin having to know to check each club's own Settings page.
+export async function listAllPendingJoinRequestsForSuperAdmin(): Promise<SuperAdminJoinRequestRow[]> {
+  const { data, error } = await supabase
+    .from('club_join_requests')
+    .select('*, clubs(name)')
+    .eq('status', 'pending')
+    .order('requested_at', { ascending: true });
+  if (error) throw error;
+  return (data as (JoinRequestRow & { clubs: { name: string } | null })[]).map(r => ({ ...r, club_name: r.clubs?.name ?? 'Unknown club' }));
+}
+
 // Admin-only at the DB level (RLS + a raise inside the function itself).
 // approve_join_request materializes the staged profile into a real players
 // row and adds the membership row in one transaction; reject just marks the
@@ -361,6 +394,19 @@ export async function setDangerZoneAccess(clubId: string, userId: string, access
   const { error } = await supabase
     .from('club_members')
     .update({ danger_zone_access: access })
+    .eq('club_id', clubId)
+    .eq('user_id', userId);
+  if (error) throw error;
+}
+
+// Promote/demote between 'admin' and 'member'. Callers are responsible for
+// not demoting a club's last remaining admin (checked client-side, same as
+// every other member-management action here) — the DB doesn't enforce a
+// minimum-admin-count invariant.
+export async function setMemberRole(clubId: string, userId: string, role: 'admin' | 'member'): Promise<void> {
+  const { error } = await supabase
+    .from('club_members')
+    .update({ role })
     .eq('club_id', clubId)
     .eq('user_id', userId);
   if (error) throw error;

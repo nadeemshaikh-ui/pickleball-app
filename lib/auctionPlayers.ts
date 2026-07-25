@@ -5,8 +5,8 @@ import type { AuctionCategoryRow } from './auctionCategories';
 // Public pool-browsing shape — deliberately excludes whatsapp_number/
 // instagram_handle. Reads from the auction_players_public view, which has
 // its own RLS-equivalent column exclusion (see the schema migration);
-// contact info is only ever fetched via fetchAuctionPlayerContact, gated to
-// club admins and the player themselves.
+// contact info lives in the separately-gated auction_player_contacts table
+// (club admins and the player themselves only, via its own RLS).
 export interface AuctionPlayerPublicRow {
   id: string;
   auction_id: string;
@@ -35,33 +35,6 @@ export async function fetchAuctionPlayersPublic(auctionId: string): Promise<Auct
     .order('created_at', { ascending: true });
   if (error) throw error;
   return data as AuctionPlayerPublicRow[];
-}
-
-// Only returns a row for players the caller is allowed to see contact info
-// for (club admin, or the player themselves) — auction_player_contacts' own
-// restrictive RLS enforces this (auction_players itself is broadly
-// readable by every club member so Realtime works, but contact info lives
-// in this separate table specifically so it stays gated). A non-admin,
-// non-self caller simply gets `null` back, not an error, since the row is
-// invisible to them rather than access-denied.
-export async function fetchAuctionPlayerContact(auctionId: string, playerName: string): Promise<AuctionPlayerContact | null> {
-  const { data: playerRow, error: playerError } = await supabase
-    .from('auction_players_public')
-    .select('id')
-    .eq('auction_id', auctionId)
-    .eq('player_name', playerName)
-    .maybeSingle();
-  if (playerError) throw playerError;
-  if (!playerRow) return null;
-
-  const { data, error } = await supabase
-    .from('auction_player_contacts')
-    .select('whatsapp_number, instagram_handle')
-    .eq('auction_player_id', playerRow.id)
-    .maybeSingle();
-  if (error) throw error;
-  if (!data) return null;
-  return { whatsappNumber: data.whatsapp_number, instagramHandle: data.instagram_handle };
 }
 
 // Suggests a default category by matching the player's Flight (elo-derived)

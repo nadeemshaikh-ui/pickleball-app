@@ -375,6 +375,11 @@ function TournamentDetailPageInner() {
   if (loading || clubLoading) return <main className="page"><p>Loading…</p></main>;
   if (!currentClubId || !tournament) return <main className="page"><p>Tournament not found.</p></main>;
 
+  // Completed/archived tournaments are history, not a live event — editing
+  // controls (registration, scorer codes, team/stage management) only make
+  // sense while a tournament is still being run.
+  const isLive = tournament.status === 'draft' || tournament.status === 'active';
+
   return (
     <main className="page">
       <div className="page-header-row">
@@ -388,6 +393,8 @@ function TournamentDetailPageInner() {
 
       {error && <p style={{ color: 'var(--danger)', marginBottom: 12, fontWeight: 600 }}>{error}</p>}
 
+      {isLive && (
+      <>
       <h2 style={{ display: 'flex', alignItems: 'center', gap: 6 }}><UserPlus size={18} /> Registrations ({registrations.filter(r => r.status !== 'withdrawn').length})</h2>
       <div className="card" style={{ marginBottom: 16 }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 10, cursor: 'pointer' }}>
@@ -448,11 +455,13 @@ function TournamentDetailPageInner() {
           </button>
         </div>
       </div>
+      </>
+      )}
 
       <h2>{isMystery ? 'Step 1: Teams' : 'Teams'}</h2>
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
         {teams.length === 0 && <p style={{ color: 'var(--muted)', fontSize: 14 }}>No teams yet.</p>}
-        {teams.length > 0 && (
+        {isLive && teams.length > 0 && (
           <p style={{ fontSize: 11, color: 'var(--muted)', margin: 0 }}>
             Seed is optional — it only affects tiebreakers and bracket placement (lower number = seeded higher). Leave blank to skip it.
           </p>
@@ -461,7 +470,7 @@ function TournamentDetailPageInner() {
           <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontWeight: 700, flex: 1 }}>{t.name}</span>
             <span style={{ fontSize: 12, color: 'var(--muted)' }}>{t.player_names.join(' & ')}</span>
-            {(
+            {isLive && (
               <>
                 <input
                   type="number"
@@ -489,7 +498,7 @@ function TournamentDetailPageInner() {
         ))}
       </div>
 
-      {(() => {
+      {isLive && (() => {
         const alreadyOnATeam = new Set(teams.flatMap(t => t.player_names));
         const candidates = players.filter(p => !alreadyOnATeam.has(p.name));
         if (candidates.length === 0) return null;
@@ -559,7 +568,7 @@ function TournamentDetailPageInner() {
               <span style={{ fontWeight: 700 }}>{s.name}</span>
               <span style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'capitalize' }}>{STAGE_TYPE_LABELS[s.stage_type]} · {s.status}</span>
             </Link>
-            {i === stages.length - 1 && s.status !== 'completed' && (
+            {isLive && i === stages.length - 1 && s.status !== 'completed' && (
               <button
                 className="icon-btn"
                 aria-label={`Regenerate ${s.name}`}
@@ -574,7 +583,7 @@ function TournamentDetailPageInner() {
         ))}
       </div>
 
-      {teams.length >= 2 && (
+      {isLive && teams.length >= 2 && (
         <StageWizard
           teams={teams}
           stages={stages}

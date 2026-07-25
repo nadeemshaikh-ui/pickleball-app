@@ -4,7 +4,7 @@ import { use, useEffect, useRef, useState } from 'react';
 import { getSession, getRounds, type SessionRow } from '@/lib/db';
 import { computeLeaderboard, computeSquadTotalsN, type PlayerStats } from '@/lib/analytics';
 import SquadStandingsCard from '@/components/SquadStandingsCard';
-import { shareElementAsImage } from '@/lib/shareImage';
+import { renderElementToImage, shareCachedImage } from '@/lib/shareImage';
 import SessionNav from '@/components/SessionNav';
 import Avatar from '@/components/Avatar';
 import NewSessionLink from '@/components/NewSessionLink';
@@ -25,6 +25,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
   const [gamesCompleted, setGamesCompleted] = useState(0);
   const [gamesTotal, setGamesTotal] = useState(0);
   const [imageShareError, setImageShareError] = useState<string | null>(null);
+  const [leaderboardImageFile, setLeaderboardImageFile] = useState<File | null>(null);
   const leaderboardCaptureRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,11 +55,33 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
     };
   }, [id]);
 
+  // Pre-render the leaderboard image as soon as its data exists, well before
+  // the user clicks share — see lib/shareImage.ts: rendering inside the
+  // click handler burns the browser's user-gesture window on some mobile
+  // browsers, so navigator.share() gets silently rejected even though
+  // canShare() said yes.
+  useEffect(() => {
+    if (!session || !leaderboardCaptureRef.current) {
+      setLeaderboardImageFile(null);
+      return;
+    }
+    renderElementToImage(leaderboardCaptureRef.current, `leaderboard-${id}.png`)
+      .then(file => {
+        setLeaderboardImageFile(file);
+        setImageShareError(null);
+      })
+      .catch(e => {
+        setLeaderboardImageFile(null);
+        setImageShareError(e instanceof Error ? `Couldn't prepare the image: ${e.message}` : "Couldn't prepare the image.");
+      });
+  }, [session, leaderboard, squadTotals, gamesCompleted, gamesTotal, id]);
+
   async function handleShareLeaderboard() {
-    if (!leaderboardCaptureRef.current) return;
     setImageShareError(null);
     try {
-      const result = await shareElementAsImage(leaderboardCaptureRef.current, `leaderboard-${id}.png`);
+      const file = leaderboardImageFile ?? (leaderboardCaptureRef.current ? await renderElementToImage(leaderboardCaptureRef.current, `leaderboard-${id}.png`) : null);
+      if (!file) return;
+      const result = await shareCachedImage(file);
       if (result === 'downloaded') {
         setImageShareError('Image downloaded — attach it to WhatsApp manually (direct share isn\'t supported on this browser).');
       }
@@ -86,7 +109,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
           <ShareBrandedHeader clubId={session?.club_id} />
         {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
         <h1>Leaderboard</h1>
-        {session && <SessionDate createdAt={session.created_at} venue={session.venue} />}
+        {session && <SessionDate createdAt={session.created_at} eventDate={session.event_date} venue={session.venue} />}
         <p style={{ color: 'var(--muted)', marginTop: 4 }}>
           {gamesCompleted} of {gamesTotal} games played — updates live
         </p>
@@ -146,7 +169,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
         </div>
         </div>
       </main>
-      <SessionNav sessionId={id} />
+      <SessionNav sessionId={id} clubId={session?.club_id} />
     </>
   );
 }

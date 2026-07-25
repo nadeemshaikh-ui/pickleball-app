@@ -5,7 +5,7 @@ export interface BadgeEvent {
   earnedAt: string;
 }
 
-export async function fetchBadgeEvents(clubId: string, playerName: string): Promise<BadgeEvent[]> {
+async function fetchBadgeEvents(clubId: string, playerName: string): Promise<BadgeEvent[]> {
   const { data, error } = await supabase
     .from('league_badge_events')
     .select('badge_id, earned_at')

@@ -7,7 +7,7 @@ import { fetchLadderStandings, enrollInLadder, unenrollFromLadder, resetLadder, 
 import { listPlayers, type PlayerRow } from '@/lib/players';
 import { getCurrentUser, isCurrentUserAdmin } from '@/lib/auth';
 import { preloadPlayerPhotos } from '@/lib/playerPhotos';
-import { shareElementAsImage } from '@/lib/shareImage';
+import { renderElementToImage, shareCachedImage } from '@/lib/shareImage';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import Avatar from '@/components/Avatar';
 import ConfirmModal from '@/components/ConfirmModal';
@@ -25,6 +25,7 @@ export default function LadderPage() {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [imageShareError, setImageShareError] = useState<string | null>(null);
+  const [standingsImageFile, setStandingsImageFile] = useState<File | null>(null);
   const standingsCaptureRef = useRef<HTMLDivElement>(null);
 
   async function load(clubId: string) {
@@ -98,11 +99,34 @@ export default function LadderPage() {
     }
   }
 
+  // Pre-render ahead of the click so the share stays inside the browser's
+  // user-gesture window (see lib/shareImage.ts) — rendering inside the
+  // click handler can silently break navigator.share() on mobile.
+  useEffect(() => {
+    if (!standingsCaptureRef.current || standings.length === 0) {
+      setStandingsImageFile(null);
+      return;
+    }
+    renderElementToImage(standingsCaptureRef.current, 'ladder-standings.png')
+      .then(file => {
+        setStandingsImageFile(file);
+        setImageShareError(null);
+      })
+      .catch(e => {
+        setStandingsImageFile(null);
+        setImageShareError(e instanceof Error ? `Couldn't prepare the image: ${e.message}` : "Couldn't prepare the image.");
+      });
+  }, [standings]);
+
   async function handleShareStandings() {
-    if (!standingsCaptureRef.current) return;
     setImageShareError(null);
     try {
-      const result = await shareElementAsImage(standingsCaptureRef.current, 'ladder-standings.png');
+      const file = standingsImageFile ?? (standingsCaptureRef.current ? await renderElementToImage(standingsCaptureRef.current, 'ladder-standings.png') : null);
+      if (!file) {
+        setImageShareError("Couldn't prepare the image — try again.");
+        return;
+      }
+      const result = await shareCachedImage(file);
       if (result === 'downloaded') {
         setImageShareError('Image downloaded — attach it to WhatsApp manually (direct share isn\'t supported on this browser).');
       }

@@ -8,9 +8,9 @@ import { test, expect } from '@playwright/test';
 
 const NO_DZ_CLUB_ID = '00000000-0000-0000-0000-0000000000e6';
 
-test('an admin without Danger Zone access cannot see the reset button', async ({ page }) => {
+test('an admin without Reset Access cannot see the reset button', async ({ page }) => {
   await page.goto(`/clubs/${NO_DZ_CLUB_ID}/settings`);
   await expect(page.getByRole('heading', { name: /Settings/ })).toBeVisible();
-  await expect(page.getByText(/don't have Danger Zone access/i)).toBeVisible();
+  await expect(page.getByText(/don't have Reset Access/i)).toBeVisible();
   await expect(page.getByRole('button', { name: /Reset All Club Data/i })).not.toBeVisible();
 });

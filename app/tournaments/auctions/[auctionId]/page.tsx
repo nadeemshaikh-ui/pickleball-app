@@ -26,7 +26,7 @@ import { formatRupees } from '@/lib/auctionMoney';
 import { listPlayers, type PlayerRow } from '@/lib/players';
 import { isCurrentUserAdmin } from '@/lib/auth';
 import { useCurrentClub } from '@/lib/useCurrentClub';
-import { shareElementAsImage } from '@/lib/shareImage';
+import { renderElementToImage, shareCachedImage } from '@/lib/shareImage';
 import ShareBrandedHeader from '@/components/ShareBrandedHeader';
 
 export default function AuctionDetailPage() {
@@ -42,6 +42,7 @@ export default function AuctionDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [imageShareError, setImageShareError] = useState<string | null>(null);
+  const [poolImageFile, setPoolImageFile] = useState<File | null>(null);
   const poolCaptureRef = useRef<HTMLDivElement>(null);
 
   const [newCatName, setNewCatName] = useState('');
@@ -241,11 +242,34 @@ export default function AuctionDetailPage() {
     }
   }
 
+  // Pre-render ahead of the click so the share stays inside the browser's
+  // user-gesture window (see lib/shareImage.ts) — rendering inside the
+  // click handler can silently break navigator.share() on mobile.
+  useEffect(() => {
+    if (!poolCaptureRef.current || poolPlayers.length === 0) {
+      setPoolImageFile(null);
+      return;
+    }
+    renderElementToImage(poolCaptureRef.current, 'auction-pool.png')
+      .then(file => {
+        setPoolImageFile(file);
+        setImageShareError(null);
+      })
+      .catch(e => {
+        setPoolImageFile(null);
+        setImageShareError(e instanceof Error ? `Couldn't prepare the image: ${e.message}` : "Couldn't prepare the image.");
+      });
+  }, [poolPlayers, categories]);
+
   async function handleSharePool() {
-    if (!poolCaptureRef.current) return;
     setImageShareError(null);
     try {
-      const result = await shareElementAsImage(poolCaptureRef.current, 'auction-pool.png');
+      const file = poolImageFile ?? (poolCaptureRef.current ? await renderElementToImage(poolCaptureRef.current, 'auction-pool.png') : null);
+      if (!file) {
+        setImageShareError("Couldn't prepare the image — try again.");
+        return;
+      }
+      const result = await shareCachedImage(file);
       if (result === 'downloaded') {
         setImageShareError("Image downloaded — attach it to WhatsApp manually (direct share isn't supported on this browser).");
       }

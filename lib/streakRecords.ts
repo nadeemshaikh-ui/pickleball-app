@@ -32,8 +32,9 @@ export async function fetchStreakRecords(clubId: string): Promise<StreakRecord[]
 export async function computeCurrentStreaks(clubId: string): Promise<Map<string, { type: 'win' | 'loss'; length: number }>> {
   const { data, error } = await supabase
     .from('rounds')
-    .select('round_number, team_a, team_b, score_a, score_b, sessions!inner(created_at, club_id)')
+    .select('round_number, team_a, team_b, score_a, score_b, sessions!inner(created_at, club_id, format)')
     .eq('sessions.club_id', clubId)
+    .neq('sessions.format', 'team_championship')
     .not('score_a', 'is', null)
     .not('score_b', 'is', null);
   if (error) throw error;

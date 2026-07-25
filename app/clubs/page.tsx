@@ -11,7 +11,7 @@ export default function ClubsPage() {
 
   function handleSwitch(clubId: string) {
     setCurrentClubId(clubId);
-    router.push('/setup');
+    router.push(`/clubs/${clubId}`);
   }
 
   if (loading) return <main className="page"><p>Loading…</p></main>;
@@ -30,25 +30,24 @@ export default function ClubsPage() {
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {clubs.map(m => (
           <div key={m.club_id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {m.club.logo_url ? (
-              <img src={m.club.logo_url} alt="" width={36} height={36} style={{ borderRadius: '50%', objectFit: 'cover' }} />
-            ) : (
-              <span style={{ width: 36, height: 36, borderRadius: '50%', background: '#eee', display: 'inline-block' }} />
-            )}
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700 }}>
-                {m.club.name} {m.club_id === currentClubId && <span style={{ fontSize: 12, color: 'var(--dark)' }}>✓ Active</span>}
+            <Link href={`/clubs/${m.club_id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, color: 'inherit', textDecoration: 'none' }}>
+              {m.club.logo_url ? (
+                <img src={m.club.logo_url} alt="" width={36} height={36} style={{ borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+              ) : (
+                <span style={{ width: 36, height: 36, borderRadius: '50%', background: '#eee', display: 'inline-block', flexShrink: 0 }} />
+              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700 }}>
+                  {m.club.name} {m.club_id === currentClubId && <span style={{ fontSize: 12, color: 'var(--dark)' }}>✓ Active</span>}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--muted)' }}>{m.role === 'admin' ? 'Admin' : 'Member'}</div>
               </div>
-              <div style={{ fontSize: 12, color: 'var(--muted)' }}>{m.role === 'admin' ? 'Admin' : 'Member'}</div>
-            </div>
+            </Link>
             {m.club_id !== currentClubId && (
               <button className="btn-secondary" style={{ minHeight: 36, padding: '6px 12px', fontSize: 13 }} onClick={() => handleSwitch(m.club_id)}>
                 Switch
               </button>
             )}
-            <Link href={`/clubs/${m.club_id}`} className="text-link-btn">
-              View
-            </Link>
             {m.role === 'admin' && (
               <Link href={`/clubs/${m.club_id}/settings`} className="text-link-btn">
                 Settings

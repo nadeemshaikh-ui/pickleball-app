@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Trophy } from 'lucide-react';
+import { Trophy, ShieldCheck } from 'lucide-react';
 import { getCurrentUser, signOut } from '@/lib/auth';
+import { isSuperAdmin } from '@/lib/clubs';
 import { getOwnPlayer, upsertOwnPlayer, listPlayers, type PlayerRow } from '@/lib/players';
 import { uploadPlayerPhoto } from '@/lib/db';
 import { useCurrentClub } from '@/lib/useCurrentClub';
@@ -29,9 +30,11 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [directory, setDirectory] = useState<PlayerRow[]>([]);
+  const [superAdmin, setSuperAdmin] = useState(false);
 
   useEffect(() => {
     setNamePref(getDisplayNamePref());
+    isSuperAdmin().then(setSuperAdmin).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -260,6 +263,15 @@ export default function RegisterPage() {
         {isCurrentClubAdmin && currentClubId && (
           <Link href={`/clubs/${currentClubId}/settings`} className="btn-secondary" style={{ textAlign: 'center' }}>
             Club Settings
+          </Link>
+        )}
+        {superAdmin && (
+          <Link
+            href="/admin"
+            className="btn-secondary"
+            style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+          >
+            <ShieldCheck size={15} /> Super Admin
           </Link>
         )}
         <button className="btn-secondary" onClick={handleSignOut} style={{ color: 'var(--danger)' }}>

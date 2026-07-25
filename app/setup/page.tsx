@@ -9,6 +9,7 @@ import {
   generateCourtBlocksSchedule,
   generateFixedPartnersSchedule,
   buildRivalryHeatMap,
+  resolveCourtCount,
   type CourtBlockAssignment,
   type LockedPair,
   type Squads,
@@ -17,7 +18,8 @@ import { generateInitialKingOfCourtRound } from '@/lib/kingOfCourt';
 import { generateSquadRivalryScheduleN, squadIdFor, type SquadSet } from '@/lib/squads';
 import type { StageConfig } from '@/lib/teamChampionship';
 import { MATCH_SCORING_RULE_INFO, type MatchScoringRule } from '@/lib/matchScoring';
-import { createSession, insertRounds, uploadPlayerPhoto, uploadSquadLogo, getMostRecentSession, findInProgressTeamChampionshipSession, type SessionRow } from '@/lib/db';
+import { computeRoundTimeRange } from '@/lib/roundTiming';
+import { createSession, insertRounds, uploadPlayerPhoto, uploadSquadLogo, getMostRecentSession, findInProgressTeamChampionshipSession, getRounds, deleteSession, type SessionRow, type RoundRow } from '@/lib/db';
 import { saveRoster, loadRoster } from '@/lib/savedRoster';
 import { getPlayerPhoto, savePlayerPhoto, preloadPlayerPhotos } from '@/lib/playerPhotos';
 import { listPlayers, getSkillRatingsForNames, getOwnPlayer, type PlayerRow } from '@/lib/players';
@@ -109,14 +111,18 @@ function SetupPageInner() {
   // point (the normal format picker isn't scoped to one format, so it
   // doesn't make sense to prompt there).
   const [inProgressSession, setInProgressSession] = useState<SessionRow | null | 'checking'>(presetFormat ? 'checking' : null);
+  const [inProgressRounds, setInProgressRounds] = useState<RoundRow[]>([]);
   const [resumeChoiceMade, setResumeChoiceMade] = useState(false);
+  const [deletingDraft, setDeletingDraft] = useState(false);
 
   useEffect(() => {
     if (!presetFormat || !currentClubId) return;
     let cancelled = false;
     findInProgressTeamChampionshipSession(currentClubId)
-      .then(s => {
-        if (!cancelled) setInProgressSession(s);
+      .then(async s => {
+        if (cancelled) return;
+        setInProgressSession(s);
+        if (s) setInProgressRounds(await getRounds(s.id));
       })
       .catch(() => {
         if (!cancelled) setInProgressSession(null);
@@ -178,6 +184,12 @@ function SetupPageInner() {
   const [namesEntered, setNamesEntered] = useState(draft.namesEntered ?? false);
   const [names, setNames] = useState<string[]>(draft.names ?? Array(10).fill(''));
   const [rosterNotice, setRosterNotice] = useState<string | null>(null);
+  // Late Arrivals plan, Item 2 (setup-time half only — see plan doc for why
+  // the mid-session toggle waits for Item 3). Tracked by name, not index,
+  // matching how the rest of the app identifies players — untick someone
+  // here and they're excluded from tonight's generated schedule, but still
+  // saved as part of the full roster.
+  const [absentNames, setAbsentNames] = useState<Set<string>>(new Set());
   const [photoPreviews, setPhotoPreviews] = useState<Record<number, string>>({});
   const [photoVersion, setPhotoVersion] = useState(0);
 
@@ -207,6 +219,7 @@ function SetupPageInner() {
   const [courtLabels, setCourtLabels] = useState<string[]>(['1', '2']);
   const [roundDurationMinutes, setRoundDurationMinutes] = useState('');
   const [startTime, setStartTime] = useState('');
+  const [eventDate, setEventDate] = useState('');
   const [venue, setVenue] = useState(draft.venue ?? '');
 
   const [roundsPerBlock, setRoundsPerBlock] = useState(6);
@@ -646,8 +659,23 @@ function SetupPageInner() {
       setError('Player names must be unique.');
       return;
     }
-    if (format === 'king_of_court' && trimmed.length !== courtCount * 4) {
-      setError(`King of the Court needs exactly ${courtCount * 4} players for ${courtCount} court(s) — no bench in this format yet.`);
+    // Late Arrivals plan, Item 2 — the roster (`trimmed`) stays full for
+    // session.players/roster history/dues; the schedule itself is only
+    // ever generated from who's actually here tonight.
+    const activeNames = trimmed.filter(n => !absentNames.has(n));
+    if (activeNames.length < 4) {
+      setError(`At least 4 players must be present tonight — only ${activeNames.length} marked here (of ${trimmed.length} on the roster).`);
+      return;
+    }
+    // Locked pairs referencing an absent player would otherwise crash
+    // validateLockedPairs (it rejects a lock pointing at someone outside
+    // the pool passed in) — drop those locks for tonight's generation
+    // rather than fail the whole session. Manual squad/team assignment
+    // isn't reconciled with absences in this pass; if you're using either
+    // of those alongside marking players absent, double-check the result.
+    const activeLockedPairs = lockedPairs.filter(([a, b]) => activeNames.includes(a) && activeNames.includes(b));
+    if (format === 'king_of_court' && activeNames.length !== courtCount * 4) {
+      setError(`King of the Court needs exactly ${courtCount * 4} players present for ${courtCount} court(s) — no bench in this format yet.`);
       return;
     }
     const trimmedCourtLabels = courtLabels.map(l => l.trim());
@@ -785,12 +813,17 @@ function SetupPageInner() {
         clubId: currentClubId ?? undefined,
         circleId: circleId ?? undefined,
         players: trimmed,
+        // Filtered against trimmed (not a raw spread of absentNames) so a
+        // stale entry can't survive a player being renamed or removed
+        // after being marked absent.
+        absentPlayers: trimmed.filter(n => absentNames.has(n)),
         courtLabels: trimmedCourtLabels,
         roundDurationMinutes: parsedDuration,
         groupName: format === 'team_championship' && tcTournamentName.trim() ? tcTournamentName.trim() : currentClub?.name ?? null,
         logoUrl1,
         logoUrl2,
         startTime: startTime.trim() || null,
+        eventDate: eventDate || null,
         courtCost: parsedCourtCost,
         ballCost: parsedBallCost,
         isLadder,
@@ -810,9 +843,10 @@ function SetupPageInner() {
           currentClubId && rivalryAware
             ? buildRivalryHeatMap(await fetchRivalriesAmongRoster(currentClubId, trimmed))
             : undefined;
-        const rounds = generateScrambleSchedule(trimmed, courtCount, roundCount, seed, lockedPairs, skillRatings, rivalryHeatMap);
+        const rounds = generateScrambleSchedule(activeNames, courtCount, roundCount, seed, activeLockedPairs, skillRatings, rivalryHeatMap);
         sessionId = await createSession({
           ...baseOptions,
+          courtLabels: trimmedCourtLabels.slice(0, rounds.courtCount),
           format: 'scramble',
           roundCount,
           squads: null,
@@ -820,13 +854,14 @@ function SetupPageInner() {
         });
         await insertRounds(sessionId, rounds);
       } else if (format === 'squad_rivalry' && squadCount === 2) {
-        const { squads, rounds } = generateSquadRivalrySchedule(trimmed, courtCount, roundCount, seed, lockedPairs, manualSquads);
+        const { squads, rounds, courtCount: effectiveCourtCount } = generateSquadRivalrySchedule(activeNames, courtCount, roundCount, seed, activeLockedPairs, manualSquads);
         const squadSet: SquadSet = [
           { id: 'gold', label: squadRivalryLabel1 ?? undefined, logoUrl: squadGoldLogoUrl, players: squads.gold },
           { id: 'black', label: squadRivalryLabel2 ?? undefined, logoUrl: squadBlackLogoUrl, players: squads.black },
         ];
         sessionId = await createSession({
           ...baseOptions,
+          courtLabels: trimmedCourtLabels.slice(0, effectiveCourtCount),
           format: 'squad_rivalry',
           roundCount,
           squads: squadSet,
@@ -834,9 +869,10 @@ function SetupPageInner() {
         });
         await insertRounds(sessionId, rounds);
       } else if (format === 'squad_rivalry') {
-        const { squads: squadSet, rounds } = generateSquadRivalryScheduleN(trimmed, squadCount, courtCount, roundCount, seed, lockedPairs, manualSquadsN);
+        const { squads: squadSet, rounds, courtCount: effectiveCourtCount } = generateSquadRivalryScheduleN(activeNames, squadCount, courtCount, roundCount, seed, activeLockedPairs, manualSquadsN);
         sessionId = await createSession({
           ...baseOptions,
+          courtLabels: trimmedCourtLabels.slice(0, effectiveCourtCount),
           format: 'squad_rivalry',
           roundCount,
           squads: squadSet,
@@ -844,9 +880,10 @@ function SetupPageInner() {
         });
         await insertRounds(sessionId, rounds);
       } else if (format === 'fixed_partners') {
-        const { rounds } = generateFixedPartnersSchedule(trimmed, courtCount, roundCount, seed, manualTeams);
+        const { rounds, courtCount: effectiveCourtCount } = generateFixedPartnersSchedule(activeNames, courtCount, roundCount, seed, manualTeams);
         sessionId = await createSession({
           ...baseOptions,
+          courtLabels: trimmedCourtLabels.slice(0, effectiveCourtCount),
           format: 'fixed_partners',
           roundCount,
           squads: null,
@@ -854,7 +891,7 @@ function SetupPageInner() {
         });
         await insertRounds(sessionId, rounds);
       } else if (format === 'king_of_court') {
-        const courts = generateInitialKingOfCourtRound(trimmed, courtCount, seed, kingOfCourtFixedPairs);
+        const courts = generateInitialKingOfCourtRound(activeNames, courtCount, seed, kingOfCourtFixedPairs);
         sessionId = await createSession({
           ...baseOptions,
           format: 'king_of_court',
@@ -881,9 +918,10 @@ function SetupPageInner() {
         // round, on a screen that doesn't exist yet (Phase 4 of the locked
         // plan). The session is created with zero rounds until then.
       } else {
-        const { rounds } = generateCourtBlocksSchedule(trimmed, courtCount, roundsPerBlock, blockCount, seed, manualAssignments);
+        const { rounds, courtCount: effectiveCourtCount } = generateCourtBlocksSchedule(activeNames, courtCount, roundsPerBlock, blockCount, seed, manualAssignments);
         sessionId = await createSession({
           ...baseOptions,
+          courtLabels: trimmedCourtLabels.slice(0, effectiveCourtCount),
           format: 'court_blocks',
           roundCount: roundsPerBlock * blockCount,
           squads: null,
@@ -942,14 +980,48 @@ function SetupPageInner() {
   if (inProgressSession !== null && !resumeChoiceMade) {
     const foundSession = inProgressSession;
     const teamNames = foundSession.squads?.map(t => t.label ?? t.id).join(' vs ') ?? 'Team Championship';
+    const stages = foundSession.stage_config ?? [];
+    const totalRounds = stages.reduce((sum, s) => sum + (s.roundEnd - s.roundStart + 1), 0);
+    const scoredRounds = new Set(
+      inProgressRounds.filter(r => r.score_a !== null && r.score_b !== null).map(r => r.round_number)
+    ).size;
+    // "Where it was left off" — real feedback: created-date alone doesn't
+    // tell an organizer whether this is 1 round in or 14 rounds in.
+    const currentStage =
+      inProgressRounds.length === 0
+        ? null
+        : stages.find(s => {
+            const stageRoundNumbers = Array.from({ length: s.roundEnd - s.roundStart + 1 }, (_, i) => s.roundStart + i);
+            return stageRoundNumbers.some(rn => !inProgressRounds.some(r => r.round_number === rn && r.score_a !== null));
+          });
+    const isDraft = inProgressRounds.length === 0;
+    const progressLabel = isDraft
+      ? 'Pairings not generated yet'
+      : currentStage
+      ? `${currentStage.stageLabel} in progress — ${scoredRounds}/${totalRounds} rounds scored`
+      : `All ${totalRounds} rounds scored`;
+
+    async function handleDeleteDraft() {
+      if (!window.confirm('Delete this draft tournament? Nothing has been scored yet — this can\'t be undone.')) return;
+      setDeletingDraft(true);
+      try {
+        await deleteSession(foundSession.id);
+        setInProgressSession(null);
+      } catch {
+        setDeletingDraft(false);
+      }
+    }
+
     return (
       <main className="page">
-        <h1>Unfinished Team Championship</h1>
+        <h1>Unfinished Team Championship Found</h1>
         <div className="card" style={{ marginTop: 12 }}>
           <p style={{ fontWeight: 700, margin: '0 0 4px' }}>{foundSession.group_name || teamNames}</p>
-          <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>
-            Started {new Date(foundSession.created_at).toLocaleString()} — {teamNames}
+          <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 4px' }}>{teamNames}</p>
+          <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 4px' }}>
+            Created {new Date(foundSession.created_at).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
           </p>
+          <p style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>{progressLabel}</p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
           <button
@@ -957,11 +1029,21 @@ function SetupPageInner() {
             style={{ minHeight: 48 }}
             onClick={() => router.push(`/session/${foundSession.id}/team-championship/pairings`)}
           >
-            Resume This Tournament
+            Continue This Tournament
           </button>
           <button className="btn-secondary" style={{ minHeight: 48 }} onClick={() => setResumeChoiceMade(true)}>
-            Start a New One Instead
+            Set Up a Different Tournament
           </button>
+          {isDraft && (
+            <button
+              className="btn-secondary"
+              style={{ minHeight: 48, borderColor: 'var(--danger)', color: 'var(--danger)' }}
+              disabled={deletingDraft}
+              onClick={handleDeleteDraft}
+            >
+              {deletingDraft ? 'Deleting…' : 'Delete This Draft'}
+            </button>
+          )}
         </div>
       </main>
     );
@@ -1106,6 +1188,25 @@ function SetupPageInner() {
                 placeholder={`Player ${i + 1}`}
                 style={{ flex: 1, minHeight: 44, padding: '10px 12px', fontSize: 16, border: '1px solid var(--border)', borderRadius: 8 }}
               />
+              {name.trim() && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAbsentNames(prev => {
+                      const next = new Set(prev);
+                      const trimmedName = name.trim();
+                      if (next.has(trimmedName)) next.delete(trimmedName);
+                      else next.add(trimmedName);
+                      return next;
+                    })
+                  }
+                  className={absentNames.has(name.trim()) ? 'btn-primary' : 'btn-secondary'}
+                  style={{ flex: '0 0 auto', fontSize: 12, padding: '6px 10px' }}
+                  title="Tap if this player isn't here tonight — they stay on the roster but won't be in the schedule."
+                >
+                  {absentNames.has(name.trim()) ? 'Absent' : 'Here'}
+                </button>
+              )}
               <button
                 type="button"
                 aria-label={`Remove player ${i + 1}`}
@@ -1119,6 +1220,11 @@ function SetupPageInner() {
           );
         })}
       </div>
+      {absentNames.size > 0 && (
+        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 8 }}>
+          {absentNames.size} marked absent tonight — they stay on the roster but won't be in the schedule.
+        </p>
+      )}
       <button
         className="btn-secondary"
         onClick={() => setNamesEntered(false)}
@@ -1789,6 +1895,18 @@ function SetupPageInner() {
         </>
       )}
 
+      <h2>Event Date (optional)</h2>
+      <input
+        type="date"
+        value={eventDate}
+        onChange={e => setEventDate(e.target.value)}
+        aria-label="Event date, optional"
+        style={{ minHeight: 44, padding: '10px 12px', fontSize: 16, width: 180, border: '1px solid var(--border)', borderRadius: 8, background: 'white' }}
+      />
+      <p style={{ color: 'var(--muted)', fontSize: 12, marginTop: 4, marginBottom: 16 }}>
+        When this is being set up ahead of the actual event — leave blank to just use today.
+      </p>
+
       <h2>Venue (optional)</h2>
       <input
         type="text"
@@ -1821,6 +1939,21 @@ function SetupPageInner() {
         aria-label="Minutes per round, optional"
         style={{ minHeight: 44, padding: '10px 12px', fontSize: 16, width: 100, border: '1px solid var(--border)', borderRadius: 8, background: 'white' }}
       />
+      {(() => {
+        const duration = roundDurationMinutes.trim() === '' ? null : Number(roundDurationMinutes);
+        const totalRounds = format === 'court_blocks' ? roundsPerBlock * blockCount : roundCount;
+        if (!startTime || !duration || !totalRounds) return null;
+        const firstRange = computeRoundTimeRange(startTime, duration, 1);
+        const lastRange = computeRoundTimeRange(startTime, duration, totalRounds);
+        if (!firstRange || !lastRange) return null;
+        const startClock = firstRange.split('–')[0];
+        const finishClock = lastRange.split('–')[1];
+        return (
+          <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 8 }}>
+            {totalRounds} round{totalRounds === 1 ? '' : 's'} × {duration} min from {startClock} → finishes {finishClock}.
+          </p>
+        );
+      })()}
 
       {format === 'court_blocks' && (
         <>
@@ -1906,6 +2039,16 @@ function SetupPageInner() {
             ))}
         </>
       )}
+
+      {format !== 'team_championship' && format !== 'king_of_court' && (() => {
+        const filledCount = names.filter(n => n.trim().length > 0 && !absentNames.has(n.trim())).length;
+        const effectiveCourts = resolveCourtCount(filledCount, courtCount);
+        return effectiveCourts < courtCount ? (
+          <p style={{ color: 'var(--dark)', fontSize: 13, fontWeight: 700, marginTop: 8 }}>
+            Only {filledCount} players present — running {effectiveCourts} court{effectiveCourts === 1 ? '' : 's'} tonight.
+          </p>
+        ) : null;
+      })()}
 
       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
         <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setSubStep('players')}>

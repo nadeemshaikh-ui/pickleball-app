@@ -5,6 +5,7 @@ import {
   generateSquadRivalrySchedule,
   generateCourtBlocksSchedule,
   generateFixedPartnersSchedule,
+  resolveCourtCount,
 } from './shuffle';
 
 describe('seededRandom', () => {
@@ -95,8 +96,9 @@ describe('generateScrambleSchedule', () => {
     expect(() => generateScrambleSchedule(['P1', 'P2'], 1, 4, 'seed-a')).toThrow();
   });
 
-  it('throws if courtCount is less than 1', () => {
-    expect(() => generateScrambleSchedule(players10, 0, 4, 'seed-a')).toThrow();
+  it('no longer throws if requested courtCount is less than 1 — self-heals to 1 court', () => {
+    const rounds = generateScrambleSchedule(players10, 0, 4, 'seed-a');
+    expect(rounds.courtCount).toBe(1);
   });
 });
 
@@ -129,8 +131,11 @@ describe('generateSquadRivalrySchedule', () => {
     expect(a).toEqual(b);
   });
 
-  it('throws for an odd total player count', () => {
-    expect(() => generateSquadRivalrySchedule([...players10, 'P11'], 2, 4, 'seed-b')).toThrow();
+  it('no longer throws for an odd total player count — squads split 6/5 instead', () => {
+    const { squads, courtCount } = generateSquadRivalrySchedule(['P1','P2','P3','P4','P5','P6','P7','P8','P9','P10','P11'], 2, 4, 'seed-b');
+    const sizes = [squads.gold.length, squads.black.length].sort((a, b) => a - b);
+    expect(sizes).toEqual([5, 6]);
+    expect(courtCount).toBe(2);
   });
 
   it('supports a single court', () => {
@@ -271,8 +276,17 @@ describe('locked pairs — Squad Rivalry', () => {
 describe('generateFixedPartnersSchedule', () => {
   const players10 = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10'];
 
-  it('rejects an odd number of players', () => {
-    expect(() => generateFixedPartnersSchedule([...players10, 'P11'], 2, 12, 'seed-fp')).toThrow(/even number/);
+  it('no longer throws for an odd number of players — one player is benched for the whole night', () => {
+    const players11 = [...players10, 'P11'];
+    const { teams, rounds, courtCount } = generateFixedPartnersSchedule(players11, 2, 4, 'seed-fp');
+    expect(teams).toHaveLength(5);
+    expect(courtCount).toBe(2);
+    const paired = new Set(teams.flat());
+    expect(paired.size).toBe(10);
+    const benched = players11.find(p => !paired.has(p))!;
+    for (const round of rounds) {
+      expect(round.sittingOutPerCourt[0]).toContain(benched);
+    }
   });
 
   it('keeps the same partner for every round all night', () => {
@@ -347,5 +361,125 @@ describe('skill-balanced matchmaking — Scramble', () => {
       // strongest players (2000+1900) against the two weakest (1000+1100).
       expect(Math.abs(sumA - sumB)).toBeLessThan(1800);
     }
+  });
+});
+
+describe('resolveCourtCount', () => {
+  it('shrinks the requested court count to what the roster can fill', () => {
+    expect(resolveCourtCount(9, 3)).toBe(2);
+  });
+
+  it('never drops below 1 court', () => {
+    expect(resolveCourtCount(4, 3)).toBe(1);
+  });
+
+  it('never exceeds the requested count even with plenty of players', () => {
+    expect(resolveCourtCount(40, 2)).toBe(2);
+  });
+});
+
+describe('graceful degradation — never fail to produce a schedule', () => {
+  it('Scramble: 9 players, 3 courts requested → runs 2 courts, no throw', () => {
+    const players9 = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9'];
+    const rounds = generateScrambleSchedule(players9, 3, 4, 'seed-degrade');
+    expect(rounds.courtCount).toBe(2);
+    for (const round of rounds) {
+      expect(round.courts).toHaveLength(2);
+    }
+  });
+
+  it('Scramble: 4 players, 3 courts requested → runs 1 court, no throw', () => {
+    const rounds = generateScrambleSchedule(['A', 'B', 'C', 'D'], 3, 4, 'seed-degrade');
+    expect(rounds.courtCount).toBe(1);
+    for (const round of rounds) {
+      expect(round.courts).toHaveLength(1);
+    }
+  });
+
+  it('Scramble: 3 players throws with a readable message', () => {
+    expect(() => generateScrambleSchedule(['A', 'B', 'C'], 1, 4, 'seed-degrade')).toThrow(/at least 4 players/);
+  });
+
+  it('Squad Rivalry: 3 players throws with a readable message', () => {
+    expect(() => generateSquadRivalrySchedule(['A', 'B', 'C'], 1, 4, 'seed-degrade')).toThrow(/at least 4 players/);
+  });
+
+  it('Fixed Partners: 3 players throws with a readable message', () => {
+    expect(() => generateFixedPartnersSchedule(['A', 'B', 'C'], 1, 4, 'seed-degrade')).toThrow(/at least 4 players/);
+  });
+
+  it('Court Swap: 3 players throws with a readable message', () => {
+    expect(() => generateCourtBlocksSchedule(['A', 'B', 'C'], 1, 4, 1, 'seed-degrade')).toThrow(/at least 4 players/);
+  });
+
+  it('Court Swap: 9 players, 3 courts requested → runs 2 courts, no throw', () => {
+    const players9 = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9'];
+    const { rounds, courtCount } = generateCourtBlocksSchedule(players9, 3, 2, 1, 'seed-degrade');
+    expect(courtCount).toBe(2);
+    for (const round of rounds) {
+      expect(round.courts).toHaveLength(2);
+    }
+  });
+});
+
+describe('generateSquadRivalrySchedule — regeneration support (startRound/initialLedger, fixed squads)', () => {
+  it('numbers rounds starting from startRound and never moves an existing squad member', () => {
+    const squads = { gold: ['G1', 'G2', 'G3', 'G4'], black: ['B1', 'B2', 'B3', 'B4'] };
+    const ledger = {
+      goldSitCounts: new Map(squads.gold.map(p => [p, 2])),
+      blackSitCounts: new Map(squads.black.map(p => [p, 2])),
+      partnerCounts: new Map<string, number>(),
+      lastGoldSitOut: new Set<string>(),
+      lastBlackSitOut: new Set<string>(),
+    };
+    const { rounds, squads: outSquads } = generateSquadRivalrySchedule(
+      [...squads.gold, ...squads.black], 1, 3, 'seed-regen', [], squads, 5, ledger
+    );
+    expect(rounds.map(r => r.roundNumber)).toEqual([5, 6, 7]);
+    expect(outSquads).toEqual(squads);
+    for (const round of rounds) {
+      const goldOnCourt = round.courts.flatMap(c => [...c.teamA, ...c.teamB]).filter(p => squads.gold.includes(p));
+      // gold vs black structure preserved — every court still has one gold, one black team
+      expect(goldOnCourt.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('generateFixedPartnersSchedule — regeneration support (startRound/initialLedger, manual teams)', () => {
+  it('numbers rounds starting from startRound and keeps manual teams fixed', () => {
+    const teams: [string, string][] = [['A', 'B'], ['C', 'D'], ['E', 'F'], ['G', 'H']];
+    const ledger = {
+      sitOutCounts: new Map(teams.map(t => [t.join('|'), 1])),
+      opponentCounts: new Map<string, number>(),
+      lastSitOutTeams: new Set<string>(),
+    };
+    const { rounds, teams: outTeams } = generateFixedPartnersSchedule(
+      teams.flat(), 1, 3, 'seed-regen', teams, undefined, 8, ledger
+    );
+    expect(rounds.map(r => r.roundNumber)).toEqual([8, 9, 10]);
+    expect(outTeams).toEqual(teams);
+    for (const round of rounds) {
+      for (const court of round.courts) {
+        const isKnownTeam = (t: [string, string]) => teams.some(([a, b]) => (a === t[0] && b === t[1]) || (a === t[1] && b === t[0]));
+        expect(isKnownTeam(court.teamA)).toBe(true);
+        expect(isKnownTeam(court.teamB)).toBe(true);
+      }
+    }
+  });
+});
+
+describe('generateCourtBlocksSchedule — regeneration support (startBlock/initialGroupTogetherCounts)', () => {
+  it('numbers rounds starting from the correct round for a mid-session startBlock', () => {
+    const players8 = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
+    // roundsPerBlock=3, starting at block 3 -> first round number = (3-1)*3+1 = 7
+    const { rounds } = generateCourtBlocksSchedule(players8, 2, 3, 2, 'seed-regen', undefined, [], 3);
+    expect(rounds.map(r => r.roundNumber)).toEqual([7, 8, 9, 10, 11, 12]);
+  });
+
+  it('is deterministic for the same seed and startBlock', () => {
+    const players8 = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
+    const a = generateCourtBlocksSchedule(players8, 2, 3, 2, 'seed-regen', undefined, [], 3);
+    const b = generateCourtBlocksSchedule(players8, 2, 3, 2, 'seed-regen', undefined, [], 3);
+    expect(a).toEqual(b);
   });
 });

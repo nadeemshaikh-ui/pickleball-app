@@ -44,21 +44,37 @@ export async function createTournament(clubId: string, name: string, userId: str
   return data.id;
 }
 
-// Zero-stages-only by design, checked here rather than trusting `status`
-// alone — nothing in this codebase ever sets status to 'active', so every
-// working tournament stays 'draft' for its entire life including after
-// real stages/matches/results exist. Gating on status='draft' alone would
-// let real generated data get silently deleted. A tournament with just a
-// name and maybe some teams (no stages yet) is safe to remove outright.
+// Gated on SCORED matches, not on whether a stage exists at all — status
+// can't be the gate (nothing in this codebase ever sets status to
+// 'active', so every working tournament stays 'draft' forever, scored
+// results and all). The old rule blocked on stage-count alone, which
+// meant a tournament with a freshly generated but entirely UNSCORED stage
+// (e.g. an abandoned test, or one you decided to redo) could never be
+// deleted through the app — the exact "stuck in draft with no way to
+// clear it" complaint. An unscored fixture list isn't real match data;
+// once even one match has a result, it is, and deletion is refused.
 export async function deleteTournament(tournamentId: string): Promise<void> {
-  const { count, error: countError } = await supabase
-    .from('tournament_stages')
-    .select('id', { count: 'exact', head: true })
-    .eq('tournament_id', tournamentId);
-  if (countError) throw countError;
-  if (count && count > 0) {
-    throw new Error('This tournament already has stages generated — deleting it would destroy real match data. Not allowed.');
+  const { data: stages, error: stagesError } = await supabase.from('tournament_stages').select('id').eq('tournament_id', tournamentId);
+  if (stagesError) throw stagesError;
+  const stageIds = (stages ?? []).map(s => s.id);
+
+  if (stageIds.length > 0) {
+    const { count, error: countError } = await supabase
+      .from('tournament_matches')
+      .select('id', { count: 'exact', head: true })
+      .in('stage_id', stageIds)
+      .eq('status', 'completed');
+    if (countError) throw countError;
+    if (count && count > 0) {
+      throw new Error('This tournament already has scored matches — deleting it would destroy real results. Not allowed.');
+    }
+    // tournament_matches -> tournament_teams isn't a cascading FK, so an
+    // unscored-but-generated stage's matches must be cleared explicitly
+    // before the tournaments row delete cascades stages/teams/registrations.
+    const { error: matchesError } = await supabase.from('tournament_matches').delete().in('stage_id', stageIds);
+    if (matchesError) throw matchesError;
   }
+
   const { error } = await supabase.from('tournaments').delete().eq('id', tournamentId);
   if (error) throw error;
 }

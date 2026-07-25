@@ -54,6 +54,7 @@ export async function fetchLifetimeGameStats(clubId: string): Promise<Map<string
     .from('rounds')
     .select('session_id, round_number, team_a, team_b, score_a, score_b, sessions!inner(club_id, format, start_time, created_at, players)')
     .eq('sessions.club_id', clubId)
+    .neq('sessions.format', 'team_championship')
     .not('score_a', 'is', null)
     .not('score_b', 'is', null);
   if (error) throw error;

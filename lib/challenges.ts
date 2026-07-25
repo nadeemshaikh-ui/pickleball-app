@@ -49,7 +49,7 @@ export async function createChallenge(clubId: string, challengerName: string, op
 
 // Called when challenger and opponent are found on opposite teams in a
 // newly-recorded round. Resolves the oldest pending challenge between them.
-export async function resolveChallenge(challengeId: string, result: 'challenger_won' | 'opponent_won'): Promise<void> {
+async function resolveChallenge(challengeId: string, result: 'challenger_won' | 'opponent_won'): Promise<void> {
   const { error } = await supabase
     .from('league_challenges')
     .update({ status: 'completed', result, resolved_at: new Date().toISOString() })

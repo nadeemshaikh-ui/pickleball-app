@@ -38,7 +38,7 @@ export function shuffleArray<T>(arr: T[], rand: () => number): T[] {
   return copy;
 }
 
-function pairKey(a: string, b: string): string {
+export function pairKey(a: string, b: string): string {
   return [a, b].sort().join('|');
 }
 
@@ -338,28 +338,46 @@ export function assignCourtsByRivalry(
   return courts;
 }
 
-function requireMinPlayers(players: string[], courtCount: number, formatName: string): void {
-  const minRequired = courtCount * 4;
-  if (courtCount < 1) {
-    throw new Error(`${formatName} requires at least 1 court, got ${courtCount}`);
+// A session is only genuinely unplayable below 4 people (can't fill even one
+// court). Anything from 4 up degrades the court count instead of throwing —
+// see resolveCourtCount.
+function requireMinPlayers(players: string[], formatName: string): void {
+  if (players.length < 4) {
+    throw new Error(`${formatName} needs at least 4 players to play, got ${players.length}`);
   }
-  if (players.length < minRequired) {
-    throw new Error(
-      `${formatName} needs at least ${minRequired} players to fill ${courtCount} court(s) (4 per court), got ${players.length}`
-    );
-  }
+}
+
+// Shrinks the requested court count to whatever the roster can actually
+// fill (4 players per court), rather than letting a short-handed night
+// crash the schedule generator. Never returns less than 1 — requireMinPlayers
+// is what rejects a session that's unplayable outright (<4 total).
+export function resolveCourtCount(playerCount: number, requestedCourts: number): number {
+  return Math.max(1, Math.min(requestedCourts, Math.floor(playerCount / 4)));
+}
+
+// Shared with lib/regenerate.ts's ScrambleLedger (re-exported from there,
+// same shape) rather than each file declaring its own copy — a field added
+// to one without the other wouldn't be caught by tsc at the call site,
+// since a variable (not an object literal) is passed, so excess-property
+// checking doesn't apply.
+export interface ScrambleGenerationLedger {
+  sitOutCounts: Map<string, number>;
+  partnerCounts: Map<string, number>;
+  lastSitOut: Set<string>;
 }
 
 export function generateScrambleSchedule(
   players: string[],
-  courtCount: number,
+  requestedCourtCount: number,
   roundCount: number,
   seed: string,
   lockedPairs: LockedPair[] = [],
   skillRatings?: Map<string, number>,
-  rivalryHeatMap?: Map<string, RivalryHeat>
-): ScrambleRound[] {
-  requireMinPlayers(players, courtCount, 'Scramble');
+  rivalryHeatMap?: Map<string, RivalryHeat>,
+  startRound: number = 1,
+  initialLedger?: ScrambleGenerationLedger
+): ScrambleRound[] & { courtCount: number } {
+  requireMinPlayers(players, 'Scramble');
   validateLockedPairs(players, lockedPairs);
   if (skillRatings && lockedPairs.length > 0) {
     throw new Error('Skill-balanced matchmaking cannot be combined with locked partners yet.');
@@ -367,14 +385,25 @@ export function generateScrambleSchedule(
   if (skillRatings && rivalryHeatMap) {
     throw new Error('Skill-balanced and rivalry-aware matchmaking cannot be combined yet.');
   }
-  const rand = seededRandom(seed);
-  const sitOutCounts = new Map<string, number>(players.map(p => [p, 0]));
-  const partnerCounts = new Map<string, number>();
+  const courtCount = resolveCourtCount(players.length, requestedCourtCount);
+  // A late-joining player (regeneration only, initialLedger set) starts at
+  // 0 sit-outs, which the existing fewest-sits-first logic in pickSitOuts
+  // already prioritises — no separate catch-up mechanism needed, the
+  // deficit self-resolves as rounds continue.
+  const sitOutCounts = new Map<string, number>(initialLedger?.sitOutCounts ?? []);
+  for (const p of players) if (!sitOutCounts.has(p)) sitOutCounts.set(p, 0);
+  const partnerCounts = new Map<string, number>(initialLedger?.partnerCounts ?? []);
   const sitOutCount = players.length - courtCount * 4;
   const rounds: ScrambleRound[] = [];
-  let lastSitOut = new Set<string>();
+  let lastSitOut = initialLedger?.lastSitOut ?? new Set<string>();
 
-  for (let roundNumber = 1; roundNumber <= roundCount; roundNumber++) {
+  for (let i = 0; i < roundCount; i++) {
+    const roundNumber = startRound + i;
+    // Re-seeded per round (not one continuous stream) so a regenerated
+    // round is reproducible from (seed, roundNumber, pool, ledger) alone —
+    // required for Item 3: regenerating from round N must not depend on
+    // exactly which draws happened before N in a single long stream.
+    const rand = seededRandom(`${seed}:r${roundNumber}`);
     const sittingOut =
       lockedPairs.length > 0
         ? pickSitOutUnits(buildSitOutUnits(players, lockedPairs), sitOutCounts, sitOutCount, rand, lastSitOut)
@@ -387,7 +416,7 @@ export function generateScrambleSchedule(
     lastSitOut = new Set(sittingOut);
   }
 
-  return rounds;
+  return Object.assign(rounds, { courtCount });
 }
 
 export interface Squads {
@@ -398,43 +427,56 @@ export interface Squads {
 export interface SquadRivalrySchedule {
   squads: Squads;
   rounds: ScrambleRound[];
+  courtCount: number;
 }
 
 // Splits players into 2 squads keeping every locked pair on the same side,
-// via the same unit-atomicity idea as sit-outs. Falls back to a clear error
-// if the unit sizes present can't sum to exactly `half` on either side.
+// via the same unit-atomicity idea as sit-outs. Tolerates an odd total (one
+// squad ends up 1 larger) — mirrors the greedy smallest-bucket-first
+// approach lib/squads.ts's N-squad split uses, so an odd roster degrades to
+// an unequal split instead of throwing. Still throws if locked pairs make
+// even that impossible (imbalance > 1).
 function splitIntoSquadsRespectingLocks(players: string[], lockedPairs: LockedPair[], rand: () => number): Squads {
   const units = buildSitOutUnits(players, lockedPairs);
-  const shuffledUnits = shuffleArray(units, rand);
-  const half = players.length / 2;
+  const pairUnits = shuffleArray(units.filter(u => u.players.length === 2), rand);
+  const singleUnits = shuffleArray(units.filter(u => u.players.length === 1), rand);
   const gold: string[] = [];
   const black: string[] = [];
-  for (const u of shuffledUnits) {
-    if (gold.length + u.players.length <= half) gold.push(...u.players);
+  for (const u of [...pairUnits, ...singleUnits]) {
+    if (gold.length <= black.length) gold.push(...u.players);
     else black.push(...u.players);
   }
-  if (gold.length !== half || black.length !== half) {
+  if (Math.abs(gold.length - black.length) > 1) {
     throw new Error(
-      "Can't split into 2 even squads with these locked pairs — try locking fewer pairs or adjusting player count."
+      "Can't split into 2 balanced squads with these locked pairs — try locking fewer pairs or adjusting player count."
     );
   }
   return { gold, black };
 }
 
+// Regeneration ledger — separate sit-out counts per squad (a gold player's
+// sit-out history is irrelevant to black's rotation), one shared partner
+// map (cross-squad partnerships never happen, but reusing one map matches
+// how pairIntoPairs is already called per-squad below).
+export interface SquadRivalryLedger {
+  goldSitCounts: Map<string, number>;
+  blackSitCounts: Map<string, number>;
+  partnerCounts: Map<string, number>;
+  lastGoldSitOut: Set<string>;
+  lastBlackSitOut: Set<string>;
+}
+
 export function generateSquadRivalrySchedule(
   players: string[],
-  courtCount: number,
+  requestedCourtCount: number,
   roundCount: number,
   seed: string,
   lockedPairs: LockedPair[] = [],
-  manualSquads?: Squads
-): SquadRivalrySchedule {
-  if (players.length % 2 !== 0) {
-    throw new Error(`Squad Rivalry needs an even number of players to split into 2 squads, got ${players.length}`);
-  }
-  if (courtCount < 1) {
-    throw new Error(`Squad Rivalry requires at least 1 court, got ${courtCount}`);
-  }
+  manualSquads?: Squads,
+  startRound: number = 1,
+  initialLedger?: SquadRivalryLedger
+): SquadRivalrySchedule & { courtCount: number } {
+  requireMinPlayers(players, 'Squad Rivalry');
   if (manualSquads) {
     const assigned = new Set([...manualSquads.gold, ...manualSquads.black]);
     if (assigned.size !== players.length || players.some(p => !assigned.has(p))) {
@@ -442,20 +484,24 @@ export function generateSquadRivalrySchedule(
     }
   }
   validateLockedPairs(players, lockedPairs);
-  const rand = seededRandom(seed);
   const squads: Squads =
     manualSquads ??
     (lockedPairs.length > 0
-      ? splitIntoSquadsRespectingLocks(players, lockedPairs, rand)
+      ? splitIntoSquadsRespectingLocks(players, lockedPairs, seededRandom(seed))
       : (() => {
-          const shuffled = shuffleArray(players, rand);
-          const half = players.length / 2;
-          return { gold: shuffled.slice(0, half), black: shuffled.slice(half) };
+          const shuffled = shuffleArray(players, seededRandom(seed));
+          const goldSize = Math.ceil(players.length / 2);
+          return { gold: shuffled.slice(0, goldSize), black: shuffled.slice(goldSize) };
         })());
 
-  const goldSitCounts = new Map(squads.gold.map(p => [p, 0]));
-  const blackSitCounts = new Map(squads.black.map(p => [p, 0]));
-  const partnerCounts = new Map<string, number>();
+  const courtCount = resolveCourtCount(Math.min(squads.gold.length, squads.black.length) * 2, requestedCourtCount);
+  // A late-added squad member starts at 0 sits, same self-resolving
+  // catch-up logic as Scramble's regeneration support.
+  const goldSitCounts = new Map<string, number>(initialLedger?.goldSitCounts ?? []);
+  for (const p of squads.gold) if (!goldSitCounts.has(p)) goldSitCounts.set(p, 0);
+  const blackSitCounts = new Map<string, number>(initialLedger?.blackSitCounts ?? []);
+  for (const p of squads.black) if (!blackSitCounts.has(p)) blackSitCounts.set(p, 0);
+  const partnerCounts = new Map<string, number>(initialLedger?.partnerCounts ?? []);
   const goldSitOutCount = squads.gold.length - courtCount * 2;
   const blackSitOutCount = squads.black.length - courtCount * 2;
   if (goldSitOutCount < 0 || blackSitOutCount < 0) {
@@ -463,9 +509,11 @@ export function generateSquadRivalrySchedule(
   }
 
   const rounds: ScrambleRound[] = [];
-  let lastGoldSitOut = new Set<string>();
-  let lastBlackSitOut = new Set<string>();
-  for (let roundNumber = 1; roundNumber <= roundCount; roundNumber++) {
+  let lastGoldSitOut = initialLedger?.lastGoldSitOut ?? new Set<string>();
+  let lastBlackSitOut = initialLedger?.lastBlackSitOut ?? new Set<string>();
+  for (let i = 0; i < roundCount; i++) {
+    const roundNumber = startRound + i;
+    const rand = seededRandom(`${seed}:r${roundNumber}`);
     const goldSitOut =
       lockedPairs.length > 0
         ? pickSitOutUnits(buildSitOutUnits(squads.gold, lockedPairs), goldSitCounts, goldSitOutCount, rand, lastGoldSitOut)
@@ -491,7 +539,7 @@ export function generateSquadRivalrySchedule(
     lastBlackSitOut = new Set(blackSitOut);
   }
 
-  return { squads, rounds };
+  return { squads, rounds, courtCount };
 }
 
 // One block assignment: one player group per court.
@@ -502,6 +550,7 @@ export interface CourtBlockAssignment {
 export interface CourtBlocksSchedule {
   assignments: CourtBlockAssignment[];
   rounds: ScrambleRound[];
+  courtCount: number;
 }
 
 // Splits players into `groupCount` balanced groups (sizes differ by at most
@@ -581,37 +630,45 @@ function generateGroupRounds(
 
 export function generateCourtBlocksSchedule(
   players: string[],
-  courtCount: number,
+  requestedCourtCount: number,
   roundsPerBlock: number,
   blockCount: number,
   seed: string,
   manualAssignments?: CourtBlockAssignment[],
-  lockedPairs: LockedPair[] = []
+  lockedPairs: LockedPair[] = [],
+  startBlock: number = 1,
+  initialGroupTogetherCounts?: Map<string, number>
 ): CourtBlocksSchedule {
-  if (courtCount < 1) {
-    throw new Error(`Court Swap requires at least 1 court, got ${courtCount}`);
-  }
+  requireMinPlayers(players, 'Court Swap');
   if (lockedPairs.length > 0) {
     throw new Error('Locked partners are not yet supported for Court Swap — use Scramble or Squad Rivalry instead.');
-  }
-  if (players.length < courtCount * 4) {
-    throw new Error(
-      `Court Swap needs at least ${courtCount * 4} players to fill ${courtCount} court(s) (4 per court), got ${players.length}`
-    );
   }
   if (manualAssignments && manualAssignments.length !== blockCount) {
     throw new Error(`Expected ${blockCount} manual block assignments, got ${manualAssignments.length}`);
   }
+  if (manualAssignments) {
+    const playerSet = new Set(players);
+    for (const block of manualAssignments) {
+      const assigned = block.groups.flat();
+      if (assigned.length !== players.length || new Set(assigned).size !== players.length || assigned.some(p => !playerSet.has(p))) {
+        throw new Error('Manual block assignments must include every active player exactly once.');
+      }
+    }
+  }
 
-  const rand = seededRandom(seed);
-  const groupTogetherCounts = new Map<string, number>();
+  const courtCount = resolveCourtCount(players.length, requestedCourtCount);
+  const groupTogetherCounts = new Map<string, number>(initialGroupTogetherCounts ?? []);
   const assignments: CourtBlockAssignment[] = [];
   const rounds: ScrambleRound[] = [];
-  let globalRoundNumber = 1;
+  // blockCount here is how many blocks THIS CALL produces, starting at
+  // startBlock — matches generateScrambleSchedule's startRound convention,
+  // so a mid-session regeneration only ever asks for what's actually left.
+  let globalRoundNumber = (startBlock - 1) * roundsPerBlock + 1;
 
-  for (let block = 0; block < blockCount; block++) {
+  for (let blockOffset = 0; blockOffset < blockCount; blockOffset++) {
+    const rand = seededRandom(`${seed}:b${startBlock + blockOffset}`);
     const groups = manualAssignments
-      ? manualAssignments[block].groups
+      ? manualAssignments[blockOffset].groups
       : splitIntoGroupsBalanced(players, courtCount, groupTogetherCounts, rand);
     assignments.push({ groups });
 
@@ -629,12 +686,13 @@ export function generateCourtBlocksSchedule(
     }
   }
 
-  return { assignments, rounds };
+  return { assignments, rounds, courtCount };
 }
 
 export interface FixedPartnersSchedule {
   teams: [string, string][];
   rounds: ScrambleRound[];
+  courtCount: number;
 }
 
 // Everyone gets one fixed partner for the whole night; only who they face
@@ -644,19 +702,23 @@ export interface FixedPartnersSchedule {
 // opponent-variety pairing, rather than a bespoke round-robin scheduler.
 // Equivalently fair in practice for the round counts this app uses, and
 // much lower-risk than introducing a second scheduling algorithm.
+export interface FixedPartnersLedger {
+  sitOutCounts: Map<string, number>; // keyed by team pairKey
+  opponentCounts: Map<string, number>;
+  lastSitOutTeams: Set<string>;
+}
+
 export function generateFixedPartnersSchedule(
   players: string[],
-  courtCount: number,
+  requestedCourtCount: number,
   roundCount: number,
   seed: string,
-  manualTeams?: [string, string][]
+  manualTeams?: [string, string][],
+  gamesPlayedCounts?: Map<string, number>,
+  startRound: number = 1,
+  initialLedger?: FixedPartnersLedger
 ): FixedPartnersSchedule {
-  if (courtCount < 1) {
-    throw new Error(`Fixed Partners requires at least 1 court, got ${courtCount}`);
-  }
-  if (players.length % 2 !== 0) {
-    throw new Error(`Fixed Partners needs an even number of players to form full-night partnerships, got ${players.length}`);
-  }
+  requireMinPlayers(players, 'Fixed Partners');
   if (manualTeams) {
     const assigned = manualTeams.flat();
     const assignedSet = new Set(assigned);
@@ -665,31 +727,49 @@ export function generateFixedPartnersSchedule(
     }
   }
   const rand = seededRandom(seed);
+
+  // Fixed Partners means one partner for the WHOLE night, so an odd player
+  // can't be paired at all — rather than crash, they sit out every round
+  // this generation pass. Benching whoever has played the fewest games
+  // so far (all 0 at initial setup, so this is just a seeded pick) means a
+  // repeat late-arrival scenario in Item 3 naturally benches whoever most
+  // deserves a rest, not always the same person.
+  let benchedForNight: string | null = null;
+  let effectivePlayers = players;
+  if (!manualTeams && players.length % 2 !== 0) {
+    const gp = gamesPlayedCounts ?? new Map(players.map(p => [p, 0]));
+    const tieBreakers = new Map(players.map(p => [p, rand()]));
+    const sorted = [...players].sort((a, b) => {
+      const diff = (gp.get(a) ?? 0) - (gp.get(b) ?? 0);
+      return diff !== 0 ? diff : tieBreakers.get(a)! - tieBreakers.get(b)!;
+    });
+    benchedForNight = sorted[0];
+    effectivePlayers = players.filter(p => p !== benchedForNight);
+  }
+  requireMinPlayers(effectivePlayers, 'Fixed Partners');
+
   const teams: [string, string][] =
     manualTeams ??
     (() => {
-      const shuffled = shuffleArray(players, rand);
+      const shuffled = shuffleArray(effectivePlayers, rand);
       const pairs: [string, string][] = [];
       for (let i = 0; i < shuffled.length; i += 2) pairs.push([shuffled[i], shuffled[i + 1]]);
       return pairs;
     })();
 
-  const teamCount = teams.length;
-  if (teamCount < courtCount * 2) {
-    throw new Error(
-      `Fixed Partners needs at least ${courtCount * 2} teams (${courtCount * 4} players) to fill ${courtCount} court(s), got ${teamCount} teams`
-    );
-  }
-
+  const courtCount = resolveCourtCount(teams.length * 2, requestedCourtCount);
   const teamById = new Map(teams.map(t => [pairKey(t[0], t[1]), t]));
   const teamIds = teams.map(t => pairKey(t[0], t[1]));
-  const sitOutCounts = new Map(teamIds.map(id => [id, 0]));
-  const opponentCounts = new Map<string, number>();
-  const sitOutTeamCount = teamCount - courtCount * 2;
+  const sitOutCounts = new Map<string, number>(initialLedger?.sitOutCounts ?? []);
+  for (const id of teamIds) if (!sitOutCounts.has(id)) sitOutCounts.set(id, 0);
+  const opponentCounts = new Map<string, number>(initialLedger?.opponentCounts ?? []);
+  const sitOutTeamCount = teams.length - courtCount * 2;
   const rounds: ScrambleRound[] = [];
-  let lastSitOutTeams = new Set<string>();
+  let lastSitOutTeams = initialLedger?.lastSitOutTeams ?? new Set<string>();
 
-  for (let roundNumber = 1; roundNumber <= roundCount; roundNumber++) {
+  for (let i = 0; i < roundCount; i++) {
+    const roundNumber = startRound + i;
+    const rand = seededRandom(`${seed}:r${roundNumber}`);
     const sittingOutTeamIds = pickSitOuts(teamIds, sitOutCounts, sitOutTeamCount, rand, lastSitOutTeams);
     const playingTeamIds = teamIds.filter(id => !sittingOutTeamIds.includes(id));
     const matchups = pairIntoPairs(playingTeamIds, opponentCounts, rand);
@@ -698,9 +778,10 @@ export function generateFixedPartnersSchedule(
       teamB: teamById.get(tB)!,
     }));
     const sittingOutPlayers = sittingOutTeamIds.flatMap(id => teamById.get(id)!);
+    if (benchedForNight) sittingOutPlayers.push(benchedForNight);
     rounds.push({ roundNumber, courts, sittingOutPerCourt: courts.map(() => sittingOutPlayers) });
     lastSitOutTeams = new Set(sittingOutTeamIds);
   }
 
-  return { teams, rounds };
+  return { teams, rounds, courtCount };
 }

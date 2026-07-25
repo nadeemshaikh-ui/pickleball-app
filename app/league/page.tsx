@@ -21,7 +21,7 @@ import {
 } from '@/lib/leagueStats';
 import { getCurrentUser, isCurrentUserAdmin } from '@/lib/auth';
 import { preloadPlayerPhotos } from '@/lib/playerPhotos';
-import { shareElementAsImage } from '@/lib/shareImage';
+import { renderElementToImage, shareCachedImage } from '@/lib/shareImage';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import Avatar from '@/components/Avatar';
 import ShareBrandedHeader from '@/components/ShareBrandedHeader';
@@ -37,6 +37,7 @@ export default function LeaguePage() {
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [imageShareError, setImageShareError] = useState<string | null>(null);
+  const [snapshotImageFile, setSnapshotImageFile] = useState<File | null>(null);
   const snapshotCaptureRef = useRef<HTMLDivElement>(null);
 
   async function load(clubId: string) {
@@ -89,11 +90,35 @@ export default function LeaguePage() {
     }
   }
 
+  // Pre-render ahead of the click so the share stays inside the browser's
+  // user-gesture window (see lib/shareImage.ts) — rendering inside the
+  // click handler can silently break navigator.share() on mobile.
+  useEffect(() => {
+    if (!snapshotCaptureRef.current || loading) {
+      setSnapshotImageFile(null);
+      return;
+    }
+    renderElementToImage(snapshotCaptureRef.current, 'league-standings.png')
+      .then(file => {
+        setSnapshotImageFile(file);
+        setImageShareError(null);
+      })
+      .catch(e => {
+        setSnapshotImageFile(null);
+        setImageShareError(e instanceof Error ? `Couldn't prepare the image: ${e.message}` : "Couldn't prepare the image.");
+      });
+  }, [potm, duos, rivalries, loading]);
+
   async function handleShareSnapshot(filename: string) {
-    if (!snapshotCaptureRef.current) return;
     setImageShareError(null);
     try {
-      const result = await shareElementAsImage(snapshotCaptureRef.current, filename);
+      const base = snapshotImageFile ?? (snapshotCaptureRef.current ? await renderElementToImage(snapshotCaptureRef.current, filename) : null);
+      if (!base) {
+        setImageShareError("Couldn't prepare the image — try again.");
+        return;
+      }
+      const file = base.name === filename ? base : new File([base], filename, { type: base.type });
+      const result = await shareCachedImage(file);
       if (result === 'downloaded') {
         setImageShareError('Image downloaded — attach it to WhatsApp manually (direct share isn\'t supported on this browser).');
       }

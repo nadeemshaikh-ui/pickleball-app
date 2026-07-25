@@ -1,10 +1,16 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Star } from 'lucide-react';
 import { getSession, getRounds, type RoundRow, type SessionRow } from '@/lib/db';
 import { fetchRapidFireLog } from '@/lib/rapidFire';
+import { getCurrentUser } from '@/lib/auth';
+import { listPlayers } from '@/lib/players';
+import SessionNav from '@/components/SessionNav';
+import { renderElementToImage, shareCachedImage } from '@/lib/shareImage';
+import { WhatsAppIcon } from '@/components/icons';
+import AnalyticsImageTemplate from '@/components/AnalyticsImageTemplate';
 import {
   computePlayerStats,
   computeMVP,
@@ -41,19 +47,70 @@ export default function TeamChampionshipAnalyticsPage({ params }: { params: Prom
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('wins');
+  const [ownPlayerName, setOwnPlayerName] = useState<string | null>(null);
+  const [sharingImage, setSharingImage] = useState(false);
+  const [imageShareError, setImageShareError] = useState<string | null>(null);
+  const [analyticsImageFile, setAnalyticsImageFile] = useState<File | null>(null);
+  const imageCaptureRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function load() {
       const s = await getSession(id);
       setSession(s);
-      const [r, rf] = await Promise.all([getRounds(id), s.rapid_fire_config ? fetchRapidFireLog(id) : Promise.resolve([])]);
+      const [r, rf, user] = await Promise.all([
+        getRounds(id),
+        s.rapid_fire_config ? fetchRapidFireLog(id) : Promise.resolve([]),
+        getCurrentUser(),
+      ]);
       setRounds(r);
       setRapidFireLog(rf);
+      if (user && s.club_id) {
+        listPlayers(s.club_id)
+          .then(players => setOwnPlayerName(players.find(p => p.user_id === user.id)?.name ?? null))
+          .catch(() => setOwnPlayerName(null));
+      }
     }
     load()
       .catch(e => setError(e instanceof Error ? e.message : 'Failed to load analytics.'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  // Pre-render ahead of the click, same reason as every other share button
+  // in this app — see lib/shareImage.ts. Recomputes the same stats the
+  // render body derives below (this effect runs before those early-return
+  // guards, so it can't reference those computed variables directly).
+  useEffect(() => {
+    if (!session?.squads || rounds.length === 0 || !imageCaptureRef.current) return;
+    renderElementToImage(imageCaptureRef.current, `analytics-${id}.png`)
+      .then(file => {
+        setAnalyticsImageFile(file);
+        setImageShareError(null);
+      })
+      .catch(e => {
+        setAnalyticsImageFile(null);
+        setImageShareError(e instanceof Error ? `Couldn't prepare the image: ${e.message}` : "Couldn't prepare the image.");
+      });
+  }, [session, rounds, id]);
+
+  async function handleShareAnalytics() {
+    setImageShareError(null);
+    setSharingImage(true);
+    try {
+      const file = analyticsImageFile ?? (imageCaptureRef.current ? await renderElementToImage(imageCaptureRef.current, `analytics-${id}.png`) : null);
+      if (!file) {
+        setImageShareError("Couldn't prepare the image — try again.");
+        return;
+      }
+      const result = await shareCachedImage(file);
+      if (result === 'downloaded') {
+        setImageShareError('Image downloaded — attach it to WhatsApp manually (direct share isn\'t supported on this browser).');
+      }
+    } catch (e) {
+      setImageShareError(e instanceof Error ? e.message : 'Failed to share image.');
+    } finally {
+      setSharingImage(false);
+    }
+  }
 
   if (loading) return <main className="page"><p>Loading…</p></main>;
   if (error) return <main className="page"><p style={{ color: 'var(--danger)' }}>{error}</p></main>;
@@ -126,11 +183,23 @@ export default function TeamChampionshipAnalyticsPage({ params }: { params: Prom
     });
 
   return (
+    <>
     <main className="page">
       <div className="page-header-row">
         <Link href={`/session/${id}/team-championship/results`} className="text-link-btn">← Standings</Link>
       </div>
       <h1>Player Stats & Analytics</h1>
+
+      <button
+        className="btn-primary"
+        style={{ width: '100%', minHeight: 48, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+        onClick={handleShareAnalytics}
+        disabled={sharingImage}
+      >
+        <WhatsAppIcon size={20} />
+        {sharingImage ? 'Preparing image…' : 'Share Stats on WhatsApp'}
+      </button>
+      {imageShareError && <p style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 12, marginBottom: 16 }}>{imageShareError}</p>}
 
       {overallMVP && (
         <div className="card" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, padding: 16 }}>
@@ -159,45 +228,34 @@ export default function TeamChampionshipAnalyticsPage({ params }: { params: Prom
         })}
       </div>
 
-      {rivalries.length > 0 && (
-        <>
-          <h2>Head-to-Head Rivalries</h2>
-          <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 8px' }}>
-            Players who&apos;ve faced each other more than once — every individual matchup that occurs whenever the two teams meet.
-          </p>
-          <div style={{ overflowX: 'auto', marginBottom: 16 }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                  <th style={{ textAlign: 'left', padding: '10px 8px', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>Matchup</th>
-                  <th style={{ textAlign: 'right', padding: '10px 8px', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>Meetings</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rivalries.map((r, i) => {
-                  const isEven = r.aWins === r.bWins;
-                  const leaderName = isEven ? null : r.aWins > r.bWins ? r.playerA : r.playerB;
-                  return (
-                    <tr key={`${r.playerA}-${r.playerB}`} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 1 ? 'var(--surface-2, rgba(127,127,127,0.06))' : undefined }}>
-                      <td style={{ padding: '10px 8px', fontWeight: 700 }}>
-                        <span style={{ fontWeight: leaderName === r.playerA ? 900 : 700 }}>{r.playerA}</span>
-                        {' '}{r.aWins}–{r.bWins}{' '}
-                        <span style={{ fontWeight: leaderName === r.playerB ? 900 : 700 }}>{r.playerB}</span>
-                      </td>
-                      <td style={{ padding: '10px 8px', textAlign: 'right', color: 'var(--muted)', fontWeight: 700 }}>{r.meetings}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+      {ownPlayerName && (() => {
+        const ownStats = playerStats.find(s => s.name === ownPlayerName);
+        if (!ownStats || ownStats.matchesPlayed === 0) return null;
+        const ownTeam = teams.find(t => t.id === ownStats.teamId);
+        return (
+          <div className="card" style={{ marginBottom: 16, padding: 16, borderColor: 'var(--primary)' }}>
+            <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 700 }}>Your Stats</div>
+            <div style={{ fontSize: 18, fontWeight: 900, marginTop: 2 }}>{ownStats.name} <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)' }}>({ownTeam?.label ?? ownStats.teamId})</span></div>
+            <div style={{ display: 'flex', gap: 20, marginTop: 8, fontSize: 13 }}>
+              <span><strong>{ownStats.wins}W – {ownStats.losses}L</strong></span>
+              <span>{(ownStats.winPct * 100).toFixed(0)}% win rate</span>
+              <span>{ownStats.pointDiff >= 0 ? '+' : ''}{ownStats.pointDiff} point diff</span>
+              <span>{ownStats.matchesPlayed} matches</span>
+            </div>
           </div>
-        </>
-      )}
+        );
+      })()}
 
       <h2>Awards</h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10, marginBottom: 16 }}>
         {ironMan && ironMan.matchesPlayed > 0 && (
-          <AwardCard title="Iron Man" emoji="🦾" name={ironMan.name} detail={`${ironMan.matchesPlayed} matches played`} />
+          <AwardCard
+            title="Iron Man"
+            emoji="🦾"
+            name={ironMan.name}
+            detail={`${ironMan.matchesPlayed} matches played`}
+            blurb="Kaam se kaam koi toh paisa vasool kar raha hai."
+          />
         )}
         {bestPointDiff && (
           <AwardCard
@@ -205,6 +263,7 @@ export default function TeamChampionshipAnalyticsPage({ params }: { params: Prom
             emoji="📈"
             name={bestPointDiff.name}
             detail={`${bestPointDiff.pointDiff >= 0 ? '+' : ''}${bestPointDiff.pointDiff} across ${bestPointDiff.matchesPlayed} matches`}
+            blurb="Winning by this much is basically bullying with a paddle."
           />
         )}
         {perfectRecords.length > 0 && (
@@ -213,6 +272,7 @@ export default function TeamChampionshipAnalyticsPage({ params }: { params: Prom
             emoji="💯"
             name={perfectRecords.map(p => p.name).join(', ')}
             detail={`Undefeated — ${perfectRecords[0].wins}-0`}
+            blurb="Undefeated here, insufferable at the next family group chat."
           />
         )}
         {silentAssassin && (
@@ -221,6 +281,7 @@ export default function TeamChampionshipAnalyticsPage({ params }: { params: Prom
             emoji="🥷"
             name={silentAssassin.name}
             detail={`${(silentAssassin.winPct * 100).toFixed(0)}% win rate in just ${silentAssassin.matchesPlayed} matches`}
+            blurb="Barely showed up, still topped the charts. Beta, teach the class."
           />
         )}
         {bestDuo && (
@@ -229,13 +290,26 @@ export default function TeamChampionshipAnalyticsPage({ params }: { params: Prom
             emoji="🤝"
             name={`${bestDuo.playerA} & ${bestDuo.playerB}`}
             detail={`${bestDuo.wins}-${bestDuo.losses} together`}
+            blurb="Better chemistry than most arranged marriages."
           />
         )}
         {winStreakLeader && winStreakLeader.longestWinStreak >= 2 && (
-          <AwardCard title="Win Streak" emoji="🔥" name={winStreakLeader.name} detail={`${winStreakLeader.longestWinStreak} in a row`} />
+          <AwardCard
+            title="Win Streak"
+            emoji="🔥"
+            name={winStreakLeader.name}
+            detail={`${winStreakLeader.longestWinStreak} in a row`}
+            blurb="On a roll like biryani rice — nobody's stopping this."
+          />
         )}
         {lossStreakLeader && lossStreakLeader.longestLossStreak >= 2 && (
-          <AwardCard title="Wooden Spoon" emoji="🥄" name={lossStreakLeader.name} detail={`${lossStreakLeader.longestLossStreak} losses in a row`} />
+          <AwardCard
+            title="Wooden Spoon"
+            emoji="🥄"
+            name={lossStreakLeader.name}
+            detail={`${lossStreakLeader.longestLossStreak} losses in a row`}
+            blurb="Consistency is a virtue. So, technically, is this."
+          />
         )}
         {blowout && (
           <AwardCard
@@ -243,6 +317,7 @@ export default function TeamChampionshipAnalyticsPage({ params }: { params: Prom
             emoji="💥"
             name={`${blowout.teamA.join(' & ')} vs ${blowout.teamB.join(' & ')}`}
             detail={`${blowout.scoreA}-${blowout.scoreB} · Round ${blowout.roundNumber}`}
+            blurb="This wasn't a match, it was a public service announcement."
           />
         )}
         {nailBiter && (
@@ -251,6 +326,7 @@ export default function TeamChampionshipAnalyticsPage({ params }: { params: Prom
             emoji="😬"
             name={`${nailBiter.teamA.join(' & ')} vs ${nailBiter.teamB.join(' & ')}`}
             detail={`${nailBiter.scoreA}-${nailBiter.scoreB} · Round ${nailBiter.roundNumber}`}
+            blurb="Closer than an Indian election count. Go double-check the score."
           />
         )}
         {clutchPlayer && (
@@ -259,6 +335,7 @@ export default function TeamChampionshipAnalyticsPage({ params }: { params: Prom
             emoji="🧊"
             name={clutchPlayer.name}
             detail={`${(clutchPlayer.winPct * 100).toFixed(0)}% win rate in the final stage`}
+            blurb="Ice in the veins, chai in the hand, zero nerves."
           />
         )}
         {mostImproved && mostImproved.delta > 0 && (
@@ -267,13 +344,26 @@ export default function TeamChampionshipAnalyticsPage({ params }: { params: Prom
             emoji="📊"
             name={mostImproved.name}
             detail={`${(mostImproved.firstStageWinPct * 100).toFixed(0)}% → ${(mostImproved.lastStageWinPct * 100).toFixed(0)}%`}
+            blurb="Glow-up sharper than a filter on Diwali photos."
           />
         )}
         {rapidFireHero && (
-          <AwardCard title="Rapid Fire Hero" emoji="⚡" name={rapidFireHero.name} detail={`On court for ${rapidFireHero.pointsCredited} points`} />
+          <AwardCard
+            title="Rapid Fire Hero"
+            emoji="⚡"
+            name={rapidFireHero.name}
+            detail={`On court for ${rapidFireHero.pointsCredited} points`}
+            blurb="On court every time the scoreboard needed saving. Casting couch for the sequel."
+          />
         )}
         {finishers.length > 0 && (
-          <AwardCard title="Finisher" emoji="🏁" name={finishers.join(' & ')} detail="On court for the winning point" />
+          <AwardCard
+            title="Finisher"
+            emoji="🏁"
+            name={finishers.join(' & ')}
+            detail="On court for the winning point"
+            blurb="Closed the deal like a Mumbai property broker."
+          />
         )}
       </div>
 
@@ -343,11 +433,61 @@ export default function TeamChampionshipAnalyticsPage({ params }: { params: Prom
           </tbody>
         </table>
       </div>
+
+      {rivalries.length > 0 && (
+        <>
+          <h2 style={{ marginTop: 24 }}>Head-to-Head Rivalries</h2>
+          <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 8px' }}>
+            Players who&apos;ve faced each other more than once — every individual matchup that occurs whenever the two teams meet.
+          </p>
+          <div style={{ overflowX: 'auto', marginBottom: 16 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                  <th style={{ textAlign: 'left', padding: '10px 8px', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>Matchup</th>
+                  <th style={{ textAlign: 'right', padding: '10px 8px', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>Meetings</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rivalries.map((r, i) => {
+                  const isEven = r.aWins === r.bWins;
+                  const leaderName = isEven ? null : r.aWins > r.bWins ? r.playerA : r.playerB;
+                  return (
+                    <tr key={`${r.playerA}-${r.playerB}`} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 1 ? 'var(--surface-2, rgba(127,127,127,0.06))' : undefined }}>
+                      <td style={{ padding: '10px 8px', fontWeight: 700 }}>
+                        <span style={{ fontWeight: leaderName === r.playerA ? 900 : 700 }}>{r.playerA}</span>
+                        {' '}{r.aWins}–{r.bWins}{' '}
+                        <span style={{ fontWeight: leaderName === r.playerB ? 900 : 700 }}>{r.playerB}</span>
+                      </td>
+                      <td style={{ padding: '10px 8px', textAlign: 'right', color: 'var(--muted)', fontWeight: 700 }}>{r.meetings}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {/* Off-screen — captured for the WhatsApp image share, never shown on screen. */}
+      <div style={{ position: 'fixed', left: -99999, top: 0 }} aria-hidden="true">
+        <div ref={imageCaptureRef}>
+          <AnalyticsImageTemplate
+            session={session}
+            teams={teams}
+            overallMVP={overallMVP}
+            teamMVPs={teamMVPs}
+            topPlayers={sortedPlayerStats.slice(0, 8)}
+          />
+        </div>
+      </div>
     </main>
+    <SessionNav sessionId={id} format="team_championship" clubId={session?.club_id} />
+    </>
   );
 }
 
-function AwardCard({ title, emoji, name, detail }: { title: string; emoji: string; name: string; detail: string }) {
+function AwardCard({ title, emoji, name, detail, blurb }: { title: string; emoji: string; name: string; detail: string; blurb?: string }) {
   return (
     <div className="card" style={{ padding: 12 }}>
       <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -355,6 +495,7 @@ function AwardCard({ title, emoji, name, detail }: { title: string; emoji: strin
       </div>
       <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4 }}>{name}</div>
       <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{detail}</div>
+      {blurb && <div style={{ fontSize: 11.5, color: 'var(--foreground)', marginTop: 6, fontStyle: 'italic', opacity: 0.85 }}>{blurb}</div>}
     </div>
   );
 }

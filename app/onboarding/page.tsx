@@ -50,7 +50,9 @@ export default function OnboardingPage() {
   async function finish() {
     const user = await getCurrentUser();
     if (user) await markOnboardingComplete(user.id);
-    router.push('/setup');
+    // Club home first — members, stats, recent activity — not straight into
+    // a session setup form with zero context on the club they just joined.
+    router.push(activeClubId ? `/clubs/${activeClubId}` : '/setup');
   }
 
   // Requesting to join doesn't grant a club yet — landing on /setup would

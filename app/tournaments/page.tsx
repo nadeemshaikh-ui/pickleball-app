@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Trophy, Plus, Calendar, Sparkles, Trash2 } from 'lucide-react';
+import { Trophy, Plus, Calendar, Sparkles, Trash2, Gavel } from 'lucide-react';
 import { fetchTournaments, createTournament, deleteTournament, type TournamentRow } from '@/lib/tournaments';
 import { getCurrentUser, isCurrentUserAdmin } from '@/lib/auth';
 import { useCurrentClub } from '@/lib/useCurrentClub';
@@ -23,15 +23,6 @@ const STATUS_COLOR: Record<TournamentRow['status'], string> = {
   completed: '#2563eb',
   archived: 'var(--muted)',
 };
-
-// Shown only when the club has never created a real tournament — gives a
-// first-time admin something concrete to look at (format + status badge)
-// before they commit to building their own, rather than a bare "no
-// tournaments yet" line. Not clickable, not real data.
-const EXAMPLE_TOURNAMENTS: { name: string; format: string; status: TournamentRow['status'] }[] = [
-  { name: 'Summer Smash 2026', format: 'Group → Knockout', status: 'completed' },
-  { name: 'Monsoon Mixer', format: 'League', status: 'active' },
-];
 
 function StatusBadge({ status }: { status: TournamentRow['status'] }) {
   return (
@@ -156,6 +147,10 @@ export default function TournamentsPage() {
 
       <h1 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Trophy size={22} /> Tournaments</h1>
 
+      <Link href="/tournaments/team-championship-history" className="text-link-btn" style={{ display: 'inline-block', marginBottom: 12, fontSize: 13 }}>
+        Team Championship History →
+      </Link>
+
       {error && <p style={{ color: 'var(--danger)', marginBottom: 12, fontWeight: 600 }}>{error}</p>}
 
       {(isAdmin || userId !== null) && (
@@ -186,6 +181,13 @@ export default function TournamentsPage() {
           >
             <Plus size={14} /> Start a Team Championship
           </Link>
+          <Link
+            href="/tournaments/auctions"
+            className="btn-secondary"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 8, width: '100%' }}
+          >
+            <Gavel size={14} /> Auctions
+          </Link>
           <button
             className="btn-secondary"
             onClick={handleCreateMystery}
@@ -213,25 +215,7 @@ export default function TournamentsPage() {
       )}
 
       {tournaments.length === 0 ? (
-        <>
-          <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 12 }}>
-            No tournaments yet — here's what a couple look like once set up:
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-            {EXAMPLE_TOURNAMENTS.map(ex => (
-              <div key={ex.name} className="card" style={{ opacity: 0.6, cursor: 'default' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                  <span style={{ fontWeight: 700 }}>{ex.name}</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', border: '1px dashed var(--border)', borderRadius: 999, padding: '1px 6px' }}>
-                    EXAMPLE
-                  </span>
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>{ex.format}</div>
-                <StatusBadge status={ex.status} />
-              </div>
-            ))}
-          </div>
-        </>
+        <p style={{ color: 'var(--muted)', fontSize: 14 }}>No tournaments yet — create one above to get started.</p>
       ) : visibleTournaments.length === 0 ? (
         <p style={{ color: 'var(--muted)', fontSize: 14 }}>No {filter} tournaments.</p>
       ) : (
