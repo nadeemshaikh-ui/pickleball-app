@@ -90,8 +90,9 @@ export default function ScheduleImageTemplate({
                 <td style={{ ...cellStyle, fontFamily: 'var(--font-display), sans-serif', fontSize: timeRange ? 18 : 26, textAlign: 'center' }}>
                   {timeRange ?? `R${roundNumber}`}
                 </td>
-                {courtLabels.map((_, courtIndex) => {
-                  const court = courts.find(c => c.court === courtIndex + 1);
+                {courtLabels.map((label, courtIndex) => {
+                  const parsedNum = parseInt(label, 10);
+                  const court = courts.find(c => c.court === courtIndex + 1 || (!isNaN(parsedNum) && c.court === parsedNum));
                   return (
                     <td key={courtIndex} style={cellStyle}>
                       {court ? `${court.team_a.join(' & ')} vs ${court.team_b.join(' & ')}` : '—'}
