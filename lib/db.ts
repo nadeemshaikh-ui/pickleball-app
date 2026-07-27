@@ -309,6 +309,22 @@ export async function getMostRecentSession(clubId: string): Promise<SessionRow |
   return data as SessionRow | null;
 }
 
+export async function getLatestActiveSession(clubId?: string | null): Promise<SessionRow | null> {
+  let query = supabase
+    .from('sessions')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (clubId) {
+    query = query.eq('club_id', clubId);
+  }
+
+  const { data, error } = await query.maybeSingle();
+  if (error) return null;
+  return data as SessionRow | null;
+}
+
 // "Start a Team Championship" always jumped straight to a blank setup
 // wizard with zero awareness of an already-started tournament — real
 // tournament feedback: every time an organizer backed out and re-entered,

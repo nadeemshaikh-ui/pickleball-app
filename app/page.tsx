@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import { hasCompletedOnboarding } from '@/lib/onboarding';
 import { getOwnPlayer } from '@/lib/players';
+import { getLatestActiveSession, type SessionRow } from '@/lib/db';
 import { fetchLifetimeLeaderboard, fetchStreaks, type LifetimePlayerStats } from '@/lib/leagueStats';
 import { fetchStreakRecords } from '@/lib/streakRecords';
 import { fetchPendingChallenges } from '@/lib/challenges';
@@ -13,6 +14,7 @@ import {
   listPendingJoinRequests,
   listMyPendingJoinRequests,
   listMyPendingClubCreationRequests,
+  checkAndExecutePendingJoinCode,
   type JoinRequestRow,
   type ClubRow,
   type ClubCreationRequestRow,
@@ -24,7 +26,7 @@ import BadgeMedallion from '@/components/BadgeMedallion';
 
 export default function HomePage() {
   const router = useRouter();
-  const { user, currentClub, currentClubId, isCurrentClubAdmin, loading: clubLoading } = useCurrentClub();
+  const { user, currentClub, currentClubId, setCurrentClubId, isCurrentClubAdmin, loading: clubLoading } = useCurrentClub();
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
   const [streak, setStreak] = useState(0);
   const [isStreakKing, setIsStreakKing] = useState(false);
@@ -36,6 +38,11 @@ export default function HomePage() {
   const [ownStats, setOwnStats] = useState<LifetimePlayerStats | null>(null);
   const [rank, setRank] = useState<number | null>(null);
   const [badges, setBadges] = useState<Badge[]>([]);
+  const [activeSession, setActiveSession] = useState<SessionRow | null>(null);
+
+  useEffect(() => {
+    getLatestActiveSession().then(setActiveSession).catch(() => setActiveSession(null));
+  }, []);
 
   useEffect(() => {
     if (clubLoading) return;
@@ -43,14 +50,22 @@ export default function HomePage() {
       setCheckingOnboarding(false);
       return;
     }
-    hasCompletedOnboarding(user.id).then(done => {
+    async function checkAuth() {
+      const joinedClub = await checkAndExecutePendingJoinCode(user!.id);
+      if (joinedClub) {
+        setCurrentClubId(joinedClub.id);
+        router.replace(`/clubs/${joinedClub.id}`);
+        return;
+      }
+      const done = await hasCompletedOnboarding(user!.id);
       if (!done) {
         router.replace('/onboarding');
         return;
       }
       setCheckingOnboarding(false);
-    });
-  }, [user, clubLoading, router]);
+    }
+    checkAuth();
+  }, [user, clubLoading, router, setCurrentClubId]);
 
   useEffect(() => {
     if (checkingOnboarding || !user || currentClubId) return;
@@ -137,6 +152,42 @@ export default function HomePage() {
           </h1>
         </div>
       </Link>
+
+      {activeSession && (
+        <div className="card" style={{ marginBottom: 16, background: 'linear-gradient(135deg, rgba(0, 180, 216, 0.08) 0%, rgba(0, 119, 182, 0.12) 100%)', border: '1.5px solid var(--primary)', borderRadius: 16, padding: '16px 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px #22c55e' }} />
+              <span style={{ fontWeight: 800, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--primary)' }}>
+                Ongoing Session Active
+              </span>
+            </div>
+            <span style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'monospace', background: 'var(--card)', padding: '2px 8px', borderRadius: 6, border: '1px solid var(--border)' }}>
+              #{activeSession.id}
+            </span>
+          </div>
+
+          <h3 style={{ margin: '0 0 6px 0', fontSize: 18, fontWeight: 800 }}>
+            {activeSession.group_name ?? (activeSession.club_id ? 'Club Session' : 'Guest Event')}
+          </h3>
+
+          <p style={{ margin: '0 0 14px 0', fontSize: 13, color: 'var(--muted)' }}>
+            {activeSession.players.length} Players · {activeSession.round_count} Rounds · Courts {activeSession.court_labels.join(' & ')}
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            <Link href={`/session/${activeSession.id}/schedule`} className="btn-primary" style={{ padding: '8px 12px', fontSize: 13, textAlign: 'center' }}>
+              📅 Schedule
+            </Link>
+            <Link href={`/session/${activeSession.id}/play`} className="btn-primary" style={{ padding: '8px 12px', fontSize: 13, textAlign: 'center', background: 'var(--dark)' }}>
+              🎾 Score
+            </Link>
+            <Link href={`/session/${activeSession.id}/leaderboard`} className="btn-primary" style={{ padding: '8px 12px', fontSize: 13, textAlign: 'center', background: 'var(--card)', color: 'var(--text)', border: '1px solid var(--border)' }}>
+              🏆 Ranks
+            </Link>
+          </div>
+        </div>
+      )}
 
       {!currentClubId && (
         <div className="card" style={{ marginBottom: 12 }}>
