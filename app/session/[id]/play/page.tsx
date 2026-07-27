@@ -203,7 +203,17 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
   // — anyone signed in with session access can score. Once an admin picks
   // specific names, scoring narrows to just them (plus admins, who can
   // always fix a mis-entered score regardless of the list).
-  const canScore = isAdmin || !session?.designated_scorers?.length || (ownPlayerName !== null && session.designated_scorers.includes(ownPlayerName));
+  const canScore =
+    isAdmin ||
+    !session?.designated_scorers?.length ||
+    (ownPlayerName !== null &&
+      session.designated_scorers.some(s => {
+        const sNorm = s.trim().toLowerCase();
+        const ownNorm = ownPlayerName.trim().toLowerCase();
+        const sFirst = sNorm.split(' ')[0];
+        const ownFirst = ownNorm.split(' ')[0];
+        return sNorm === ownNorm || sFirst === ownFirst || sNorm === ownFirst || sFirst === ownNorm;
+      }));
 
   // On-court display name — the full registered name (often first + last)
   // overflows the score box, and nobody needs the surname mid-match.

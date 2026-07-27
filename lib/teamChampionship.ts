@@ -39,7 +39,13 @@ export function computeTeamChampionshipStandings(
   stages: StageConfig[]
 ): TeamChampionshipStandings {
   const squadOfPlayer = new Map<string, string>();
-  for (const t of teams) for (const p of t.players) squadOfPlayer.set(p, t.id);
+  for (const t of teams) {
+    for (const p of t.players) {
+      squadOfPlayer.set(p, t.id);
+      squadOfPlayer.set(p.trim().toLowerCase(), t.id);
+      squadOfPlayer.set(p.trim().toLowerCase().split(' ')[0], t.id);
+    }
+  }
 
   const totalsByTeam = new Map(teams.map(t => [t.id, 0]));
   const stageBreakdown = stages.map(s => ({ stageLabel: s.stageLabel, totalsByTeam: new Map(teams.map(t => [t.id, 0])) }));
@@ -51,7 +57,8 @@ export function computeTeamChampionshipStandings(
 
     const aWon = round.score_a > round.score_b;
     const winningTeam = aWon ? round.team_a : round.team_b;
-    const winnerSquadId = winningTeam[0] !== undefined ? squadOfPlayer.get(winningTeam[0]) : undefined;
+    const firstPlayer = winningTeam[0] ? winningTeam[0].trim().toLowerCase() : '';
+    const winnerSquadId = squadOfPlayer.get(winningTeam[0]) ?? squadOfPlayer.get(firstPlayer) ?? squadOfPlayer.get(firstPlayer.split(' ')[0]);
     if (winnerSquadId === undefined || !totalsByTeam.has(winnerSquadId)) continue;
 
     totalsByTeam.set(winnerSquadId, totalsByTeam.get(winnerSquadId)! + stage.pointsPerWin);
