@@ -349,8 +349,20 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
                 courts.length === 2 &&
                 JSON.stringify([...courts[0].sitting_out].sort()) === JSON.stringify([...courts[1].sitting_out].sort());
               const timeRange = session ? computeRoundTimeRange(session.start_time, session.round_duration_minutes, roundNumber) : null;
+
+              const roundsPerBlock = session?.rounds_per_block || (sortedRoundNumbers.length % 5 === 0 && sortedRoundNumbers.length > 5 ? 5 : null);
+              const isBlockHeader = roundsPerBlock ? (roundNumber - 1) % roundsPerBlock === 0 : false;
+              const blockIndex = roundsPerBlock ? Math.floor((roundNumber - 1) / roundsPerBlock) + 1 : 1;
+              const blockStartRound = roundsPerBlock ? (blockIndex - 1) * roundsPerBlock + 1 : 1;
+              const blockEndRound = roundsPerBlock ? Math.min(blockIndex * roundsPerBlock, sortedRoundNumbers.length) : sortedRoundNumbers.length;
+
               return (
                 <div key={roundNumber} className="round-card">
+                  {isBlockHeader && (
+                    <div style={{ background: 'var(--primary)', color: '#ffffff', fontWeight: 800, fontSize: 16, textAlign: 'center', padding: '10px 14px', borderRadius: 10, marginTop: roundNumber === 1 ? 0 : 24, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      ★ SESSION {blockIndex} — ROUNDS {blockStartRound} TO {blockEndRound} ★
+                    </div>
+                  )}
                   <div className="round-card-header">
                     <span className="round-label">Round {roundNumber}</span>
                     {timeRange && <span className="round-label" style={{ fontSize: 14 }}>{timeRange}</span>}

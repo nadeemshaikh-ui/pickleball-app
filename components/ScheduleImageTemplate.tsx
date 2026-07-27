@@ -1,3 +1,4 @@
+import React from 'react';
 import type { RoundRow, SessionRow } from '@/lib/db';
 import { formatLabel } from '@/lib/formatLabel';
 import { computeRoundTimeRange } from '@/lib/roundTiming';
@@ -85,22 +86,52 @@ export default function ScheduleImageTemplate({
             const courts = byRound.get(roundNumber)!.sort((a, b) => a.court - b.court);
             const sittingNames = [...new Set(courts.flatMap(c => c.sitting_out))];
             const timeRange = computeRoundTimeRange(session.start_time, session.round_duration_minutes, roundNumber);
+
+            const roundsPerBlock = session.rounds_per_block || (sortedRoundNumbers.length % 5 === 0 && sortedRoundNumbers.length > 5 ? 5 : null);
+            const isBlockHeader = roundsPerBlock ? (roundNumber - 1) % roundsPerBlock === 0 : false;
+            const blockIndex = roundsPerBlock ? Math.floor((roundNumber - 1) / roundsPerBlock) + 1 : 1;
+            const blockStartRound = roundsPerBlock ? (blockIndex - 1) * roundsPerBlock + 1 : 1;
+            const blockEndRound = roundsPerBlock ? Math.min(blockIndex * roundsPerBlock, sortedRoundNumbers.length) : sortedRoundNumbers.length;
+
             return (
-              <tr key={roundNumber} style={{ background: rowIndex % 2 === 0 ? '#ffffff' : '#f5f5dc' }}>
-                <td style={{ ...cellStyle, fontFamily: 'var(--font-display), sans-serif', fontSize: timeRange ? 18 : 26, textAlign: 'center' }}>
-                  {timeRange ?? `R${roundNumber}`}
-                </td>
-                {courtLabels.map((label, courtIndex) => {
-                  const parsedNum = parseInt(label, 10);
-                  const court = courts.find(c => c.court === courtIndex + 1 || (!isNaN(parsedNum) && c.court === parsedNum));
-                  return (
-                    <td key={courtIndex} style={cellStyle}>
-                      {court ? `${court.team_a.join(' & ')} vs ${court.team_b.join(' & ')}` : '—'}
+              <React.Fragment key={roundNumber}>
+                {isBlockHeader && (
+                  <tr>
+                    <td
+                      colSpan={courtLabels.length + 2}
+                      style={{
+                        background: '#121a2f',
+                        color: '#e5fa00',
+                        fontFamily: 'var(--font-display), sans-serif',
+                        fontSize: 22,
+                        fontWeight: 800,
+                        textAlign: 'center',
+                        padding: '12px 16px',
+                        letterSpacing: 1.5,
+                        textTransform: 'uppercase',
+                        border: '2px solid #121a2f',
+                      }}
+                    >
+                      ★ SESSION {blockIndex} — ROUNDS {blockStartRound} TO {blockEndRound} ★
                     </td>
-                  );
-                })}
-                <td style={{ ...cellStyle, color: '#8a5a1f' }}>{sittingNames.join(', ') || '—'}</td>
-              </tr>
+                  </tr>
+                )}
+                <tr style={{ background: rowIndex % 2 === 0 ? '#ffffff' : '#f5f5dc' }}>
+                  <td style={{ ...cellStyle, fontFamily: 'var(--font-display), sans-serif', fontSize: timeRange ? 18 : 26, textAlign: 'center' }}>
+                    {timeRange ?? `R${roundNumber}`}
+                  </td>
+                  {courtLabels.map((label, courtIndex) => {
+                    const parsedNum = parseInt(label, 10);
+                    const court = courts.find(c => c.court === courtIndex + 1 || (!isNaN(parsedNum) && c.court === parsedNum));
+                    return (
+                      <td key={courtIndex} style={cellStyle}>
+                        {court ? `${court.team_a.join(' & ')} vs ${court.team_b.join(' & ')}` : '—'}
+                      </td>
+                    );
+                  })}
+                  <td style={{ ...cellStyle, color: '#8a5a1f' }}>{sittingNames.join(', ') || '—'}</td>
+                </tr>
+              </React.Fragment>
             );
           })}
         </tbody>
