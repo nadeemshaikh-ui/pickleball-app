@@ -10,6 +10,8 @@ import {
   generateFixedPartnersSchedule,
   buildRivalryHeatMap,
   resolveCourtCount,
+  normalizeLockedPair,
+  validateLockedPairs,
   type CourtBlockAssignment,
   type LockedPair,
   type Squads,
@@ -95,30 +97,24 @@ function SetupPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentClubId, currentClub, user, loading: clubLoading } = useCurrentClub();
-  // Circle mode: only meaningful when the user has NO club at all — a
-  // club member's existing flow (roster history, rivalries, streaks, dues,
-  // skill-balanced pairing) is untouched. See the circle scope note in
-  // 20260723000000_circles_schema.sql: sessions + scoring only, no dues/
-  // roster-history parity for circles in this pass.
+
+  const isGuestModeParam = searchParams.get('mode') === 'guest' || searchParams.get('guest') === 'true';
+  const [sessionMode, setSessionMode] = useState<'club' | 'guest'>(isGuestModeParam ? 'guest' : 'club');
+  const effectiveClubId = sessionMode === 'club' ? currentClubId : null;
+
   const { current: currentGroup, loading: groupLoading } = useCurrentGroup();
-  const circleId = !currentClubId && currentGroup.type === 'circle' ? currentGroup.circleId : null;
+  const circleId = !effectiveClubId && currentGroup.type === 'circle' ? currentGroup.circleId : null;
   const presetFormat = searchParams.get('format') === 'team_championship';
 
-  // "Start a Team Championship" used to jump straight into a blank wizard
-  // every time, with no idea an unfinished tournament already existed —
-  // real feedback: every back-out-and-re-enter silently abandoned the
-  // in-progress session. Checked once, only for the preset-format entry
-  // point (the normal format picker isn't scoped to one format, so it
-  // doesn't make sense to prompt there).
   const [inProgressSession, setInProgressSession] = useState<SessionRow | null | 'checking'>(presetFormat ? 'checking' : null);
   const [inProgressRounds, setInProgressRounds] = useState<RoundRow[]>([]);
   const [resumeChoiceMade, setResumeChoiceMade] = useState(false);
   const [deletingDraft, setDeletingDraft] = useState(false);
 
   useEffect(() => {
-    if (!presetFormat || !currentClubId) return;
+    if (!presetFormat || !effectiveClubId) return;
     let cancelled = false;
-    findInProgressTeamChampionshipSession(currentClubId)
+    findInProgressTeamChampionshipSession(effectiveClubId)
       .then(async s => {
         if (cancelled) return;
         setInProgressSession(s);
@@ -130,13 +126,13 @@ function SetupPageInner() {
     return () => {
       cancelled = true;
     };
-  }, [presetFormat, currentClubId]);
+  }, [presetFormat, effectiveClubId]);
 
   // Restores in-progress setup form state after a back-navigation or
   // accidental reload — without this, leaving /setup mid-fill (even via the
   // in-app "Change Players" back link's parent navigation) loses everything
   // typed so far since it's plain component state with nowhere else to live.
-  const SETUP_DRAFT_KEY = 'pickleball-setup-draft';
+  const SETUP_DRAFT_KEY = `pickleball-setup-draft-${effectiveClubId ?? 'guest'}`;
   function readDraft(): {
     playerCount?: number;
     courtCount?: number;
@@ -279,6 +275,8 @@ function SetupPageInner() {
   const [rivalryAware, setRivalryAware] = useState(false);
   const [lockPickerA, setLockPickerA] = useState('');
   const [lockPickerB, setLockPickerB] = useState('');
+  const [lockStartRound, setLockStartRound] = useState('');
+  const [lockEndRound, setLockEndRound] = useState('');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -325,14 +323,28 @@ function SetupPageInner() {
   ]);
 
   const trimmedNamesForLocks = names.map(n => n.trim()).filter(Boolean);
-  const lockedPlayers = new Set(lockedPairs.flatMap(p => p));
 
   function handleAddLock() {
     if (!lockPickerA || !lockPickerB || lockPickerA === lockPickerB) return;
-    setLockedPairs(prev => [...prev, [lockPickerA, lockPickerB]]);
-    setLockPickerA('');
-    setLockPickerB('');
-    setSkillBalanced(false);
+    const start = lockStartRound.trim() !== '' ? Number(lockStartRound) : 1;
+    const end = lockEndRound.trim() !== '' ? Number(lockEndRound) : roundCount;
+    const newLock: LockedPair = (start === 1 && end === roundCount)
+      ? [lockPickerA, lockPickerB]
+      : { playerA: lockPickerA, playerB: lockPickerB, startRound: start, endRound: end };
+
+    const activeNames = names.map(n => n.trim()).filter(Boolean);
+    try {
+      validateLockedPairs(activeNames, [...lockedPairs, newLock], roundCount);
+      setLockedPairs(prev => [...prev, newLock]);
+      setLockPickerA('');
+      setLockPickerB('');
+      setLockStartRound('');
+      setLockEndRound('');
+      setSkillBalanced(false);
+      setError(null);
+    } catch (err: any) {
+      setError(err.message);
+    }
   }
 
   function handleRemoveLock(index: number) {
@@ -372,31 +384,67 @@ function SetupPageInner() {
   const [storylines, setStorylines] = useState<string[]>([]);
 
   useEffect(() => {
-    if (clubLoading || !currentClubId) return;
-    loadRoster(currentClubId).then(setSavedRoster);
+    if (clubLoading) return;
+    if (!effectiveClubId) {
+      setSavedRoster([]);
+      setRegisteredPlayers([]);
+      setMyName(null);
+      return;
+    }
+
+    let cancelled = false;
+    async function initClubRoster() {
+      const loaded = await loadRoster(effectiveClubId!);
+      if (cancelled) return;
+      setSavedRoster(loaded ?? []);
+
+      const rawDraft = typeof window !== 'undefined' ? sessionStorage.getItem(`pickleball-setup-draft-${effectiveClubId}`) : null;
+      if (!rawDraft && loaded && loaded.length > 0) {
+        setNames(loaded);
+        setPlayerCount(loaded.length);
+      } else if (!rawDraft) {
+        const players = await listPlayers(effectiveClubId!).catch(() => []);
+        if (cancelled) return;
+        setRegisteredPlayers(players);
+        if (players.length > 0) {
+          const playerNames = players.map(p => p.name);
+          setNames(playerNames);
+          setPlayerCount(playerNames.length);
+        }
+      }
+
+      listPlayers(effectiveClubId!).then(p => {
+        if (!cancelled) setRegisteredPlayers(p);
+      }).catch(() => {});
+
+      getCurrentUser()
+        .then(u => (u ? getOwnPlayer(effectiveClubId!, u.id) : null))
+        .then(p => {
+          if (!cancelled) setMyName(p?.name ?? null);
+        })
+        .catch(() => {});
+    }
+
+    initClubRoster();
     preloadPlayerPhotos().then(() => setPhotoVersion(v => v + 1));
-    listPlayers(currentClubId).then(setRegisteredPlayers).catch(() => setRegisteredPlayers([]));
-    getCurrentUser()
-      .then(user => (user ? getOwnPlayer(currentClubId, user.id) : null))
-      .then(player => setMyName(player?.name ?? null))
-      .catch(() => setMyName(null));
-  }, [currentClubId, clubLoading]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveClubId, clubLoading]);
 
   // Closest rival tonight: among tonight's roster, whoever you've got the
   // tightest head-to-head record against — a fun pregame teaser, not a
   // ranked stat, so the games threshold is deliberately lower than the
   // official MIN_GAMES_FOR_RIVALRY used on the League page.
   useEffect(() => {
-    if (!myName || !currentClubId || !names.some(n => n.trim() === myName)) {
+    if (!myName || !effectiveClubId || !names.some(n => n.trim() === myName)) {
       setNemesis(null);
       return;
     }
-    // Debounced — `names` changes on every keystroke while editing the
-    // roster inline on this screen, and this would otherwise re-fetch on
-    // every single character typed.
     const timer = setTimeout(() => {
       const roster = new Set(names.map(n => n.trim()).filter(Boolean));
-      fetchRivalriesForPlayer(currentClubId, myName)
+      fetchRivalriesForPlayer(effectiveClubId, myName)
         .then(rivalries => {
           const inRoster = rivalries.filter(r => roster.has(r.players[1]) && r.gamesTogether >= MIN_GAMES_FOR_NEMESIS_ALERT);
           const closest = [...inRoster].sort((a, b) => {
@@ -410,26 +458,22 @@ function SetupPageInner() {
         .catch(() => setNemesis(null));
     }, 500);
     return () => clearTimeout(timer);
-  }, [myName, names, currentClubId]);
+  }, [myName, names, effectiveClubId]);
 
   // Template-based pregame brief (no LLM) — same debounce reasoning as Nemesis Alert above.
   useEffect(() => {
     const roster = names.map(n => n.trim()).filter(Boolean);
-    if (roster.length < 2 || !currentClubId) {
+    if (roster.length < 2 || !effectiveClubId) {
       setStorylines([]);
       return;
     }
     let cancelled = false;
     const timer = setTimeout(() => {
-      Promise.all([fetchStreaks(currentClubId), fetchRivalriesAmongRoster(currentClubId, roster)])
+      Promise.all([fetchStreaks(effectiveClubId), fetchRivalriesAmongRoster(effectiveClubId, roster)])
         .then(([streaks, rivalries]) => {
           if (cancelled) return;
           const templateLines = buildStorylines(roster, streaks, rivalries);
           setStorylines(templateLines);
-          // Progressive enhancement — show template lines immediately, swap
-          // in the LLM-polished version if it arrives before the roster
-          // changes again (guarded by `cancelled` so a slow response from an
-          // earlier roster can't clobber newer template lines).
           if (templateLines.length > 0) {
             polishStorylines(templateLines).then(polished => {
               if (polished && !cancelled) setStorylines(polished);
@@ -673,7 +717,10 @@ function SetupPageInner() {
     // rather than fail the whole session. Manual squad/team assignment
     // isn't reconciled with absences in this pass; if you're using either
     // of those alongside marking players absent, double-check the result.
-    const activeLockedPairs = lockedPairs.filter(([a, b]) => activeNames.includes(a) && activeNames.includes(b));
+    const activeLockedPairs = lockedPairs.filter(lp => {
+      const norm = normalizeLockedPair(lp);
+      return activeNames.includes(norm.playerA) && activeNames.includes(norm.playerB);
+    });
     if (format === 'king_of_court' && activeNames.length !== courtCount * 4) {
       setError(`King of the Court needs exactly ${courtCount * 4} players present for ${courtCount} court(s) — no bench in this format yet.`);
       return;
@@ -787,11 +834,8 @@ function SetupPageInner() {
     setSubmitting(true);
     try {
       const seed = `${Date.now()}`;
-      // Branding now comes from the club (Club Settings), not entered per
-      // session — this is just what gets stamped onto this session's row so
-      // GroupHeader keeps working unchanged for historical sessions too.
-      let logoUrl1: string | null = currentClub?.logo_url ?? null;
-      const logoUrl2: string | null = currentClub?.logo_url_2 ?? null;
+      let logoUrl1: string | null = effectiveClubId ? currentClub?.logo_url ?? null : null;
+      const logoUrl2: string | null = effectiveClubId ? currentClub?.logo_url_2 ?? null : null;
       if (format === 'team_championship' && tcLogoFile) {
         logoUrl1 = await uploadSquadLogo(tcLogoFile);
       }
@@ -810,7 +854,7 @@ function SetupPageInner() {
       const squadRivalryLabel2 = format === 'squad_rivalry' ? squadLabels[1]?.trim() || null : null;
 
       const baseOptions = {
-        clubId: currentClubId ?? undefined,
+        clubId: effectiveClubId ?? undefined,
         circleId: circleId ?? undefined,
         players: trimmed,
         // Filtered against trimmed (not a raw spread of absentNames) so a
@@ -819,7 +863,7 @@ function SetupPageInner() {
         absentPlayers: trimmed.filter(n => absentNames.has(n)),
         courtLabels: trimmedCourtLabels,
         roundDurationMinutes: parsedDuration,
-        groupName: format === 'team_championship' && tcTournamentName.trim() ? tcTournamentName.trim() : currentClub?.name ?? null,
+        groupName: format === 'team_championship' && tcTournamentName.trim() ? tcTournamentName.trim() : (effectiveClubId ? currentClub?.name ?? null : 'Single-Night Event'),
         logoUrl1,
         logoUrl2,
         startTime: startTime.trim() || null,
@@ -836,12 +880,12 @@ function SetupPageInner() {
       let sessionId: string;
       if (format === 'scramble') {
         const skillRatings =
-          currentClubId && skillBalanced && lockedPairs.length === 0
-            ? (await getSkillRatingsForNames(currentClubId, trimmed)) ?? undefined
+          effectiveClubId && skillBalanced && lockedPairs.length === 0
+            ? (await getSkillRatingsForNames(effectiveClubId, trimmed)) ?? undefined
             : undefined;
         const rivalryHeatMap =
-          currentClubId && rivalryAware
-            ? buildRivalryHeatMap(await fetchRivalriesAmongRoster(currentClubId, trimmed))
+          effectiveClubId && rivalryAware
+            ? buildRivalryHeatMap(await fetchRivalriesAmongRoster(effectiveClubId, trimmed))
             : undefined;
         const rounds = generateScrambleSchedule(activeNames, courtCount, roundCount, seed, activeLockedPairs, skillRatings, rivalryHeatMap);
         sessionId = await createSession({
@@ -932,8 +976,8 @@ function SetupPageInner() {
       // Roster history and dues are club-scoped concepts with no circle
       // equivalent yet (MVP scope: circles get sessions + scoring only —
       // see 20260723000000_circles_schema.sql).
-      if (currentClubId) {
-        await saveRoster(currentClubId, trimmed);
+      if (effectiveClubId) {
+        await saveRoster(effectiveClubId, trimmed);
         if (parsedCourtCost !== null) {
           await createSessionDues(sessionId, parsedCourtCost, parsedBallCost, trimmed);
         }
@@ -954,7 +998,7 @@ function SetupPageInner() {
 
   if (clubLoading || groupLoading) return <main className="page"><p>Loading…</p></main>;
   if (!user) return <SignInGate message="Sign in to start a session." />;
-  if (!currentClubId && !circleId) {
+  if (!effectiveClubId && !circleId && sessionMode === 'club') {
     return (
       <main className="page">
         <p>Join or create a club, or play a casual session with friends — no club needed.</p>
@@ -1054,6 +1098,44 @@ function SetupPageInner() {
       <main className="page">
         <StatusChip />
         <h1>Session Setup</h1>
+        {currentClub && (
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16, background: 'var(--surface-2, rgba(127,127,127,0.06))' }}>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>Session Context:</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className={sessionMode === 'club' ? 'btn-primary' : 'btn-secondary'}
+                style={{ padding: '8px 12px', fontSize: 13, fontWeight: 700 }}
+                onClick={() => {
+                  setSessionMode('club');
+                  if (currentClubId) {
+                    loadRoster(currentClubId).then(setSavedRoster);
+                  }
+                }}
+              >
+                🏢 {currentClub.name}
+              </button>
+              <button
+                type="button"
+                className={sessionMode === 'guest' ? 'btn-primary' : 'btn-secondary'}
+                style={{ padding: '8px 12px', fontSize: 13, fontWeight: 700 }}
+                onClick={() => {
+                  setSessionMode('guest');
+                  setNames(Array(playerCount).fill(''));
+                  setNamesEntered(false);
+                  setSavedRoster([]);
+                }}
+              >
+                🎾 Standalone Guest Event (No Club)
+              </button>
+            </div>
+            {sessionMode === 'guest' && (
+              <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>
+                Single-night event. Will not save to club roster, club dues, or club stats.
+              </p>
+            )}
+          </div>
+        )}
         <h2>How Many Courts?</h2>
         <div className="card">
           <input
@@ -1824,7 +1906,7 @@ function SetupPageInner() {
           <h2>Lock Partners (optional)</h2>
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <p style={{ fontSize: 12, color: 'var(--muted)' }}>
-              Keep specific players partnered together all night — the rest still rotate normally.
+              Keep specific players partnered together all night or for a specific round window — the rest rotate normally.
             </p>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <select
@@ -1834,7 +1916,7 @@ function SetupPageInner() {
                 style={{ minHeight: 40, padding: '6px 10px', fontSize: 14, border: '1px solid var(--border)', borderRadius: 8 }}
               >
                 <option value="">Player A…</option>
-                {trimmedNamesForLocks.filter(n => !lockedPlayers.has(n) || n === lockPickerA).map(n => (
+                {trimmedNamesForLocks.map(n => (
                   <option key={n} value={n}>{n}</option>
                 ))}
               </select>
@@ -1846,22 +1928,50 @@ function SetupPageInner() {
                 style={{ minHeight: 40, padding: '6px 10px', fontSize: 14, border: '1px solid var(--border)', borderRadius: 8 }}
               >
                 <option value="">Player B…</option>
-                {trimmedNamesForLocks.filter(n => n !== lockPickerA && (!lockedPlayers.has(n) || n === lockPickerB)).map(n => (
+                {trimmedNamesForLocks.filter(n => n !== lockPickerA).map(n => (
                   <option key={n} value={n}>{n}</option>
                 ))}
               </select>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: 'var(--muted)' }}>
+                <span>Rounds</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={roundCount}
+                  placeholder="1"
+                  value={lockStartRound}
+                  onChange={e => setLockStartRound(e.target.value)}
+                  style={{ width: 52, minHeight: 40, padding: '4px 6px', fontSize: 14, border: '1px solid var(--border)', borderRadius: 8 }}
+                />
+                <span>to</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={roundCount}
+                  placeholder={String(roundCount)}
+                  value={lockEndRound}
+                  onChange={e => setLockEndRound(e.target.value)}
+                  style={{ width: 52, minHeight: 40, padding: '4px 6px', fontSize: 14, border: '1px solid var(--border)', borderRadius: 8 }}
+                />
+              </div>
               <button type="button" className="btn-secondary" onClick={handleAddLock} disabled={!lockPickerA || !lockPickerB}>
                 Lock
               </button>
             </div>
             {lockedPairs.length > 0 && (
               <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {lockedPairs.map(([a, b], i) => (
-                  <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
-                    <Lock size={14} /> {a} & {b}
-                    <button type="button" className="text-link-btn" onClick={() => handleRemoveLock(i)}>Remove</button>
-                  </li>
-                ))}
+                {lockedPairs.map((lp, i) => {
+                  const norm = normalizeLockedPair(lp);
+                  const rangeText = (norm.startRound === 1 && (norm.endRound === Infinity || norm.endRound === roundCount))
+                    ? 'All night'
+                    : `Rounds ${norm.startRound}–${norm.endRound}`;
+                  return (
+                    <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
+                      <Lock size={14} /> {norm.playerA} & {norm.playerB} ({rangeText})
+                      <button type="button" className="text-link-btn" onClick={() => handleRemoveLock(i)}>Remove</button>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

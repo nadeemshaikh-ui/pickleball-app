@@ -483,3 +483,46 @@ describe('generateCourtBlocksSchedule — regeneration support (startBlock/initi
     expect(a).toEqual(b);
   });
 });
+
+describe('Time-Scoped and Round-Scoped Locked Partners', () => {
+  const players = ['Vikki', 'Suresh', 'Priyesh', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10'];
+
+  it('pairs Vikki with Suresh in rounds 1-6, and Vikki with Priyesh in rounds 7-12', () => {
+    const lockedPairs = [
+      { playerA: 'Vikki', playerB: 'Suresh', startRound: 1, endRound: 6 },
+      { playerA: 'Vikki', playerB: 'Priyesh', startRound: 7, endRound: 12 },
+    ];
+
+    const rounds = generateScrambleSchedule(players, 2, 12, 'seed-scoped-locks', lockedPairs);
+    expect(rounds).toHaveLength(12);
+
+    for (const round of rounds) {
+      const allCourts = round.courts;
+      const isVikkiPlaying = allCourts.some(c => [...c.teamA, ...c.teamB].includes('Vikki'));
+
+      if (isVikkiPlaying) {
+        const vikkiCourt = allCourts.find(c => [...c.teamA, ...c.teamB].includes('Vikki'))!;
+        const vikkiTeam = vikkiCourt.teamA.includes('Vikki') ? vikkiCourt.teamA : vikkiCourt.teamB;
+        const vikkiPartner = vikkiTeam.find(p => p !== 'Vikki');
+
+        if (round.roundNumber <= 6) {
+          expect(vikkiPartner).toBe('Suresh');
+        } else {
+          expect(vikkiPartner).toBe('Priyesh');
+        }
+      }
+    }
+  });
+
+  it('throws an error if a player is in two active locked pairs in the same round', () => {
+    const overlappingLocks = [
+      { playerA: 'Vikki', playerB: 'Suresh', startRound: 1, endRound: 6 },
+      { playerA: 'Vikki', playerB: 'Priyesh', startRound: 4, endRound: 9 },
+    ];
+
+    expect(() => generateScrambleSchedule(players, 2, 12, 'seed-overlap', overlappingLocks)).toThrow(
+      /appears in more than one locked pair in round 4/
+    );
+  });
+});
+

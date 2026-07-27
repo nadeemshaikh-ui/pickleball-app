@@ -68,23 +68,72 @@ export function pickSitOuts(
   return chosen;
 }
 
-export type LockedPair = [string, string];
+export interface TimeScopedLockedPair {
+  playerA: string;
+  playerB: string;
+  startRound?: number;
+  endRound?: number;
+}
 
-// Rejects overlapping locks (a player in two locked pairs) and pairs
-// referencing players who aren't in the roster — both would otherwise
-// silently corrupt the schedule rather than fail loudly.
-export function validateLockedPairs(players: string[], lockedPairs: LockedPair[]): void {
-  const seen = new Set<string>();
-  for (const [a, b] of lockedPairs) {
+export type LockedPair = [string, string] | TimeScopedLockedPair;
+
+export function normalizeLockedPair(lp: LockedPair): { playerA: string; playerB: string; startRound: number; endRound: number } {
+  if (Array.isArray(lp)) {
+    return { playerA: lp[0], playerB: lp[1], startRound: 1, endRound: Infinity };
+  }
+  return {
+    playerA: lp.playerA,
+    playerB: lp.playerB,
+    startRound: lp.startRound ?? 1,
+    endRound: lp.endRound ?? Infinity,
+  };
+}
+
+export function isLockActiveInRound(lp: LockedPair, roundNumber: number): boolean {
+  const norm = normalizeLockedPair(lp);
+  return roundNumber >= norm.startRound && roundNumber <= norm.endRound;
+}
+
+export function getActiveLockedPairsForRound(lockedPairs: LockedPair[], roundNumber: number): [string, string][] {
+  const active: [string, string][] = [];
+  for (const lp of lockedPairs) {
+    if (isLockActiveInRound(lp, roundNumber)) {
+      const norm = normalizeLockedPair(lp);
+      active.push([norm.playerA, norm.playerB]);
+    }
+  }
+  return active;
+}
+
+export function getAllLockedPairsTuples(lockedPairs: LockedPair[]): [string, string][] {
+  return lockedPairs.map(lp => {
+    const norm = normalizeLockedPair(lp);
+    return [norm.playerA, norm.playerB];
+  });
+}
+
+// Rejects overlapping locks (a player in two locked pairs in the same round)
+// and pairs referencing players who aren't in the roster.
+export function validateLockedPairs(players: string[], lockedPairs: LockedPair[], totalRounds?: number): void {
+  for (const lp of lockedPairs) {
+    const { playerA: a, playerB: b } = normalizeLockedPair(lp);
     if (a === b) throw new Error('A locked pair cannot be the same player twice.');
     if (!players.includes(a) || !players.includes(b)) {
       throw new Error(`Locked pair references a player not in the roster: ${a} & ${b}`);
     }
-    if (seen.has(a) || seen.has(b)) {
-      throw new Error(`Player appears in more than one locked pair: ${seen.has(a) ? a : b}`);
+  }
+
+  const maxRoundsToCheck = totalRounds ?? 100;
+  for (let r = 1; r <= maxRoundsToCheck; r++) {
+    const activeThisRound = getActiveLockedPairsForRound(lockedPairs, r);
+    const seenThisRound = new Set<string>();
+    for (const [a, b] of activeThisRound) {
+      if (seenThisRound.has(a) || seenThisRound.has(b)) {
+        throw new Error(`Player ${seenThisRound.has(a) ? a : b} appears in more than one locked pair in round ${r}.`);
+      }
+      seenThisRound.add(a);
+      seenThisRound.add(b);
     }
-    seen.add(a);
-    seen.add(b);
   }
 }
 
@@ -97,7 +146,8 @@ interface SitOutUnit {
 
 export function buildSitOutUnits(pool: string[], lockedPairs: LockedPair[]): SitOutUnit[] {
   const partnerOf = new Map<string, string>();
-  for (const [a, b] of lockedPairs) {
+  for (const lp of lockedPairs) {
+    const [a, b] = Array.isArray(lp) ? lp : [lp.playerA, lp.playerB];
     partnerOf.set(a, b);
     partnerOf.set(b, a);
   }
@@ -176,7 +226,8 @@ export function pairIntoPairs(
   const used = new Set<string>();
   const teams: [string, string][] = [];
 
-  for (const [a, b] of lockedPairs) {
+  for (const lp of lockedPairs) {
+    const { playerA: a, playerB: b } = normalizeLockedPair(lp);
     if (pool.includes(a) && pool.includes(b)) {
       teams.push([a, b]);
       used.add(a);
@@ -378,7 +429,7 @@ export function generateScrambleSchedule(
   initialLedger?: ScrambleGenerationLedger
 ): ScrambleRound[] & { courtCount: number } {
   requireMinPlayers(players, 'Scramble');
-  validateLockedPairs(players, lockedPairs);
+  validateLockedPairs(players, lockedPairs, roundCount);
   if (skillRatings && lockedPairs.length > 0) {
     throw new Error('Skill-balanced matchmaking cannot be combined with locked partners yet.');
   }
@@ -386,10 +437,6 @@ export function generateScrambleSchedule(
     throw new Error('Skill-balanced and rivalry-aware matchmaking cannot be combined yet.');
   }
   const courtCount = resolveCourtCount(players.length, requestedCourtCount);
-  // A late-joining player (regeneration only, initialLedger set) starts at
-  // 0 sit-outs, which the existing fewest-sits-first logic in pickSitOuts
-  // already prioritises — no separate catch-up mechanism needed, the
-  // deficit self-resolves as rounds continue.
   const sitOutCounts = new Map<string, number>(initialLedger?.sitOutCounts ?? []);
   for (const p of players) if (!sitOutCounts.has(p)) sitOutCounts.set(p, 0);
   const partnerCounts = new Map<string, number>(initialLedger?.partnerCounts ?? []);
@@ -399,19 +446,16 @@ export function generateScrambleSchedule(
 
   for (let i = 0; i < roundCount; i++) {
     const roundNumber = startRound + i;
-    // Re-seeded per round (not one continuous stream) so a regenerated
-    // round is reproducible from (seed, roundNumber, pool, ledger) alone —
-    // required for Item 3: regenerating from round N must not depend on
-    // exactly which draws happened before N in a single long stream.
     const rand = seededRandom(`${seed}:r${roundNumber}`);
+    const activeLocks = getActiveLockedPairsForRound(lockedPairs, roundNumber);
     const sittingOut =
-      lockedPairs.length > 0
-        ? pickSitOutUnits(buildSitOutUnits(players, lockedPairs), sitOutCounts, sitOutCount, rand, lastSitOut)
+      activeLocks.length > 0
+        ? pickSitOutUnits(buildSitOutUnits(players, activeLocks), sitOutCounts, sitOutCount, rand, lastSitOut)
         : pickSitOuts(players, sitOutCounts, sitOutCount, rand, lastSitOut);
     const playing = players.filter(p => !sittingOut.includes(p));
     const courts = skillRatings
       ? assignCourtsBySkill(formSkillBalancedTeams(playing, skillRatings, courtCount * 2), skillRatings, courtCount)
-      : pairIntoNTeams(playing, courtCount, partnerCounts, rand, lockedPairs, rivalryHeatMap);
+      : pairIntoNTeams(playing, courtCount, partnerCounts, rand, activeLocks, rivalryHeatMap);
     rounds.push({ roundNumber, courts, sittingOutPerCourt: courts.map(() => sittingOut) });
     lastSitOut = new Set(sittingOut);
   }
@@ -430,12 +474,6 @@ export interface SquadRivalrySchedule {
   courtCount: number;
 }
 
-// Splits players into 2 squads keeping every locked pair on the same side,
-// via the same unit-atomicity idea as sit-outs. Tolerates an odd total (one
-// squad ends up 1 larger) — mirrors the greedy smallest-bucket-first
-// approach lib/squads.ts's N-squad split uses, so an odd roster degrades to
-// an unequal split instead of throwing. Still throws if locked pairs make
-// even that impossible (imbalance > 1).
 function splitIntoSquadsRespectingLocks(players: string[], lockedPairs: LockedPair[], rand: () => number): Squads {
   const units = buildSitOutUnits(players, lockedPairs);
   const pairUnits = shuffleArray(units.filter(u => u.players.length === 2), rand);
@@ -454,10 +492,6 @@ function splitIntoSquadsRespectingLocks(players: string[], lockedPairs: LockedPa
   return { gold, black };
 }
 
-// Regeneration ledger — separate sit-out counts per squad (a gold player's
-// sit-out history is irrelevant to black's rotation), one shared partner
-// map (cross-squad partnerships never happen, but reusing one map matches
-// how pairIntoPairs is already called per-squad below).
 export interface SquadRivalryLedger {
   goldSitCounts: Map<string, number>;
   blackSitCounts: Map<string, number>;
@@ -483,7 +517,7 @@ export function generateSquadRivalrySchedule(
       throw new Error('Manual squads must include every player exactly once.');
     }
   }
-  validateLockedPairs(players, lockedPairs);
+  validateLockedPairs(players, lockedPairs, roundCount);
   const squads: Squads =
     manualSquads ??
     (lockedPairs.length > 0
@@ -495,8 +529,6 @@ export function generateSquadRivalrySchedule(
         })());
 
   const courtCount = resolveCourtCount(Math.min(squads.gold.length, squads.black.length) * 2, requestedCourtCount);
-  // A late-added squad member starts at 0 sits, same self-resolving
-  // catch-up logic as Scramble's regeneration support.
   const goldSitCounts = new Map<string, number>(initialLedger?.goldSitCounts ?? []);
   for (const p of squads.gold) if (!goldSitCounts.has(p)) goldSitCounts.set(p, 0);
   const blackSitCounts = new Map<string, number>(initialLedger?.blackSitCounts ?? []);
@@ -514,19 +546,20 @@ export function generateSquadRivalrySchedule(
   for (let i = 0; i < roundCount; i++) {
     const roundNumber = startRound + i;
     const rand = seededRandom(`${seed}:r${roundNumber}`);
+    const activeLocks = getActiveLockedPairsForRound(lockedPairs, roundNumber);
     const goldSitOut =
-      lockedPairs.length > 0
-        ? pickSitOutUnits(buildSitOutUnits(squads.gold, lockedPairs), goldSitCounts, goldSitOutCount, rand, lastGoldSitOut)
+      activeLocks.length > 0
+        ? pickSitOutUnits(buildSitOutUnits(squads.gold, activeLocks), goldSitCounts, goldSitOutCount, rand, lastGoldSitOut)
         : pickSitOuts(squads.gold, goldSitCounts, goldSitOutCount, rand, lastGoldSitOut);
     const blackSitOut =
-      lockedPairs.length > 0
-        ? pickSitOutUnits(buildSitOutUnits(squads.black, lockedPairs), blackSitCounts, blackSitOutCount, rand, lastBlackSitOut)
+      activeLocks.length > 0
+        ? pickSitOutUnits(buildSitOutUnits(squads.black, activeLocks), blackSitCounts, blackSitOutCount, rand, lastBlackSitOut)
         : pickSitOuts(squads.black, blackSitCounts, blackSitOutCount, rand, lastBlackSitOut);
     const goldPlaying = squads.gold.filter(p => !goldSitOut.includes(p));
     const blackPlaying = squads.black.filter(p => !blackSitOut.includes(p));
 
-    const goldPairs = pairIntoPairs(goldPlaying, partnerCounts, rand, lockedPairs);
-    const blackPairs = pairIntoPairs(blackPlaying, partnerCounts, rand, lockedPairs);
+    const goldPairs = pairIntoPairs(goldPlaying, partnerCounts, rand, activeLocks);
+    const blackPairs = pairIntoPairs(blackPlaying, partnerCounts, rand, activeLocks);
     const combinedSitOut = [...goldSitOut, ...blackSitOut];
 
     const courts: CourtMatch[] = [];

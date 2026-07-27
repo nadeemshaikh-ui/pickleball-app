@@ -52,7 +52,7 @@ export default function NewActionSheet({ onClose }: { onClose: () => void }) {
         </div>
 
         <button
-          onClick={() => go('/setup')}
+          onClick={() => go('/setup?mode=club')}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -68,8 +68,30 @@ export default function NewActionSheet({ onClose }: { onClose: () => void }) {
             <Zap size={22} color="white" />
           </span>
           <span>
-            <div style={{ fontWeight: 800, fontSize: 15 }}>New Session</div>
+            <div style={{ fontWeight: 800, fontSize: 15 }}>New Club Session</div>
             <div style={{ fontSize: 12, color: 'var(--muted)' }}>A single club-night — Scramble, Squad Rivalry, King of the Court & more</div>
+          </span>
+        </button>
+
+        <button
+          onClick={() => go('/setup?mode=guest')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            padding: 16,
+            borderRadius: 14,
+            border: '1px solid var(--border)',
+            background: 'var(--surface-2, rgba(127,127,127,0.06))',
+            textAlign: 'left',
+          }}
+        >
+          <span style={{ width: 44, height: 44, borderRadius: 12, background: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Zap size={22} color="white" />
+          </span>
+          <span>
+            <div style={{ fontWeight: 800, fontSize: 15 }}>Single-Night Guest Session</div>
+            <div style={{ fontSize: 12, color: 'var(--muted)' }}>Casual session for friends/guests — no club membership required</div>
           </span>
         </button>
 
