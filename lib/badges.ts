@@ -113,6 +113,27 @@ export const BADGE_CATALOG: Badge[] = [
   { id: 'player_of_the_month', label: 'Player of the Month', icon: 'Sparkles', description: 'Won the monthly leaderboard at least once' },
   { id: 'three_peat', label: 'Three-Peat', icon: 'Award', description: 'Won Player of the Month 3 recorded months running' },
 
+  // 20 Unique & Premium Tournament Badges
+  { id: 'sudden_death_king', label: 'The Clutch Sovereign', icon: 'Zap', tier: 4, description: 'Secured victory in a high-stakes match decided at 14-14 sudden death' },
+  { id: 'impenetrable_wall', label: 'Impenetrable Wall', icon: 'ShieldCheck', tier: 3, description: 'Conceded fewer than 8 average points per match across a full session' },
+  { id: 'velocity_master', label: 'Velocity Master', icon: 'Flame', tier: 3, description: 'Generated +1.0 or higher net point differential per minute of court time' },
+  { id: 'late_game_maestro', label: 'Late-Game Maestro', icon: 'Sparkles', tier: 3, description: 'Outperformed early rounds by +30% net point differential in Session 3' },
+  { id: 'golden_partnership', label: 'Golden Partnership', icon: 'Handshake', tier: 3, description: 'Maintained a 75%+ win rate across 10+ matches with a single partner' },
+  { id: 'rivalry_dominator', label: 'Rivalry Dominator', icon: 'Swords', tier: 2, description: 'Held a 70%+ winning record against a specific opponent pair across 5+ games' },
+  { id: 'authoritative_finish', label: 'Authoritative Finish', icon: 'Rocket', tier: 2, description: 'Won 3+ matches by a blowout margin of 5+ points in a single event' },
+  { id: 'court_commander', label: 'Court Commander', icon: 'MapPin', tier: 2, description: 'Maintained an 85%+ win rate on Court 1 (Show Court)' },
+  { id: 'resilience_standard', label: 'Resilience Standard', icon: 'RotateCcw', tier: 2, description: 'Won the match immediately following a loss 80%+ of the time' },
+  { id: 'fresh_leg_catalyst', label: 'Fresh-Leg Catalyst', icon: 'Sunrise', tier: 1, description: 'Won 75%+ of matches played immediately following a sit-out round' },
+  { id: 'iron_vanguard', label: 'Iron Vanguard', icon: 'Dumbbell', tier: 3, description: 'Won 3 consecutive rounds played back-to-back without rest' },
+  { id: 'lockout_sovereign', label: 'Lockout Sovereign', icon: 'Ban', tier: 4, description: 'Held an opposing team under 6 total points in a 15-point match' },
+  { id: 'engine_of_squad', label: 'Engine of the Squad', icon: 'TrendingUp', tier: 3, description: 'Generated 30%+ of your team\'s total cumulative points in a session' },
+  { id: 'precision_closer', label: 'Precision Closer', icon: 'CheckCircle2', tier: 2, description: 'Converted 90%+ of matches into wins after reaching 10 points first' },
+  { id: 'unshakable_anchor', label: 'Unshakable Anchor', icon: 'Target', tier: 3, description: 'Maintained a point margin variance under 2.0 points over 9 games' },
+  { id: 'defensive_shield', label: 'Defensive Shield', icon: 'Anchor', tier: 4, description: 'Opponents averaged under 8.5 points whenever you were on court' },
+  { id: 'upset_catalyst', label: 'Upset Catalyst', icon: 'Crown', tier: 4, description: 'Defeated a higher-ranked opponent team while playing as lower seed' },
+  { id: 'session_apex', label: 'Session Apex', icon: 'Trophy', tier: 4, description: 'Achieved the highest net point differential in a single 5-round Session block' },
+  { id: 'unblemished_record', label: 'Unblemished Record', icon: 'Sparkle', tier: 4, description: 'Went completely undefeated (9-0) across all matches played in an event' },
+
   // Exclusive crowns, batch 2 — see lib/leagueStats.ts fetchCrownBoards for the standings all 10 exclusive crowns share
   { id: 'iron_throne', label: 'The Iron Throne', icon: 'Crown', tier: 4, description: 'Highest current rating, club-wide' },
   { id: 'head_honcho', label: 'Head Honcho', icon: 'Landmark', tier: 4, description: 'Most total career wins, club-wide' },

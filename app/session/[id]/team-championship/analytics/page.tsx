@@ -8,6 +8,7 @@ import { fetchRapidFireLog } from '@/lib/rapidFire';
 import { getCurrentUser } from '@/lib/auth';
 import { listPlayers } from '@/lib/players';
 import SessionNav from '@/components/SessionNav';
+import BadgeMedallion from '@/components/BadgeMedallion';
 import { renderElementToImage, shareCachedImage } from '@/lib/shareImage';
 import { WhatsAppIcon } from '@/components/icons';
 import AnalyticsImageTemplate from '@/components/AnalyticsImageTemplate';
@@ -246,123 +247,114 @@ export default function TeamChampionshipAnalyticsPage({ params }: { params: Prom
         );
       })()}
 
-      <h2>Awards</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10, marginBottom: 16 }}>
+      <h2 style={{ fontSize: 22, fontWeight: 900, marginBottom: 12 }}>Tournament Badges & Honors</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14, marginBottom: 24 }}>
         {ironMan && ironMan.matchesPlayed > 0 && (
-          <AwardCard
-            title="Iron Man"
-            emoji="🦾"
+          <BadgeHonorCard
+            badgeId="iron_vanguard"
+            title="Iron Vanguard"
+            iconName="Dumbbell"
+            tier={3}
             name={ironMan.name}
             detail={`${ironMan.matchesPlayed} matches played`}
-            blurb="Kaam se kaam koi toh paisa vasool kar raha hai."
+            description="Demonstrated exceptional endurance by playing through grueling consecutive matches."
+            sessionId={id}
           />
         )}
         {bestPointDiff && (
-          <AwardCard
-            title="Best Point Differential"
-            emoji="📈"
+          <BadgeHonorCard
+            badgeId="velocity_master"
+            title="Velocity Master"
+            iconName="Flame"
+            tier={3}
             name={bestPointDiff.name}
-            detail={`${bestPointDiff.pointDiff >= 0 ? '+' : ''}${bestPointDiff.pointDiff} across ${bestPointDiff.matchesPlayed} matches`}
-            blurb="Winning by this much is basically bullying with a paddle."
+            detail={`${bestPointDiff.pointDiff >= 0 ? '+' : ''}${bestPointDiff.pointDiff} net diff across ${bestPointDiff.matchesPlayed} matches`}
+            description="Generated dominant scoring velocity and overwhelming point differential per game."
+            sessionId={id}
           />
         )}
         {perfectRecords.length > 0 && (
-          <AwardCard
-            title="Perfect Record"
-            emoji="💯"
+          <BadgeHonorCard
+            badgeId="unblemished_record"
+            title="Unblemished Record"
+            iconName="Sparkle"
+            tier={4}
             name={perfectRecords.map(p => p.name).join(', ')}
             detail={`Undefeated — ${perfectRecords[0].wins}-0`}
-            blurb="Undefeated here, insufferable at the next family group chat."
+            description="Went completely undefeated across all tournament matches played without a single loss."
+            sessionId={id}
           />
         )}
         {silentAssassin && (
-          <AwardCard
+          <BadgeHonorCard
+            badgeId="silent_assassin"
             title="Silent Assassin"
-            emoji="🥷"
+            iconName="Medal"
+            tier={2}
             name={silentAssassin.name}
-            detail={`${(silentAssassin.winPct * 100).toFixed(0)}% win rate in just ${silentAssassin.matchesPlayed} matches`}
-            blurb="Barely showed up, still topped the charts. Beta, teach the class."
+            detail={`${(silentAssassin.winPct * 100).toFixed(0)}% win rate in ${silentAssassin.matchesPlayed} matches`}
+            description="Secured dominant victory percentages while maintaining cool, controlled execution."
+            sessionId={id}
           />
         )}
         {bestDuo && (
-          <AwardCard
-            title="Best Duo"
-            emoji="🤝"
+          <BadgeHonorCard
+            badgeId="golden_partnership"
+            title="Golden Partnership"
+            iconName="Handshake"
+            tier={3}
             name={`${bestDuo.playerA} & ${bestDuo.playerB}`}
             detail={`${bestDuo.wins}-${bestDuo.losses} together`}
-            blurb="Better chemistry than most arranged marriages."
+            description="Formed the top-performing double team in the tournament with flawless chemistry."
+            sessionId={id}
           />
         )}
         {winStreakLeader && winStreakLeader.longestWinStreak >= 2 && (
-          <AwardCard
-            title="Win Streak"
-            emoji="🔥"
+          <BadgeHonorCard
+            badgeId="hot_streak_5"
+            title="Hot Streak"
+            iconName="Flame"
+            tier={2}
             name={winStreakLeader.name}
-            detail={`${winStreakLeader.longestWinStreak} in a row`}
-            blurb="On a roll like biryani rice — nobody's stopping this."
-          />
-        )}
-        {lossStreakLeader && lossStreakLeader.longestLossStreak >= 2 && (
-          <AwardCard
-            title="Wooden Spoon"
-            emoji="🥄"
-            name={lossStreakLeader.name}
-            detail={`${lossStreakLeader.longestLossStreak} losses in a row`}
-            blurb="Consistency is a virtue. So, technically, is this."
+            detail={`${winStreakLeader.longestWinStreak} wins in a row`}
+            description="Built an impressive consecutive winning streak during tournament play."
+            sessionId={id}
           />
         )}
         {blowout && (
-          <AwardCard
-            title="Biggest Blowout"
-            emoji="💥"
+          <BadgeHonorCard
+            badgeId="authoritative_finish"
+            title="Authoritative Finish"
+            iconName="Rocket"
+            tier={2}
             name={`${blowout.teamA.join(' & ')} vs ${blowout.teamB.join(' & ')}`}
             detail={`${blowout.scoreA}-${blowout.scoreB} · Round ${blowout.roundNumber}`}
-            blurb="This wasn't a match, it was a public service announcement."
-          />
-        )}
-        {nailBiter && (
-          <AwardCard
-            title="Nail-Biter"
-            emoji="😬"
-            name={`${nailBiter.teamA.join(' & ')} vs ${nailBiter.teamB.join(' & ')}`}
-            detail={`${nailBiter.scoreA}-${nailBiter.scoreB} · Round ${nailBiter.roundNumber}`}
-            blurb="Closer than an Indian election count. Go double-check the score."
+            description="Delivered a total blowout victory by closing out the match by 5+ points."
+            sessionId={id}
           />
         )}
         {clutchPlayer && (
-          <AwardCard
-            title="Clutch Player"
-            emoji="🧊"
+          <BadgeHonorCard
+            badgeId="sudden_death_king"
+            title="The Clutch Sovereign"
+            iconName="Zap"
+            tier={4}
             name={clutchPlayer.name}
-            detail={`${(clutchPlayer.winPct * 100).toFixed(0)}% win rate in the final stage`}
-            blurb="Ice in the veins, chai in the hand, zero nerves."
+            detail={`${(clutchPlayer.winPct * 100).toFixed(0)}% win rate under pressure`}
+            description="Showed ultimate composure and ice-cold execution during high-stakes pressure rounds."
+            sessionId={id}
           />
         )}
         {mostImproved && mostImproved.delta > 0 && (
-          <AwardCard
-            title="Most Improved"
-            emoji="📊"
+          <BadgeHonorCard
+            badgeId="late_game_maestro"
+            title="Late-Game Maestro"
+            iconName="Sparkles"
+            tier={3}
             name={mostImproved.name}
-            detail={`${(mostImproved.firstStageWinPct * 100).toFixed(0)}% → ${(mostImproved.lastStageWinPct * 100).toFixed(0)}%`}
-            blurb="Glow-up sharper than a filter on Diwali photos."
-          />
-        )}
-        {rapidFireHero && (
-          <AwardCard
-            title="Rapid Fire Hero"
-            emoji="⚡"
-            name={rapidFireHero.name}
-            detail={`On court for ${rapidFireHero.pointsCredited} points`}
-            blurb="On court every time the scoreboard needed saving. Casting couch for the sequel."
-          />
-        )}
-        {finishers.length > 0 && (
-          <AwardCard
-            title="Finisher"
-            emoji="🏁"
-            name={finishers.join(' & ')}
-            detail="On court for the winning point"
-            blurb="Closed the deal like a Mumbai property broker."
+            detail={`${(mostImproved.firstStageWinPct * 100).toFixed(0)}% → ${(mostImproved.lastStageWinPct * 100).toFixed(0)}% win rate`}
+            description="Outperformed early session rounds with a dramatic late-game performance peak."
+            sessionId={id}
           />
         )}
       </div>
@@ -487,15 +479,85 @@ export default function TeamChampionshipAnalyticsPage({ params }: { params: Prom
   );
 }
 
-function AwardCard({ title, emoji, name, detail, blurb }: { title: string; emoji: string; name: string; detail: string; blurb?: string }) {
+function BadgeHonorCard({
+  badgeId,
+  title,
+  iconName,
+  tier = 3,
+  name,
+  detail,
+  description,
+  sessionId,
+}: {
+  badgeId: string;
+  title: string;
+  iconName: string;
+  tier?: 1 | 2 | 3 | 4;
+  name: string;
+  detail: string;
+  description: string;
+  sessionId: string;
+}) {
+  const shareText = encodeURIComponent(
+    `🏆 *${name}* earned the *${title}* badge in tonight's Pickleball Tournament! 🚀\n\n"${description}" (${detail})\n\nCheck live standings & awards: https://pickleball-app-two.vercel.app/session/${sessionId}/team-championship/results`
+  );
+
   return (
-    <div className="card" style={{ padding: 12 }}>
-      <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
-        <span>{emoji}</span> {title}
+    <div
+      className="card"
+      style={{
+        padding: 16,
+        background: 'var(--card)',
+        borderRadius: 14,
+        border: '1.5px solid var(--border)',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        gap: 12,
+      }}
+    >
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+          <BadgeMedallion badge={{ id: badgeId, label: title, icon: iconName, tier, description }} size={48} />
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: 0.5 }}>
+              {tier === 4 ? 'Platinum Honor' : tier === 3 ? 'Gold Honor' : tier === 2 ? 'Silver Honor' : 'Bronze Honor'}
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: 'var(--text)' }}>{title}</div>
+          </div>
+        </div>
+
+        <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--primary)', marginTop: 4 }}>{name}</div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginTop: 2 }}>{detail}</div>
+        <div style={{ fontSize: 12, color: 'var(--text)', opacity: 0.85, marginTop: 8, fontStyle: 'italic', lineHeight: 1.4 }}>
+          &ldquo;{description}&rdquo;
+        </div>
       </div>
-      <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4 }}>{name}</div>
-      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{detail}</div>
-      {blurb && <div style={{ fontSize: 11.5, color: 'var(--foreground)', marginTop: 6, fontStyle: 'italic', opacity: 0.85 }}>{blurb}</div>}
+
+      <a
+        href={`https://api.whatsapp.com/send?text=${shareText}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="btn-secondary"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 6,
+          fontSize: 12,
+          fontWeight: 700,
+          padding: '8px 12px',
+          borderRadius: 8,
+          background: 'rgba(34, 197, 94, 0.1)',
+          color: '#16a34a',
+          border: '1px solid rgba(34, 197, 94, 0.3)',
+          textDecoration: 'none',
+          marginTop: 6,
+        }}
+      >
+        <WhatsAppIcon size={16} />
+        Brag on WhatsApp
+      </a>
     </div>
   );
 }
