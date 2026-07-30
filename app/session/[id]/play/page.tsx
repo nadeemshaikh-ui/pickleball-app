@@ -33,6 +33,8 @@ import { computeSquadTotalsN } from '@/lib/analytics';
 import { validateMatchScore } from '@/lib/matchScoring';
 import { computeTeamChampionshipStandings, computeTeamMatchRecords } from '@/lib/teamChampionship';
 import CourtQrModal from '@/components/CourtQrModal';
+import ScorecardReviewModal from '@/components/ScorecardReviewModal';
+import { type ScannedMatchResult } from '@/app/api/ai/scan-scorecard/route';
 
 export default function PlayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -49,6 +51,46 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
   const [isAdmin, setIsAdmin] = useState(false);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [ending, setEnding] = useState(false);
+  const [scanningScorecard, setScanningScorecard] = useState(false);
+  const [scannedModalOpen, setScannedModalOpen] = useState(false);
+  const [scannedResults, setScannedResults] = useState<ScannedMatchResult[]>([]);
+
+  async function handleScanScorecard(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setScanningScorecard(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('sessionRounds', JSON.stringify(rounds));
+
+      const res = await fetch('/api/ai/scan-scorecard', {
+        method: 'POST',
+        body: formData,
+      });
+      const json = await res.json();
+      if (json.success && json.scannedResults) {
+        setScannedResults(json.scannedResults);
+        setScannedModalOpen(true);
+      }
+    } catch (err) {
+      alert('Failed to scan scorecard image.');
+    } finally {
+      setScanningScorecard(false);
+    }
+  }
+
+  async function handleConfirmScannedScores(confirmed: { roundNumber: number; court: string; scoreA: number; scoreB: number }[]) {
+    for (const item of confirmed) {
+      const targetRound = rounds.find(r => r.round_number === item.roundNumber && String(r.court) === String(item.court));
+      if (targetRound) {
+        await updateRoundScore(targetRound.id, item.scoreA, item.scoreB);
+      }
+    }
+    const updatedRounds = await getRounds(id);
+    setRounds(updatedRounds);
+  }
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [ownPlayerName, setOwnPlayerName] = useState<string | null>(null);
   const [scorerDraft, setScorerDraft] = useState<Set<string>>(new Set());
@@ -513,9 +555,18 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
             </p>
           </>
         )}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
           <h1 style={{ margin: 0 }}>Live Scoring</h1>
-          <CourtQrModal sessionId={id} courtLabel={session?.court_labels[0] || '1'} />
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <label
+              className="btn btn-secondary btn-sm"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+            >
+              📷 {scanningScorecard ? 'Scanning Photo...' : 'Scan Scorecard Photo'}
+              <input type="file" accept="image/*,application/pdf" onChange={handleScanScorecard} style={{ display: 'none' }} disabled={scanningScorecard} />
+            </label>
+            <CourtQrModal sessionId={id} courtLabel={session?.court_labels[0] || '1'} />
+          </div>
         </div>
         <p style={{ color: 'var(--muted)', marginTop: 4 }}>
           {displayStage
@@ -936,6 +987,12 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
             </div>
           );
         })}
+        <ScorecardReviewModal
+          isOpen={scannedModalOpen}
+          onClose={() => setScannedModalOpen(false)}
+          scannedResults={scannedResults}
+          onConfirm={handleConfirmScannedScores}
+        />
       </main>
       <SessionNav sessionId={id} format={session?.format} clubId={session?.club_id} />
     </>
