@@ -10,7 +10,7 @@ import ShareBrandedHeader from '@/components/ShareBrandedHeader';
 import GroupHeader from '@/components/GroupHeader';
 import SessionDate from '@/components/SessionDate';
 import NewSessionLink from '@/components/NewSessionLink';
-import { Flame, Trophy, Award, Zap, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Flame, Trophy, Award, Zap, ArrowLeft, Layers, CheckCircle2 } from 'lucide-react';
 
 interface RapidFirePlayerStat {
   name: string;
@@ -22,10 +22,22 @@ interface RapidFirePlayerStat {
   isClutchHero: boolean;
 }
 
+interface ShiftLogEntry {
+  shiftNumber: number;
+  team1Pair: string;
+  team2Pair: string;
+  t1Pts: number;
+  t2Pts: number;
+  cumulativeT1: number;
+  cumulativeT2: number;
+  isOvertime: boolean;
+}
+
 export default function RapidFireAnalysisPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [session, setSession] = useState<SessionRow | null>(null);
   const [playerStats, setPlayerStats] = useState<RapidFirePlayerStat[]>([]);
+  const [shiftLogs, setShiftLogs] = useState<ShiftLogEntry[]>([]);
   const [scoreTeam1, setScoreTeam1] = useState(0);
   const [scoreTeam2, setScoreTeam2] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -74,6 +86,11 @@ export default function RapidFireAnalysisPage({ params }: { params: Promise<{ id
           };
         });
 
+        // Group into shifts
+        let currentPairKey = '';
+        let currentGroup: any[] = [];
+        const rawGroups: any[][] = [];
+
         logs.forEach(l => {
           if (l.scoring_team_id === 'team1') s1Count++;
           else if (l.scoring_team_id === 'team2') s2Count++;
@@ -91,10 +108,50 @@ export default function RapidFireAnalysisPage({ params }: { params: Promise<{ id
               }
             });
           }
+
+          const pairKey = l.on_court_players ? l.on_court_players.join(',') : 'unknown';
+          if (pairKey !== currentPairKey && currentGroup.length > 0) {
+            rawGroups.push(currentGroup);
+            currentGroup = [];
+          }
+          currentPairKey = pairKey;
+          currentGroup.push(l);
         });
+        if (currentGroup.length > 0) rawGroups.push(currentGroup);
 
         setScoreTeam1(s1Count);
         setScoreTeam2(s2Count);
+
+        let cumT1 = 0;
+        let cumT2 = 0;
+        const parsedShifts: ShiftLogEntry[] = rawGroups.map((g, idx) => {
+          const players = g[0].on_court_players || [];
+          const t1Pair = players.slice(0, 2).join(' & ');
+          const t2Pair = players.slice(2, 4).join(' & ');
+
+          let t1P = 0;
+          let t2P = 0;
+          g.forEach((ev: any) => {
+            if (ev.scoring_team_id === 'team1') t1P++;
+            else if (ev.scoring_team_id === 'team2') t2P++;
+          });
+
+          cumT1 += t1P;
+          cumT2 += t2P;
+
+          return {
+            shiftNumber: idx + 1,
+            team1Pair: t1Pair,
+            team2Pair: t2Pair,
+            t1Pts: t1P,
+            t2Pts: t2P,
+            cumulativeT1: cumT1,
+            cumulativeT2: cumT2,
+            isOvertime: idx >= 20,
+          };
+        });
+
+        setShiftLogs(parsedShifts);
 
         const list = Object.values(statsMap);
         list.forEach(ps => {
@@ -176,10 +233,10 @@ export default function RapidFireAnalysisPage({ params }: { params: Promise<{ id
 
           <div className="space-y-2">
             <div style={{ background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 8, borderLeft: '3px solid #2563eb', fontSize: 13 }}>
-              <strong>1️⃣ Overtime Rally 1:</strong> Amresh & Sid (Challengers) secured <strong>2–1 points</strong> against Karan & Gopal.
+              <strong>1️⃣ Overtime Shift 21:</strong> Amresh & Sid (Challengers) secured <strong>2–1 points</strong> against Karan & Gopal.
             </div>
             <div style={{ background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 8, borderLeft: '3px solid #7c3aed', fontSize: 13 }}>
-              <strong>2️⃣ Overtime Rally 2:</strong> Nadeem & Viki (Challengers) secured <strong>2–1 points</strong> against Hemal & MBS.
+              <strong>2️⃣ Overtime Shift 22:</strong> Nadeem & Viki (Challengers) secured <strong>2–1 points</strong> against Hemal & MBS.
             </div>
             <div style={{ background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 8, borderLeft: '3px solid #10b981', fontSize: 13 }}>
               <strong>3️⃣ Championship Point:</strong> Sumeet & Vinit (Challengers) scored <strong>2 consecutive points</strong>, with <strong>Sumeet hitting the winning shot</strong> to clinch the title by 2 points (<strong>35–33</strong>)!
@@ -188,7 +245,7 @@ export default function RapidFireAnalysisPage({ params }: { params: Promise<{ id
         </div>
 
         {/* Player Stats Table */}
-        <div className="card space-y-4">
+        <div className="card space-y-4" style={{ marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Rapid Fire Player Performance</h3>
             <span style={{ fontSize: 12, color: 'var(--muted)' }}>Sorted by On-Court Points Scored</span>
@@ -229,6 +286,54 @@ export default function RapidFireAnalysisPage({ params }: { params: Promise<{ id
                       ) : (
                         <span style={{ opacity: 0.3 }}>-</span>
                       )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Complete Shift-by-Shift Match Log */}
+        <div className="card space-y-4">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Layers size={18} style={{ color: 'var(--primary)' }} /> Shift-by-Shift Match Log (All 23 Rotations)
+            </h3>
+            <span style={{ fontSize: 12, color: 'var(--muted)' }}>Pairing vs Pairing Scores</span>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table className="table" style={{ width: '100%', fontSize: 13, borderCollapse: 'separate', borderSpacing: '0 4px' }}>
+              <thead>
+                <tr style={{ color: 'var(--muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  <th style={{ textAlign: 'center', width: 44 }}>Shift</th>
+                  <th>{squad1Label} Pair</th>
+                  <th>{squad2Label} Pair</th>
+                  <th style={{ textAlign: 'center' }}>Shift Score</th>
+                  <th style={{ textAlign: 'center', fontWeight: 800 }}>Running Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shiftLogs.map(s => (
+                  <tr
+                    key={s.shiftNumber}
+                    style={{
+                      background: s.isOvertime ? 'rgba(245, 158, 11, 0.08)' : 'var(--row-bg, rgba(255,255,255,0.02))',
+                      borderRadius: 8,
+                      borderLeft: s.isOvertime ? '3px solid #f59e0b' : 'none',
+                    }}
+                  >
+                    <td style={{ textAlign: 'center', fontWeight: 700, padding: '8px 4px' }}>
+                      {s.isOvertime ? <span style={{ color: '#f59e0b', fontSize: 11 }}>⚡#{s.shiftNumber}</span> : `#${s.shiftNumber}`}
+                    </td>
+                    <td style={{ padding: '8px 4px', fontWeight: 600 }}>{s.team1Pair}</td>
+                    <td style={{ padding: '8px 4px', fontWeight: 600 }}>{s.team2Pair}</td>
+                    <td style={{ textAlign: 'center', padding: '8px 4px', fontWeight: 700 }}>
+                      <span style={{ color: s.t1Pts > s.t2Pts ? '#10b981' : 'inherit' }}>{s.t1Pts}</span> – <span style={{ color: s.t2Pts > s.t1Pts ? '#10b981' : 'inherit' }}>{s.t2Pts}</span>
+                    </td>
+                    <td style={{ textAlign: 'center', padding: '8px 4px', fontWeight: 900 }}>
+                      <span style={{ color: 'var(--primary)' }}>{s.cumulativeT1} – {s.cumulativeT2}</span>
                     </td>
                   </tr>
                 ))}
