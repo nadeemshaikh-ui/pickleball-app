@@ -9,7 +9,7 @@ import DevModePanel from "@/components/DevModePanel";
 import ErrorLogger from "@/components/ErrorLogger";
 import UpgradePrompt from "@/components/UpgradePrompt";
 import AiChatDrawer from "@/components/AiChatDrawer";
-import { ActivityTracker } from "@/lib/activityLogger";
+import { ActivityTracker } from "@/components/ActivityTracker";
 
 const bebas = Bebas_Neue({
   variable: "--font-display",
