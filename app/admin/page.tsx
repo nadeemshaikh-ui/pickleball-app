@@ -211,6 +211,16 @@ export default function SuperAdminPage() {
 
   return (
     <main className="page">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, background: 'linear-gradient(135deg, rgba(37,99,235,0.15) 0%, rgba(124,58,237,0.15) 100%)', border: '1px solid rgba(59,130,246,0.3)', padding: '14px 18px', borderRadius: 14 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#fff' }}>🛡️ Super Admin Control Center</h2>
+          <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--muted)' }}>Audit user app access, screen views, and manage system permissions.</p>
+        </div>
+        <Link href="/admin/activity" className="btn btn-primary btn-sm" style={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+          📊 View User Access Logs
+        </Link>
+      </div>
+
       {(creationRequests.length > 0 || creationLoadError) && (
         <>
           <h1>Pending Club Creation Requests ({creationRequests.length})</h1>

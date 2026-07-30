@@ -9,6 +9,7 @@ import DevModePanel from "@/components/DevModePanel";
 import ErrorLogger from "@/components/ErrorLogger";
 import UpgradePrompt from "@/components/UpgradePrompt";
 import AiChatDrawer from "@/components/AiChatDrawer";
+import { ActivityTracker } from "@/lib/activityLogger";
 
 const bebas = Bebas_Neue({
   variable: "--font-display",
@@ -35,6 +36,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${bebas.variable} ${oswald.variable}`}>
       <body>
+        <ActivityTracker />
         <DecorativeBackground />
         <AuthGate />
         <ClubSwitcher />
