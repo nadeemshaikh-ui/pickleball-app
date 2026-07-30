@@ -36,6 +36,8 @@ import StatusChip from '@/components/StatusChip';
 import SignInGate from '@/components/SignInGate';
 import InfoModal from '@/components/InfoModal';
 import { displayName } from '@/lib/displayNamePref';
+import ScheduleImageUploader from '@/components/ScheduleImageUploader';
+import { parsePairingConstraints } from '@/lib/aiPairing';
 
 const MIN_GAMES_FOR_NEMESIS_ALERT = 3;
 const SQUAD_CHIP_COLORS = ['#d4af37', '#1a1a1a', '#2563eb', '#dc2626', '#059669', '#7c3aed'];
@@ -501,6 +503,19 @@ function SetupPageInner() {
     const resized = Array(newLength).fill(blank) as T[];
     for (let i = 0; i < Math.min(current.length, newLength); i++) resized[i] = current[i];
     return resized;
+  }
+
+  function handleScheduleParsed(data: { format: string; groupName: string; players: string[]; courtLabels: string[]; roundCount: number }) {
+    setFormat((data.format as Format) || 'scramble');
+    if (data.groupName) setTcTournamentName(data.groupName);
+    setPlayerCount(data.players.length);
+    setNames(data.players);
+    setCourtCount(data.courtLabels.length);
+    setCourtLabels(data.courtLabels);
+    setRoundCount(data.roundCount || 15);
+    setNamesEntered(true);
+    setSubStep('players');
+    setRosterNotice(`✨ Auto-populated schedule from Vision AI: ${data.players.length} players across ${data.courtLabels.length} court(s).`);
   }
 
   function handlePlayerCountConfirm() {
@@ -1136,6 +1151,7 @@ function SetupPageInner() {
             )}
           </div>
         )}
+        <ScheduleImageUploader onParsed={handleScheduleParsed} />
         <h2>How Many Courts?</h2>
         <div className="card">
           <input

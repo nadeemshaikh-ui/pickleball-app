@@ -32,6 +32,7 @@ import SquadStandingsCard from '@/components/SquadStandingsCard';
 import { computeSquadTotalsN } from '@/lib/analytics';
 import { validateMatchScore } from '@/lib/matchScoring';
 import { computeTeamChampionshipStandings, computeTeamMatchRecords } from '@/lib/teamChampionship';
+import CourtQrModal from '@/components/CourtQrModal';
 
 export default function PlayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -512,7 +513,10 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
             </p>
           </>
         )}
-        <h1>Live Scoring</h1>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <h1 style={{ margin: 0 }}>Live Scoring</h1>
+          <CourtQrModal sessionId={id} courtLabel={session?.court_labels[0] || '1'} />
+        </div>
         <p style={{ color: 'var(--muted)', marginTop: 4 }}>
           {displayStage
             ? `${displayStage.stageLabel} — Rounds ${displayStage.roundStart}–${displayStage.roundEnd} · ${displayStage.pointsPerWin} pt/win`
