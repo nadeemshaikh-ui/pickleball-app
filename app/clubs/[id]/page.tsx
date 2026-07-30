@@ -372,7 +372,7 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
       )}
 
       <div className="card" style={{ marginBottom: 12 }}>
-        <h2 style={{ marginTop: 0 }}>Members ({members.length + unlinkedPlayers.length})</h2>
+        <h2 style={{ marginTop: 0 }}>Registered Members ({members.length})</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {members.map(m => {
             const p = playersByUserId.get(m.user_id);
@@ -472,34 +472,25 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
               </div>
             );
           })}
-          {unlinkedPlayers.map(p => (
-            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-              <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--border)', display: 'inline-block' }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>{p.name}</div>
-                {p.email && <div style={{ fontSize: 12, color: 'var(--muted)' }}>{p.email}</div>}
-              </div>
-              {role === 'admin' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+        </div>
+      </div>
+
+      {unlinkedPlayers.length > 0 && (
+        <div className="card" style={{ marginBottom: 12, background: 'rgba(255,255,255,0.02)', border: '1px dashed var(--border)' }}>
+          <h3 style={{ marginTop: 0, fontSize: 14, fontWeight: 700, color: 'var(--muted)' }}>
+            Temporary Guest Roster Names ({unlinkedPlayers.length})
+          </h3>
+          <p style={{ fontSize: 12, color: 'var(--muted)', margin: '-4px 0 10px 0' }}>
+            Unlinked player names entered during past session setups. They are not official club members.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {unlinkedPlayers.map(p => (
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
+                <span style={{ fontWeight: 600 }}>{p.name}</span>
+                {role === 'admin' && (
                   <button
                     className="btn-secondary"
-                    style={{ minHeight: 26, padding: '2px 6px', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap' }}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setConfirmTarget({
-                        action: 'role',
-                        userId: p.id,
-                        name: p.name,
-                        targetRole: 'admin',
-                      });
-                    }}
-                  >
-                    Make Admin
-                  </button>
-                  <button
-                    className="btn-secondary"
-                    style={{ minHeight: 26, padding: '2px 6px', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.3, borderColor: 'var(--danger)', color: 'var(--danger)', whiteSpace: 'nowrap' }}
+                    style={{ minHeight: 24, padding: '2px 8px', fontSize: 10, fontWeight: 800, borderColor: 'var(--danger)', color: 'var(--danger)' }}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -512,27 +503,12 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
                   >
                     Remove
                   </button>
-                  <button
-                    className="btn-secondary"
-                    style={{ minHeight: 26, padding: '2px 6px', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.3, background: 'var(--danger)', color: '#fff', border: 'none', whiteSpace: 'nowrap' }}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setConfirmTarget({
-                        action: 'delete_player',
-                        userId: p.id,
-                        name: p.name,
-                      });
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+                )}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {sessions.length > 0 && (
         <div className="card" style={{ marginBottom: 12 }}>
