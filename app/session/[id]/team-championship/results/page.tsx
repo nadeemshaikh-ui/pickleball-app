@@ -196,7 +196,7 @@ export default function TeamChampionshipResultsPage({ params }: { params: Promis
           boxShadow: '0 4px 12px rgba(239, 68, 68, 0.25)',
         }}
       >
-        🔥 Rapid Fire Finale Breakdown (36–33 Climax) →
+        🔥 Rapid Fire Finale Breakdown (35–33 Climax) →
       </Link>
 
       <h2>Stage Points</h2>

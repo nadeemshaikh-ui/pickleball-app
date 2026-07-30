@@ -182,7 +182,7 @@ export default function RapidFireAnalysisPage({ params }: { params: Promise<{ id
               <strong>2️⃣ Overtime Rally 2:</strong> Nadeem & Viki (Challengers) secured <strong>2–1 points</strong> against Hemal & MBS.
             </div>
             <div style={{ background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 8, borderLeft: '3px solid #10b981', fontSize: 13 }}>
-              <strong>3️⃣ Championship Point:</strong> Sumeet & Vinit (Challengers) scored <strong>2 consecutive points</strong>, with <strong>Sumeet hitting the winning shot</strong> to clinch the title <strong>36–33</strong>!
+              <strong>3️⃣ Championship Point:</strong> Sumeet & Vinit (Challengers) scored <strong>2 consecutive points</strong>, with <strong>Sumeet hitting the winning shot</strong> to clinch the title by 2 points (<strong>35–33</strong>)!
             </div>
           </div>
         </div>
