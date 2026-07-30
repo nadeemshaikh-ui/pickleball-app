@@ -14,10 +14,17 @@ export default function ClubSwitcher() {
       <select
         value={currentClubId ?? ''}
         onChange={e => {
-          setCurrentClubId(e.target.value);
-          // Reload in place instead of forcing a jump to /setup — faster,
-          // keeps whatever page the user was actually on.
-          window.location.reload();
+          const newClubId = e.target.value;
+          setCurrentClubId(newClubId);
+          if (typeof window !== 'undefined') {
+            const currentPath = window.location.pathname;
+            if (currentPath.includes('/clubs/')) {
+              const newPath = currentPath.replace(/\/clubs\/[^\/]+/, `/clubs/${newClubId}`);
+              window.location.href = newPath;
+            } else {
+              window.location.reload();
+            }
+          }
         }}
         aria-label="Switch club"
         style={{ minHeight: 36, padding: '4px 10px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 8, background: 'white' }}

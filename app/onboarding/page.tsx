@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import { markOnboardingComplete, getInitialStep, type OnboardingStep } from '@/lib/onboarding';
-import { requestToJoinClub, type ClubRow } from '@/lib/clubs';
+import { requestToJoinClub, checkAndExecutePendingJoinCode, type ClubRow } from '@/lib/clubs';
 import BranchStep from '@/components/onboarding/BranchStep';
 import CreateClubStep from '@/components/onboarding/CreateClubStep';
 import JoinClubStep from '@/components/onboarding/JoinClubStep';
@@ -38,14 +38,26 @@ export default function OnboardingPage() {
   const [activeClubId, setActiveClubId] = useState<string | null>(null);
   const [pendingRequestClub, setPendingRequestClub] = useState<ClubRow | null>(null);
 
-  // Decide the starting step once club membership has loaded. Someone who
-  // already belongs to a club (closed the tab mid-wizard last time) skips
-  // straight to the profile step instead of re-asking "new club or join?".
+  // Check if user came from a direct club invite link and execute instant join
   useEffect(() => {
-    if (clubLoading || step !== null) return;
-    setStep(getInitialStep(clubs.length > 0));
-    if (clubs.length > 0 && currentClubId) setActiveClubId(currentClubId);
-  }, [clubLoading, clubs, currentClubId, step]);
+    if (clubLoading) return;
+    async function checkInvite() {
+      const user = await getCurrentUser();
+      if (user) {
+        const joinedClub = await checkAndExecutePendingJoinCode(user.id);
+        if (joinedClub) {
+          setCurrentClubId(joinedClub.id);
+          router.push(`/clubs/${joinedClub.id}`);
+          return;
+        }
+      }
+      if (step === null) {
+        setStep(getInitialStep(clubs.length > 0));
+        if (clubs.length > 0 && currentClubId) setActiveClubId(currentClubId);
+      }
+    }
+    checkInvite();
+  }, [clubLoading, clubs, currentClubId, step, setCurrentClubId, router]);
 
   async function finish() {
     const user = await getCurrentUser();

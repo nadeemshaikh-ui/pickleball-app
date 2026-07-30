@@ -10,11 +10,17 @@ import {
   listPendingJoinRequests,
   approveJoinRequest,
   rejectJoinRequest,
+  removeMember,
+  permanentlyDeleteMember,
+  setMemberRole,
+  resolveMemberDisplayName,
   type ClubRow,
   type ClubMemberRow,
   type JoinRequestRow,
 } from '@/lib/clubs';
-import { listPlayers, type PlayerRow } from '@/lib/players';
+import ConfirmModal from '@/components/ConfirmModal';
+import { supabase } from '@/lib/supabase';
+import { listPlayers, upsertOwnPlayer, type PlayerRow } from '@/lib/players';
 import { fetchLifetimeLeaderboard, fetchCrownBoards, fetchBestDuos, type RankedPlayer, type CrownBoard, type RankedDuo } from '@/lib/leagueStats';
 import { computeCurrentStreaks } from '@/lib/streakRecords';
 import { fetchMyDuesForClub, buildUpiDeepLink, type MyDueRow } from '@/lib/dues';
@@ -22,6 +28,7 @@ import { listSessions, type SessionRow } from '@/lib/db';
 import { formatLabel } from '@/lib/formatLabel';
 import SignInGate from '@/components/SignInGate';
 import { useCurrentClub } from '@/lib/useCurrentClub';
+import ShareClubInviteButton from '@/components/ShareClubInviteButton';
 
 // Format-specific results routing — Team Championship's stage/rapid-fire
 // scoring produces a different results page than every other format.
@@ -44,6 +51,7 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
   const [myDues, setMyDues] = useState<MyDueRow[]>([]);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [joinRequests, setJoinRequests] = useState<JoinRequestRow[]>([]);
+  const [unlinkedPlayers, setUnlinkedPlayers] = useState<PlayerRow[]>([]);
   const [joinRequestError, setJoinRequestError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [notMember, setNotMember] = useState(false);
@@ -66,7 +74,7 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
         }
         setClub(mine.club);
         setRole(mine.role);
-        const [memberRows, playerRows, board, crownBoards, currentStreaks, duos, recentSessions, removedNames] = await Promise.all([
+        let [memberRows, playerRows, board, crownBoards, currentStreaks, duos, recentSessions, removedNames] = await Promise.all([
           listClubMembers(id),
           listPlayers(id),
           fetchLifetimeLeaderboard(id),
@@ -76,7 +84,29 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
           listSessions(id, 5),
           fetchRemovedMemberNames(id),
         ]);
+
+        // Auto-heal missing or unnamed player profile using Google Auth metadata
+        let ownPlayer = playerRows.find(p => p.user_id === userId);
+        if (user && (!ownPlayer || !ownPlayer.name || ownPlayer.name === 'Unnamed player')) {
+          const googleName = user.user_metadata?.full_name || user.user_metadata?.name || (user.email ? user.email.split('@')[0] : 'Player');
+          const googlePhoto = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
+          try {
+            await upsertOwnPlayer({
+              clubId: id,
+              userId: userId,
+              name: googleName,
+              nickname: null,
+              photoUrl: googlePhoto,
+              bio: null,
+            });
+            playerRows = await listPlayers(id);
+            ownPlayer = playerRows.find(p => p.user_id === userId);
+          } catch {
+            // Ignore if RLS or network issue
+          }
+        }
         setMembers(memberRows.filter(m => !m.removed_at));
+        setUnlinkedPlayers(playerRows.filter(p => !p.user_id));
         setPlayersByUserId(new Map(playerRows.filter(p => p.user_id).map(p => [p.user_id as string, p])));
         setLeaderboard(board.filter(p => !removedNames.has(p.name)));
         setCrowns(
@@ -88,7 +118,6 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
         setBestDuo(duos.filter(d => !d.provisional).sort((a, b) => b.winPct - a.winPct || b.gamesPlayed - a.gamesPlayed)[0] ?? null);
         setSessions(recentSessions);
 
-        const ownPlayer = playerRows.find(p => p.user_id === userId);
         if (ownPlayer) fetchMyDuesForClub(id, ownPlayer.name).then(setMyDues).catch(() => {});
 
         if (mine.role === 'admin') {
@@ -118,11 +147,40 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
       setJoinRequests(prev => prev.filter(r => r.id !== request.id));
       if (decision === 'approved') {
         const [memberRows, playerRows] = await Promise.all([listClubMembers(id), listPlayers(id)]);
-        setMembers(memberRows.filter(m => !m.removed_at));
-        setPlayersByUserId(new Map(playerRows.filter(p => p.user_id).map(p => [p.user_id as string, p])));
       }
     } catch (e) {
       setJoinRequestError(e instanceof Error ? e.message : 'Failed to resolve request.');
+    }
+  }
+
+  const [confirmTarget, setConfirmTarget] = useState<{
+    action: 'role' | 'remove' | 'delete' | 'delete_player';
+    userId: string;
+    name: string;
+    targetRole?: 'admin' | 'member';
+  } | null>(null);
+
+  async function executeConfirmAction() {
+    if (!confirmTarget) return;
+    const { action, userId, targetRole } = confirmTarget;
+    setConfirmTarget(null);
+    try {
+      if (action === 'role' && targetRole) {
+        await setMemberRole(id, userId, targetRole);
+        setMembers(prev => prev.map(m => (m.user_id === userId ? { ...m, role: targetRole } : m)));
+      } else if (action === 'remove') {
+        await removeMember(id, userId);
+        setMembers(prev => prev.filter(m => m.user_id !== userId));
+      } else if (action === 'delete') {
+        await permanentlyDeleteMember(id, userId);
+        setMembers(prev => prev.filter(m => m.user_id !== userId));
+      } else if (action === 'delete_player') {
+        const { error } = await supabase.from('players').delete().eq('id', userId);
+        if (error) throw error;
+        setUnlinkedPlayers(prev => prev.filter(p => p.id !== userId));
+      }
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Action failed.');
     }
   }
 
@@ -157,7 +215,7 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
         ) : (
           <span style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--border)', display: 'inline-block' }} />
         )}
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
             {club.name}
             {role === 'admin' && (
@@ -170,6 +228,10 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
             {members.length} member{members.length === 1 ? '' : 's'} · est. {new Date(club.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
           </p>
         </div>
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        <ShareClubInviteButton clubName={club.name} joinCode={club.join_code} fullWidth />
       </div>
 
       {role === 'admin' && (joinRequests.length > 0 || joinRequestError) && (
@@ -227,11 +289,14 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
         </div>
       )}
 
-      {crowns.length > 0 && (
-        <div className="card" style={{ marginBottom: 12 }}>
-          <h2 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 6 }}><Crown size={18} /> Current Crowns</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
-            {crowns.map(c => (
+      {(() => {
+        const activeCrowns = crowns.filter(c => c.standings.length > 0);
+        if (activeCrowns.length === 0) return null;
+        return (
+          <div className="card" style={{ marginBottom: 12 }}>
+            <h2 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 6 }}><Crown size={18} /> Current Crowns</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+              {activeCrowns.map(c => (
               <div
                 key={c.badgeId}
                 style={{
@@ -254,7 +319,8 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
             View full crown board →
           </Link>
         </div>
-      )}
+        );
+      })()}
 
       {(() => {
         const activeStreaks = Array.from(streaks.entries())
@@ -306,7 +372,7 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
       )}
 
       <div className="card" style={{ marginBottom: 12 }}>
-        <h2 style={{ marginTop: 0 }}>Members ({members.length})</h2>
+        <h2 style={{ marginTop: 0 }}>Members ({members.length + unlinkedPlayers.length})</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {members.map(m => {
             const p = playersByUserId.get(m.user_id);
@@ -319,26 +385,152 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
                   <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--border)', display: 'inline-block' }} />
                 )}
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>{p?.name ?? 'Unnamed player'}</div>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>
+                    {resolveMemberDisplayName({
+                      player_name: p?.name,
+                      google_name: m.google_name,
+                      email: m.email || (m.user_id === user?.id ? user?.email : null),
+                    })}
+                  </div>
+                  {m.email && (
+                    <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 500 }}>
+                      {m.email}
+                    </div>
+                  )}
                   <div style={{ fontSize: 11, color: 'var(--muted)' }}>Joined {new Date(m.joined_at).toLocaleDateString()}</div>
                 </div>
                 {m.role === 'admin' && (
-                  <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--primary)', border: '1.5px solid var(--primary)', borderRadius: 4, padding: '2px 6px' }}>
+                  <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--primary)', border: '1.5px solid var(--primary)', borderRadius: 4, padding: '1px 5px' }}>
                     Admin
                   </span>
+                )}
+                {role === 'admin' && m.user_id !== user?.id && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <button
+                      className="btn-secondary"
+                      style={{ minHeight: 26, padding: '2px 6px', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap' }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const displayName = resolveMemberDisplayName({ player_name: p?.name, google_name: m.google_name, email: m.email });
+                        const nextRole = m.role === 'admin' ? 'member' : 'admin';
+                        setConfirmTarget({
+                          action: 'role',
+                          userId: m.user_id,
+                          name: displayName,
+                          targetRole: nextRole,
+                        });
+                      }}
+                    >
+                      {m.role === 'admin' ? 'Make Member' : 'Make Admin'}
+                    </button>
+                    <button
+                      className="btn-secondary"
+                      style={{ minHeight: 26, padding: '2px 6px', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.3, borderColor: 'var(--danger)', color: 'var(--danger)', whiteSpace: 'nowrap' }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const displayName = resolveMemberDisplayName({ player_name: p?.name, google_name: m.google_name, email: m.email });
+                        setConfirmTarget({
+                          action: 'remove',
+                          userId: m.user_id,
+                          name: displayName,
+                        });
+                      }}
+                    >
+                      Remove
+                    </button>
+                    <button
+                      className="btn-secondary"
+                      style={{ minHeight: 26, padding: '2px 6px', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.3, background: 'var(--danger)', color: '#fff', border: 'none', whiteSpace: 'nowrap' }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const displayName = resolveMemberDisplayName({ player_name: p?.name, google_name: m.google_name, email: m.email });
+                        setConfirmTarget({
+                          action: 'delete',
+                          userId: m.user_id,
+                          name: displayName,
+                        });
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 )}
               </>
             );
             return p ? (
-              <Link key={m.user_id} href={`/clubs/${id}/players/${p.id}`} style={rowStyle}>
-                {rowContent}
-              </Link>
+              <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                <Link href={`/clubs/${id}/players/${p.id}`} style={{ ...rowStyle, flex: 1 }}>
+                  {rowContent}
+                </Link>
+              </div>
             ) : (
               <div key={m.user_id} style={rowStyle}>
                 {rowContent}
               </div>
             );
           })}
+          {unlinkedPlayers.map(p => (
+            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--border)', display: 'inline-block' }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{p.name}</div>
+                {p.email && <div style={{ fontSize: 12, color: 'var(--muted)' }}>{p.email}</div>}
+              </div>
+              {role === 'admin' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <button
+                    className="btn-secondary"
+                    style={{ minHeight: 26, padding: '2px 6px', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap' }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setConfirmTarget({
+                        action: 'role',
+                        userId: p.id,
+                        name: p.name,
+                        targetRole: 'admin',
+                      });
+                    }}
+                  >
+                    Make Admin
+                  </button>
+                  <button
+                    className="btn-secondary"
+                    style={{ minHeight: 26, padding: '2px 6px', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.3, borderColor: 'var(--danger)', color: 'var(--danger)', whiteSpace: 'nowrap' }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setConfirmTarget({
+                        action: 'delete_player',
+                        userId: p.id,
+                        name: p.name,
+                      });
+                    }}
+                  >
+                    Remove
+                  </button>
+                  <button
+                    className="btn-secondary"
+                    style={{ minHeight: 26, padding: '2px 6px', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.3, background: 'var(--danger)', color: '#fff', border: 'none', whiteSpace: 'nowrap' }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setConfirmTarget({
+                        action: 'delete_player',
+                        userId: p.id,
+                        name: p.name,
+                      });
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
 
@@ -377,6 +569,39 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
         <Link href={`/clubs/${id}/settings`} className="text-link-btn" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <Flame size={14} /> Club Settings & Data Reset →
         </Link>
+      )}
+
+      {confirmTarget && (
+        <ConfirmModal
+          title={
+            confirmTarget.action === 'role'
+              ? confirmTarget.targetRole === 'member'
+                ? 'Revoke Admin Privileges'
+                : 'Promote to Admin'
+              : confirmTarget.action === 'remove'
+              ? 'Remove Member from Club'
+              : 'Permanently Delete Member'
+          }
+          message={
+            confirmTarget.action === 'role'
+              ? `Are you sure you want to change ${confirmTarget.name}'s role to ${confirmTarget.targetRole}?`
+              : confirmTarget.action === 'remove'
+              ? `Are you sure you want to remove ${confirmTarget.name} from ${club.name}?`
+              : `CAUTION: Are you sure you want to permanently delete ${confirmTarget.name}? This action cannot be undone.`
+          }
+          confirmLabel={
+            confirmTarget.action === 'role'
+              ? confirmTarget.targetRole === 'member'
+                ? 'Revoke Admin Rights'
+                : 'Make Admin'
+              : confirmTarget.action === 'remove'
+              ? 'Remove Member'
+              : 'Permanently Delete'
+          }
+          danger={confirmTarget.action !== 'role' || confirmTarget.targetRole === 'member'}
+          onConfirm={executeConfirmAction}
+          onCancel={() => setConfirmTarget(null)}
+        />
       )}
     </main>
   );

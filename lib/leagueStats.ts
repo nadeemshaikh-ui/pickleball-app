@@ -518,12 +518,19 @@ export async function fetchCrownBoards(clubId: string): Promise<CrownBoard[]> {
 
   const desc = (entries: CrownEntry[]) => entries.sort((a, b) => b.value - a.value);
 
-  const ironThrone = desc(players.map(p => ({ name: p.name, value: Math.round(p.elo_rating) })));
-  const headHoncho = desc(lifetime.map(p => ({ name: p.name, value: p.wins })));
-  const undisputed = desc(
-    lifetime.filter(p => p.gamesPlayed >= UNDISPUTED_MIN_GAMES).map(p => ({ name: p.name, value: Math.round(p.winPct * 100) }))
+  const ironThrone = desc(
+    lifetime
+      .filter(p => p.gamesPlayed > 0)
+      .map(p => {
+        const pl = players.find(x => x.name === p.name);
+        return { name: p.name, value: Math.round(pl?.elo_rating ?? 1500) };
+      })
   );
-  const gatekeeper = desc([...mvpCounts.entries()].map(([name, value]) => ({ name, value })));
+  const headHoncho = desc(lifetime.filter(p => p.wins > 0).map(p => ({ name: p.name, value: p.wins })));
+  const undisputed = desc(
+    lifetime.filter(p => p.gamesPlayed >= UNDISPUTED_MIN_GAMES && p.wins > 0).map(p => ({ name: p.name, value: Math.round(p.winPct * 100) }))
+  );
+  const gatekeeper = desc([...mvpCounts.entries()].filter(([, v]) => v > 0).map(([name, value]) => ({ name, value })));
   const untouchable = desc([...winStreaks.entries()].filter(([, v]) => v > 0).map(([name, value]) => ({ name, value })));
 
   const winRecord = streakRecords.find(r => r.streakType === 'win')?.recordLength ?? 0;

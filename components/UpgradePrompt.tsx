@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getCurrentUser, isAnonymousUser, linkGoogleIdentity } from '@/lib/auth';
+import { getCurrentUser, isAnonymousUser, signInWithGoogle } from '@/lib/auth';
 
 const DISMISS_KEY = 'upgrade-prompt-dismissed-at';
 const DISMISS_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000; // re-show after 3 days, not every visit
@@ -42,11 +42,9 @@ export default function UpgradePrompt() {
     setLinking(true);
     setError(null);
     try {
-      await linkGoogleIdentity();
-      // linkIdentity does a full-page OAuth redirect on success — nothing
-      // else to do here, the page navigates away.
+      await signInWithGoogle(typeof window !== 'undefined' ? window.location.href : undefined);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to link Google account.');
+      setError(e instanceof Error ? e.message : 'Failed to sign in with Google.');
       setLinking(false);
     }
   }

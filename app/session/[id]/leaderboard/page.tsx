@@ -13,6 +13,7 @@ import GroupHeader from '@/components/GroupHeader';
 import { WhatsAppIcon } from '@/components/icons';
 import ShareBrandedHeader from '@/components/ShareBrandedHeader';
 import SquadVersusHero from '@/components/SquadVersusHero';
+import PointsStandingsTable from '@/components/PointsStandingsTable';
 import { preloadPlayerPhotos } from '@/lib/playerPhotos';
 
 const POLL_INTERVAL_MS = 4000;
@@ -166,6 +167,11 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
               </div>
             );
           })}
+        </div>
+
+        {/* Detailed Points Won / Points Lost Analytics */}
+        <div style={{ marginTop: 24 }}>
+          <PointsStandingsTable stats={leaderboard} />
         </div>
         </div>
       </main>

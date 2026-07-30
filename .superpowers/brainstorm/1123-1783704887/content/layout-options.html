@@ -1,0 +1,42 @@
+<h2>Which onboarding layout feels right?</h2>
+<p class="subtitle">Both are chip-based, scripted, no free-text required. Pick the one that feels friendliest for a first-time pickleball player on their phone.</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">Option A — Chat Transcript</div>
+    <div class="mockup-body" style="display:flex;flex-direction:column;gap:10px;padding:12px;">
+      <div class="mock-nav" style="font-size:12px;">Step 2 of 4</div>
+      <div style="align-self:flex-start;background:#eee;border-radius:14px 14px 14px 2px;padding:10px 14px;max-width:80%;">👋 Are you starting a new club or joining one?</div>
+      <div style="align-self:flex-end;background:#4a90e2;color:#fff;border-radius:14px 14px 2px 14px;padding:10px 14px;max-width:80%;">Starting a new club</div>
+      <div style="align-self:flex-start;background:#eee;border-radius:14px 14px 14px 2px;padding:10px 14px;max-width:80%;">Nice — let's give it a name 🏓</div>
+      <input class="mock-input" placeholder="e.g. Sunday Smashers" style="align-self:flex-start;width:70%;">
+      <div style="margin-top:auto;font-size:12px;color:#888;">Feels like texting a friend. Transcript scrolls, grows as you go.</div>
+    </div>
+  </div>
+  <div class="mockup">
+    <div class="mockup-header">Option B — Single-Question Card</div>
+    <div class="mockup-body" style="display:flex;flex-direction:column;gap:10px;padding:12px;align-items:center;">
+      <div style="display:flex;gap:6px;">
+        <div style="width:24px;height:6px;border-radius:3px;background:#4a90e2;"></div>
+        <div style="width:24px;height:6px;border-radius:3px;background:#4a90e2;"></div>
+        <div style="width:24px;height:6px;border-radius:3px;background:#ddd;"></div>
+        <div style="width:24px;height:6px;border-radius:3px;background:#ddd;"></div>
+      </div>
+      <h3 style="margin:8px 0;">Are you starting a new club or joining one?</h3>
+      <button class="mock-button" style="width:100%;">🆕 Starting a new club</button>
+      <button class="mock-button" style="width:100%;">🔗 Joining an existing club</button>
+      <div style="margin-top:auto;font-size:12px;color:#888;">One question fills the screen at a time. Only the current step is visible — no scroll-back clutter.</div>
+    </div>
+  </div>
+</div>
+
+<div class="options" style="margin-top:20px;">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content"><h3>Chat Transcript</h3><p>Conversational, builds a scrollable history, feels most "AI chat"-like</p></div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content"><h3>Single-Question Card</h3><p>Cleaner, one decision at a time, less visual clutter, easier to build responsively</p></div>
+  </div>
+</div>

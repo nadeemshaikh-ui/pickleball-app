@@ -3,13 +3,18 @@
 import { useState } from 'react';
 import { signInWithGoogle } from '@/lib/auth';
 
-export default function GoogleSignInButton() {
+interface GoogleSignInButtonProps {
+  redirectTo?: string;
+  label?: string;
+}
+
+export default function GoogleSignInButton({ redirectTo, label = 'Sign in with Google' }: GoogleSignInButtonProps) {
   const [error, setError] = useState<string | null>(null);
 
   async function handleSignIn() {
     setError(null);
     try {
-      await signInWithGoogle();
+      await signInWithGoogle(redirectTo);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sign-in failed.');
     }
@@ -18,7 +23,7 @@ export default function GoogleSignInButton() {
   return (
     <>
       <button className="btn-primary" onClick={handleSignIn}>
-        Sign in with Google
+        {label}
       </button>
       {error && <p style={{ color: 'var(--danger)', marginTop: 12, fontWeight: 600 }}>{error}</p>}
     </>

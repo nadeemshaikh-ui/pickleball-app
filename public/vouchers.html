@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RÉSTORÉE — Digital Vouchers</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;800&family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #09090b;
+      --card-bg: #ffffff;
+      --text: #09090b;
+      --muted: #71717a;
+      --border: #e4e4e7;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: #f4f4f5;
+      padding: 40px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 50px;
+    }
+
+    .header-title {
+      font-family: 'Cinzel', serif;
+      font-size: 28px;
+      letter-spacing: 4px;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .header-sub {
+      font-size: 13px;
+      color: #a1a1aa;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      text-align: center;
+    }
+
+    .mock-container {
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .mock-label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #a1a1aa;
+      border-left: 3px solid #f4f4f5;
+      padding-left: 10px;
+    }
+
+    /* MOCK 1: THE MONOLITH */
+    .voucher-m1 {
+      background: #ffffff;
+      color: #09090b;
+      border: 1px solid #18181b;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+    }
+    .m1-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid #09090b;
+      padding-bottom: 20px;
+    }
+    .m1-brand {
+      font-family: 'Cinzel', serif;
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 6px;
+    }
+    .m1-tag {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      background: #09090b;
+      color: #ffffff;
+      padding: 6px 12px;
+    }
+    .m1-body {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .m1-headline {
+      font-family: 'Cinzel', serif;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+    .m1-desc {
+      font-size: 13px;
+      color: #52525b;
+      line-height: 1.6;
+      max-width: 500px;
+    }
+    .m1-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      border-top: 1px solid #e4e4e7;
+      padding-top: 20px;
+    }
+    .m1-code-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      color: #71717a;
+      letter-spacing: 1px;
+    }
+    .m1-code {
+      font-family: monospace;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 3px;
+      margin-top: 4px;
+    }
+    .m1-loc {
+      font-size: 11px;
+      text-align: right;
+      color: #52525b;
+      line-height: 1.4;
+    }
+
+    /* MOCK 2: THE VIP CONCIERGE PASS */
+    .voucher-m2 {
+      background: #f8f9fa;
+      color: #111111;
+      border: 1px solid #d4d4d8;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+    }
+    .m2-top {
+      background: #111111;
+      color: #ffffff;
+      padding: 24px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .m2-brand {
+      font-family: 'Cinzel', serif;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 5px;
+    }
+    .m2-serial {
+      font-family: monospace;
+      font-size: 11px;
+      letter-spacing: 2px;
+      opacity: 0.7;
+    }
+    .m2-body {
+      padding: 32px;
+      display: grid;
+      grid-template-columns: 1fr 140px;
+      gap: 24px;
+      align-items: center;
+    }
+    .m2-title {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #71717a;
+      margin-bottom: 6px;
+    }
+    .m2-service {
+      font-family: 'Cinzel', serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: #111111;
+      margin-bottom: 10px;
+    }
+    .m2-details {
+      font-size: 12px;
+      color: #52525b;
+      line-height: 1.5;
+    }
+    .m2-qr-box {
+      background: #ffffff;
+      border: 1px solid #e4e4e7;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border-radius: 8px;
+    }
+    .m2-qr {
+      width: 80px;
+      height: 80px;
+      background: 
+        linear-gradient(90deg, #111 25%, transparent 25%),
+        linear-gradient(0deg, #111 25%, transparent 25%);
+      background-size: 8px 8px;
+    }
+    .m2-qr-text {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #71717a;
+    }
+    .m2-bottom {
+      background: #ffffff;
+      border-top: 1px solid #e4e4e7;
+      padding: 16px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: #52525b;
+    }
+
+    /* MOCK 3: THE EDITORIAL NOTCH PASS */
+    .voucher-m3 {
+      background: #ffffff;
+      color: #09090b;
+      display: flex;
+      border: 1px solid #18181b;
+      position: relative;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+    }
+    .m3-main {
+      flex: 1;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .m3-stub {
+      width: 180px;
+      border-left: 2px dashed #09090b;
+      background: #f4f4f5;
+      padding: 32px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      text-align: center;
+    }
+    .m3-brand {
+      font-family: 'Cinzel', serif;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 5px;
+    }
+    .m3-headline {
+      font-size: 18px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .m3-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      border: 1px solid #09090b;
+      padding: 4px 10px;
+      width: fit-content;
+    }
+    .m3-barcode {
+      width: 100%;
+      height: 40px;
+      background: repeating-linear-gradient(
+        90deg,
+        #09090b,
+        #09090b 2px,
+        transparent 2px,
+        transparent 5px
+      );
+    }
+    .m3-stub-title {
+      font-family: 'Cinzel', serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 2px;
+    }
+    .m3-stub-code {
+      font-family: monospace;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <div>
+    <h1 class="header-title">RÉSTORÉE</h1>
+    <p class="header-sub">ATELIER DIGITAL VOUCHER MOCKS (REAL RENDER)</p>
+  </div>
+
+  <!-- MOCK 1 -->
+  <div class="mock-container">
+    <div class="mock-label">MOCK 1 — THE ARCHITECTURAL MONOCHROME</div>
+    <div class="voucher-m1">
+      <div class="m1-header">
+        <div>
+          <div class="m1-brand">RÉSTORÉE</div>
+          <div style="font-size: 10px; letter-spacing: 2px; color: #71717a; margin-top: 2px;">LUXURY RESTORATION ATELIER · MUMBAI</div>
+        </div>
+        <div class="m1-tag">WINNER EDITION</div>
+      </div>
+      <div class="m1-body">
+        <div class="m1-headline">COMPLIMENTARY SIGNATURE SNEAKER REVIVAL</div>
+        <div class="m1-desc">
+          Entitles the winner to one full artisanal sneaker restoration, deep material decontamination, precision sole detailing, and hydrophobic protective treatment.
+        </div>
+      </div>
+      <div class="m1-footer">
+        <div>
+          <div class="m1-code-label">VOUCHER CODE</div>
+          <div class="m1-code">RST-CHAMPION-2026</div>
+        </div>
+        <div class="m1-loc">
+          <strong>Atelier Oshiwara</strong><br>
+          Doorstep Concierge Pickup Across Mumbai
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOCK 2 -->
+  <div class="mock-container">
+    <div class="mock-label">MOCK 2 — THE VIP CONCIERGE PASS</div>
+    <div class="voucher-m2">
+      <div class="m2-top">
+        <div class="m2-brand">RÉSTORÉE</div>
+        <div class="m2-serial">NO. 2026-CHAMP-01</div>
+      </div>
+      <div class="m2-body">
+        <div>
+          <div class="m2-title">OFFICIAL TOURNAMENT PRIZE VOUCHER</div>
+          <div class="m2-service">Atelier Sneaker Detailing & Protection</div>
+          <div class="m2-details">
+            Handcrafted material revival for mid-to-high-end sneakers and designer footwear. Includes texture preservation, custom color matching, and deep decontamination.
+          </div>
+        </div>
+        <div class="m2-qr-box">
+          <div class="m2-qr"></div>
+          <div class="m2-qr-text">SCAN TO BOOK</div>
+        </div>
+      </div>
+      <div class="m2-bottom">
+        <span>Valid for 90 Days from Issue</span>
+        <span>WhatsApp Concierge: +91 98765 43210</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOCK 3 -->
+  <div class="mock-container">
+    <div class="mock-label">MOCK 3 — THE EDITORIAL NOTCH PASS</div>
+    <div class="voucher-m3">
+      <div class="m3-main">
+        <div class="m3-brand">RÉSTORÉE</div>
+        <div class="m3-badge">TOURNAMENT CHAMPION VOUCHER</div>
+        <div class="m3-headline">FULL ATELIER SNEAKER REVIVAL</div>
+        <div class="m3-barcode"></div>
+      </div>
+      <div class="m3-stub">
+        <div class="m3-stub-title">RÉSTORÉE</div>
+        <div>
+          <div style="font-size: 9px; color: #71717a; text-transform: uppercase; letter-spacing: 1px;">CODE</div>
+          <div class="m3-stub-code">RST-WIN-01</div>
+        </div>
+        <div style="font-size: 10px; font-weight: 700; color: #18181b;">MUMBAI</div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

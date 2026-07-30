@@ -16,6 +16,7 @@ export interface PlayerRow {
   paddle: string | null;
   playing_since_year: number | null;
   signature_shot: string | null;
+  email?: string | null;
 }
 
 export const MIN_GAMES_FOR_SKILL_RATING = 20;

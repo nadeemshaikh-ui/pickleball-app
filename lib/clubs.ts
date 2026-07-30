@@ -220,21 +220,110 @@ export async function rejectClubCreationRequest(requestId: string): Promise<void
   if (error) throw error;
 }
 
-// Joining by code is instant — no admin approval needed, matches "anyone
-// who has the code" trust level of a shared invite link.
+export const PENDING_JOIN_CODE_KEY = 'pickleball-pending-join-code';
+
+export function formatEmailName(email: string): string {
+  if (!email || !email.includes('@')) return 'Player';
+  const local = email.split('@')[0];
+  const cleaned = local.replace(/[._+]/g, ' ').replace(/\d+$/g, '');
+  const capitalized = cleaned
+    .split(' ')
+    .filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+  return capitalized.trim() || local;
+}
+
+export function resolveMemberDisplayName(m: { player_name?: string | null; google_name?: string | null; email?: string | null }): string {
+  if (m.player_name && m.player_name !== 'Player' && m.player_name !== 'Unnamed player' && m.player_name.trim().length > 0) {
+    return m.player_name.trim();
+  }
+  if (m.google_name && m.google_name.trim().length > 0) {
+    return m.google_name.trim();
+  }
+  if (m.email && m.email.includes('@')) {
+    return formatEmailName(m.email);
+  }
+  return 'Member';
+}
+
 export async function joinClubByCode(code: string): Promise<ClubRow> {
   const user = (await supabase.auth.getUser()).data.user;
   if (!user) throw new Error('Must be signed in to join a club.');
+  if (user.is_anonymous) throw new Error('Guest users cannot join a club. Please sign in with Google.');
   const { data: club, error } = await supabase.from('clubs').select('*').eq('join_code', code.trim().toUpperCase()).maybeSingle();
   if (error) throw error;
   if (!club) throw new Error('No club found with that code.');
 
   const { error: memberError } = await supabase.from('club_members').insert({ club_id: club.id, user_id: user.id, role: 'member' });
-  if (memberError) {
-    if (memberError.code === '23505') return club as ClubRow; // already a member — not an error
+  if (memberError && memberError.code !== '23505') {
     throw memberError;
   }
+
+  // Automatically create/upsert a player profile for this club using Google Auth metadata or email
+  const googleName = user.user_metadata?.full_name || user.user_metadata?.name;
+  const bestName = googleName && googleName.trim().length > 0
+    ? googleName.trim()
+    : (user.email ? formatEmailName(user.email) : 'Member');
+  const googlePhoto = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
+
+  const { data: existingPlayer } = await supabase
+    .from('players')
+    .select('id, name')
+    .eq('club_id', club.id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (!existingPlayer) {
+    // Check if an admin manually created an unlinked player row with a matching name
+    const { data: unlinkedMatch } = await supabase
+      .from('players')
+      .select('id, name')
+      .eq('club_id', club.id)
+      .is('user_id', null)
+      .ilike('name', `%${bestName.split(' ')[0]}%`)
+      .maybeSingle();
+
+    if (unlinkedMatch) {
+      // Auto-link existing manual player record to this authenticated user
+      await supabase
+        .from('players')
+        .update({ user_id: user.id, photo_url: googlePhoto })
+        .eq('id', unlinkedMatch.id);
+    } else {
+      await supabase.from('players').upsert(
+        {
+          club_id: club.id,
+          user_id: user.id,
+          name: bestName,
+          photo_url: googlePhoto,
+        },
+        { onConflict: 'club_id,user_id' }
+      );
+    }
+  }
+
   return club as ClubRow;
+}
+
+export async function checkAndExecutePendingJoinCode(userId: string): Promise<ClubRow | null> {
+  if (typeof window === 'undefined') return null;
+  const user = (await supabase.auth.getUser()).data.user;
+  if (!user || user.is_anonymous) return null;
+
+  const pendingCode = sessionStorage.getItem(PENDING_JOIN_CODE_KEY);
+  if (!pendingCode) return null;
+
+  try {
+    const club = await joinClubByCode(pendingCode);
+    sessionStorage.removeItem(PENDING_JOIN_CODE_KEY);
+    const { markOnboardingComplete } = await import('./onboarding');
+    await markOnboardingComplete(userId);
+    return club;
+  } catch {
+    sessionStorage.removeItem(PENDING_JOIN_CODE_KEY);
+    return null;
+  }
 }
 
 export async function searchClubsByName(query: string): Promise<ClubRow[]> {
@@ -349,16 +438,25 @@ export interface ClubMemberRow {
   danger_zone_access: boolean;
   removed_at: string | null;
   removed_by: string | null;
+  email?: string | null;
+  google_name?: string | null;
+  player_name?: string | null;
+  player_id?: string | null;
+  photo_url?: string | null;
 }
 
 export async function listClubMembers(clubId: string): Promise<ClubMemberRow[]> {
-  const { data, error } = await supabase
-    .from('club_members')
-    .select('user_id, role, joined_at, danger_zone_access, removed_at, removed_by')
-    .eq('club_id', clubId)
-    .order('joined_at');
-  if (error) throw error;
-  return data;
+  const { data, error } = await supabase.rpc('get_club_members_info', { p_club_id: clubId });
+  if (error) {
+    const { data: raw, error: rawErr } = await supabase
+      .from('club_members')
+      .select('user_id, role, joined_at, danger_zone_access, removed_at, removed_by')
+      .eq('club_id', clubId)
+      .order('joined_at');
+    if (rawErr) throw rawErr;
+    return raw as ClubMemberRow[];
+  }
+  return data as ClubMemberRow[];
 }
 
 // Admin-only at the DB level (RLS + a raise inside the function itself).
@@ -368,6 +466,14 @@ export async function listClubMembers(clubId: string): Promise<ClubMemberRow[]> 
 export async function removeMember(clubId: string, userId: string): Promise<void> {
   const { error } = await supabase.rpc('remove_club_member', { p_club_id: clubId, p_target_user_id: userId });
   if (error) throw error;
+}
+
+export async function permanentlyDeleteMember(clubId: string, userId: string): Promise<void> {
+  // Delete member from club_members and players table
+  const { error: cmErr } = await supabase.from('club_members').delete().eq('club_id', clubId).eq('user_id', userId);
+  if (cmErr) throw cmErr;
+  const { error: pErr } = await supabase.from('players').delete().eq('club_id', clubId).eq('user_id', userId);
+  if (pErr) throw pErr;
 }
 
 export async function restoreMember(clubId: string, userId: string): Promise<void> {

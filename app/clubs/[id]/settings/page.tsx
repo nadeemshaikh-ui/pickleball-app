@@ -18,17 +18,22 @@ import {
   setMemberRole,
   removeMember,
   restoreMember,
+  permanentlyDeleteMember,
+  resolveMemberDisplayName,
+  formatEmailName,
   resetClubData,
   type ClubRow,
   type JoinRequestRow,
   type ClubMemberRow,
 } from '@/lib/clubs';
-import { listPlayers } from '@/lib/players';
+import { listPlayers, type PlayerRow } from '@/lib/players';
 import { getCurrentUser } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 import { renderElementToImage, shareCachedImage } from '@/lib/shareImage';
 import ConfirmModal from '@/components/ConfirmModal';
 import { isDevModeEnabled, setDevModeEnabled } from '@/lib/devMode';
 import { fetchRecentErrorsForClub, type AppErrorRow } from '@/lib/errorLog';
+import ShareClubInviteButton from '@/components/ShareClubInviteButton';
 
 export default function ClubSettingsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -60,10 +65,42 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetMsg, setResetMsg] = useState<string | null>(null);
   const [devMode, setDevMode] = useState(false);
+  const [unlinkedPlayers, setUnlinkedPlayers] = useState<PlayerRow[]>([]);
   const [memberActionError, setMemberActionError] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<{ userId: string; name: string } | null>(null);
   const [inviteImageFile, setInviteImageFile] = useState<File | null>(null);
   const inviteCaptureRef = useRef<HTMLDivElement>(null);
+
+  const [manualName, setManualName] = useState('');
+  const [manualSubmitting, setManualSubmitting] = useState(false);
+  const [manualSuccessMsg, setManualSuccessMsg] = useState<string | null>(null);
+
+  async function handleAddManualPlayer() {
+    if (!manualName.trim()) return;
+    setManualSubmitting(true);
+    setMemberActionError(null);
+    setManualSuccessMsg(null);
+    try {
+      const rawInput = manualName.trim();
+      const isEmail = rawInput.includes('@');
+      const displayName = isEmail ? formatEmailName(rawInput) : rawInput;
+      const playerEmail = isEmail ? rawInput.toLowerCase() : null;
+      const { data: newPlayer, error } = await supabase
+        .from('players')
+        .insert({ club_id: id, name: displayName, email: playerEmail, user_id: null })
+        .select('*')
+        .single();
+      if (error) throw error;
+      setUnlinkedPlayers(prev => [...prev, newPlayer]);
+      setMemberCount(c => c + 1);
+      setManualSuccessMsg(`Successfully added "${displayName}" to the club roster!`);
+      setManualName('');
+    } catch (e) {
+      setMemberActionError(e instanceof Error ? e.message : 'Failed to add player.');
+    } finally {
+      setManualSubmitting(false);
+    }
+  }
 
   async function load() {
     const [memberships, superAdmin] = await Promise.all([
@@ -94,8 +131,10 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
         getCurrentUser(),
         fetchRecentErrorsForClub(id).catch(() => []),
       ]);
+      const unlinked = playerRows.filter(p => !p.user_id);
       setPending(req);
-      setMemberCount(memberRows.filter(m => !m.removed_at).length);
+      setUnlinkedPlayers(unlinked);
+      setMemberCount(memberRows.filter(m => !m.removed_at).length + unlinked.length);
       setMembers(memberRows);
       setMemberNames(new Map(playerRows.filter(p => p.user_id).map(p => [p.user_id as string, p.name])));
       setOwnUserId(user?.id ?? null);
@@ -115,11 +154,15 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
     }
   }
 
+  const [demoteTarget, setDemoteTarget] = useState<{ userId: string; name: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ userId: string; name: string } | null>(null);
+
   async function handleSetRole(userId: string, role: 'admin' | 'member') {
     setMemberActionError(null);
     try {
       await setMemberRole(id, userId, role);
       setMembers(prev => prev.map(m => (m.user_id === userId ? { ...m, role } : m)));
+      setDemoteTarget(null);
     } catch (e) {
       setMemberActionError(e instanceof Error ? e.message : 'Failed to update role.');
     }
@@ -138,6 +181,19 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
     }
   }
 
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    setMemberActionError(null);
+    try {
+      await permanentlyDeleteMember(id, deleteTarget.userId);
+      setMembers(prev => prev.filter(m => m.user_id !== deleteTarget.userId));
+      setMemberCount(c => Math.max(0, c - 1));
+      setDeleteTarget(null);
+    } catch (e) {
+      setMemberActionError(e instanceof Error ? e.message : 'Failed to delete member.');
+    }
+  }
+
   async function handleRestore(userId: string) {
     setMemberActionError(null);
     try {
@@ -146,6 +202,19 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
       setMemberCount(c => c + 1);
     } catch (e) {
       setMemberActionError(e instanceof Error ? e.message : 'Failed to restore member.');
+    }
+  }
+
+  async function handleDeleteUnlinkedPlayer(playerId: string) {
+    if (!confirm('Permanently delete this player from the club roster?')) return;
+    setMemberActionError(null);
+    try {
+      const { error } = await supabase.from('players').delete().eq('id', playerId);
+      if (error) throw error;
+      setUnlinkedPlayers(prev => prev.filter(p => p.id !== playerId));
+      setMemberCount(c => Math.max(0, c - 1));
+    } catch (e) {
+      setMemberActionError(e instanceof Error ? e.message : 'Failed to delete player.');
     }
   }
 
@@ -348,20 +417,17 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
       </div>
 
       <h2>Invite</h2>
-      <div className="card">
-        <div ref={inviteCaptureRef} style={{ padding: 8 }}>
-          <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}><UserPlus size={16} /> Join {club.name}!</div>
-          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 6 }}>Share this code — joining is instant, no approval needed:</p>
-          <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: 2 }}>{club.join_code}</div>
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ padding: 4 }}>
+          <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <UserPlus size={16} /> Join {club.name}!
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 8 }}>
+            Share this link on WhatsApp — joining is 100% instant with Google Sign-In, no admin approval needed:
+          </p>
+          <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: 2, marginBottom: 8 }}>{club.join_code}</div>
         </div>
-        {imageShareError && <p style={{ color: 'var(--danger)', fontSize: 13, marginTop: 8 }}>{imageShareError}</p>}
-        <button
-          className="btn-secondary"
-          style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: 12 }}
-          onClick={handleShareInvite}
-        >
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Share2 size={15} /> Share Invite on WhatsApp</span>
-        </button>
+        <ShareClubInviteButton clubName={club.name} joinCode={club.join_code} fullWidth />
       </div>
 
       <h2>Pending Join Requests ({pending.length})</h2>
@@ -391,6 +457,31 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
         ))}
       </div>
 
+      <div className="card" style={{ marginBottom: 12, borderColor: 'var(--primary)' }}>
+        <h3 style={{ marginTop: 0, fontSize: 15 }}>Add Player Manually to Club</h3>
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: -4, marginBottom: 10 }}>
+          Register a player directly on your club roster so they can play matches immediately before signing in with Google.
+        </p>
+        {manualSuccessMsg && <p style={{ color: 'var(--success, #22c55e)', fontWeight: 600, fontSize: 13, margin: '4px 0 8px' }}>{manualSuccessMsg}</p>}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            value={manualName}
+            onChange={e => setManualName(e.target.value)}
+            placeholder="Player Full Name (e.g. Viki Rajani)"
+            aria-label="Player full name"
+            style={{ flex: 1, minHeight: 38, padding: '8px 12px', fontSize: 14, border: '1px solid var(--border)', borderRadius: 8 }}
+          />
+          <button
+            className="btn-primary"
+            onClick={handleAddManualPlayer}
+            disabled={manualSubmitting || !manualName.trim()}
+            style={{ minHeight: 38, padding: '0 14px', fontSize: 13 }}
+          >
+            {manualSubmitting ? 'Adding…' : 'Add Player'}
+          </button>
+        </div>
+      </div>
+
       <h2>Members</h2>
       {memberActionError && <p style={{ color: 'var(--danger)', fontWeight: 600 }}>{memberActionError}</p>}
       <div className="card">
@@ -399,42 +490,105 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
           const adminCount = members.filter(x => !x.removed_at && x.role === 'admin').length;
           const isLastAdmin = m.role === 'admin' && adminCount <= 1;
           return (
-            <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
-              <span style={{ flex: 1, fontSize: 13 }}>
-                {memberNames.get(m.user_id) ?? 'Unknown'}
-                {m.role === 'admin' && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, color: 'var(--primary)' }}>ADMIN</span>}
-              </span>
-              {m.role === 'admin' && (
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={m.danger_zone_access}
-                    onChange={() => handleToggleDangerZone(m.user_id, m.danger_zone_access)}
-                  />
-                  Reset Access
-                </label>
-              )}
-              <button
-                className="btn-secondary"
-                style={{ minHeight: 28, padding: '3px 10px', fontSize: 12 }}
-                onClick={() => handleSetRole(m.user_id, m.role === 'admin' ? 'member' : 'admin')}
-                disabled={isLastAdmin}
-                title={isLastAdmin ? "Club needs at least one admin — promote someone else first" : undefined}
-              >
-                {m.role === 'admin' ? 'Make Member' : 'Make Admin'}
-              </button>
-              {m.user_id !== ownUserId && (
+            <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ flex: 1, minWidth: 140, overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 700, fontSize: 14 }}>
+                    {resolveMemberDisplayName({
+                      player_name: memberNames.get(m.user_id),
+                      google_name: m.google_name,
+                      email: m.email,
+                    })}
+                  </span>
+                  {m.role === 'admin' && (
+                    <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--primary)', border: '1.5px solid var(--primary)', borderRadius: 4, padding: '1px 5px', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                      ADMIN
+                    </span>
+                  )}
+                </div>
+                {m.email && <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.email}</div>}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, justifyContent: 'flex-end' }}>
+                {m.role === 'admin' && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: 'var(--muted)', cursor: 'pointer', whiteSpace: 'nowrap', marginRight: 2 }}>
+                    <input
+                      type="checkbox"
+                      checked={m.danger_zone_access}
+                      onChange={() => handleToggleDangerZone(m.user_id, m.danger_zone_access)}
+                    />
+                    Reset Access
+                  </label>
+                )}
                 <button
                   className="btn-secondary"
-                  style={{ minHeight: 28, padding: '3px 10px', fontSize: 12, borderColor: 'var(--danger)', color: 'var(--danger)' }}
-                  onClick={() => setRemoveTarget({ userId: m.user_id, name: memberNames.get(m.user_id) ?? 'this member' })}
+                  style={{ minHeight: 26, padding: '2px 6px', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    const memberName = resolveMemberDisplayName({ player_name: memberNames.get(m.user_id), google_name: m.google_name, email: m.email });
+                    if (m.role === 'admin') {
+                      setDemoteTarget({ userId: m.user_id, name: memberName });
+                    } else {
+                      handleSetRole(m.user_id, 'admin');
+                    }
+                  }}
+                  disabled={isLastAdmin}
+                  title={isLastAdmin ? "Club needs at least one admin — promote someone else first" : undefined}
                 >
-                  Remove
+                  {m.role === 'admin' ? 'Make Member' : 'Make Admin'}
                 </button>
-              )}
+                {m.user_id !== ownUserId && (
+                  <>
+                    <button
+                      className="btn-secondary"
+                      style={{ minHeight: 26, padding: '2px 6px', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.3, borderColor: 'var(--danger)', color: 'var(--danger)', whiteSpace: 'nowrap' }}
+                      onClick={() => setRemoveTarget({ userId: m.user_id, name: resolveMemberDisplayName({ player_name: memberNames.get(m.user_id), google_name: m.google_name, email: m.email }) })}
+                    >
+                      Remove
+                    </button>
+                    <button
+                      className="btn-secondary"
+                      style={{ minHeight: 26, padding: '2px 6px', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.3, background: 'var(--danger)', color: '#fff', border: 'none', whiteSpace: 'nowrap' }}
+                      onClick={() => setDeleteTarget({ userId: m.user_id, name: resolveMemberDisplayName({ player_name: memberNames.get(m.user_id), google_name: m.google_name, email: m.email }) })}
+                    >
+                      Delete
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           );
         })}
+        {unlinkedPlayers.map(p => (
+          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
+            <span style={{ flex: 1, fontSize: 13 }}>
+              <div style={{ fontWeight: 700 }}>{p.name}</div>
+              {p.email && <div style={{ fontSize: 12, color: 'var(--muted)' }}>{p.email}</div>}
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <button
+                className="btn-secondary"
+                style={{ minHeight: 26, padding: '2px 6px', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap' }}
+                onClick={() => alert(`"${p.name}" will automatically receive Admin rights when they sign in with Google.`)}
+              >
+                Make Admin
+              </button>
+              <button
+                className="btn-secondary"
+                style={{ minHeight: 26, padding: '2px 6px', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.3, borderColor: 'var(--danger)', color: 'var(--danger)', whiteSpace: 'nowrap' }}
+                onClick={() => handleDeleteUnlinkedPlayer(p.id)}
+              >
+                Remove
+              </button>
+              <button
+                className="btn-secondary"
+                style={{ minHeight: 26, padding: '2px 6px', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.3, background: 'var(--danger)', color: '#fff', border: 'none', whiteSpace: 'nowrap' }}
+                onClick={() => handleDeleteUnlinkedPlayer(p.id)}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        ))}
 
         {members.some(m => m.removed_at) && (
           <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
@@ -522,6 +676,28 @@ export default function ClubSettingsPage({ params }: { params: Promise<{ id: str
           </p>
         )}
       </div>
+
+      {demoteTarget && (
+        <ConfirmModal
+          title="Revoke Admin Privileges"
+          message={`Are you sure you want to revoke Admin rights from ${demoteTarget.name}? They will become a regular member.`}
+          confirmLabel="Revoke Admin Rights"
+          danger
+          onConfirm={() => handleSetRole(demoteTarget.userId, 'member')}
+          onCancel={() => setDemoteTarget(null)}
+        />
+      )}
+
+      {deleteTarget && (
+        <ConfirmModal
+          title="Permanently Delete Member"
+          message={`CAUTION: Are you sure you want to permanently delete ${deleteTarget.name}? This action cannot be undone.`}
+          confirmLabel="Permanently Delete"
+          danger
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
 
       {showResetConfirm && club && (
         <ConfirmModal

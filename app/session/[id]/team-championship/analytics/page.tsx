@@ -202,6 +202,32 @@ export default function TeamChampionshipAnalyticsPage({ params }: { params: Prom
       </button>
       {imageShareError && <p style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 12, marginBottom: 16 }}>{imageShareError}</p>}
 
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+        <Link
+          href={`/session/${id}/team-championship/sessions-breakdown`}
+          className="btn-secondary"
+          style={{ textAlign: 'center', fontSize: 13, padding: '10px 8px', fontWeight: 700, borderColor: 'var(--primary)' }}
+        >
+          Session Points (1x/2x/3x) →
+        </Link>
+        <Link
+          href={`/session/${id}/team-championship/rapid-fire`}
+          className="btn-primary"
+          style={{
+            textAlign: 'center',
+            fontSize: 13,
+            padding: '10px 8px',
+            fontWeight: 800,
+            background: 'linear-gradient(135deg, #ef4444 0%, #f59e0b 100%)',
+            color: '#fff',
+            textDecoration: 'none',
+            borderRadius: 8,
+          }}
+        >
+          🔥 Rapid Fire Analysis →
+        </Link>
+      </div>
+
       {overallMVP && (
         <div className="card" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, padding: 16 }}>
           <Star size={28} color="#d4af37" fill="#d4af37" />

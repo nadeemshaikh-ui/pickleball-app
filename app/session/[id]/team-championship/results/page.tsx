@@ -162,12 +162,41 @@ export default function TeamChampionshipResultsPage({ params }: { params: Promis
       </button>
       {imageShareError && <p style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 12, marginBottom: 16 }}>{imageShareError}</p>}
 
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+        <Link
+          href={`/session/${id}/team-championship/analytics`}
+          className="btn-secondary"
+          style={{ textAlign: 'center', fontSize: 13, padding: '10px 8px', fontWeight: 700 }}
+        >
+          Player Stats & MVP →
+        </Link>
+        <Link
+          href={`/session/${id}/team-championship/sessions-breakdown`}
+          className="btn-secondary"
+          style={{ textAlign: 'center', fontSize: 13, padding: '10px 8px', fontWeight: 700, borderColor: 'var(--primary)' }}
+        >
+          Session Points (1x/2x/3x) →
+        </Link>
+      </div>
+
       <Link
-        href={`/session/${id}/team-championship/analytics`}
-        className="btn-secondary"
-        style={{ display: 'block', textAlign: 'center', marginBottom: 16 }}
+        href={`/session/${id}/team-championship/rapid-fire`}
+        className="btn-primary"
+        style={{
+          display: 'block',
+          textAlign: 'center',
+          marginBottom: 20,
+          background: 'linear-gradient(135deg, #ef4444 0%, #f59e0b 100%)',
+          color: '#fff',
+          fontWeight: 800,
+          fontSize: 14,
+          padding: '12px',
+          borderRadius: 10,
+          textDecoration: 'none',
+          boxShadow: '0 4px 12px rgba(239, 68, 68, 0.25)',
+        }}
       >
-        Player Stats & MVP →
+        🔥 Rapid Fire Finale Breakdown (36–33 Climax) →
       </Link>
 
       <h2>Stage Points</h2>

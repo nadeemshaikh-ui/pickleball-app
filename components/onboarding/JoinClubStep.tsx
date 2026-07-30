@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { joinClubByCode, searchClubsByName, type ClubRow } from '@/lib/clubs';
+import GoogleSignInButton from '@/components/GoogleSignInButton';
 
 interface JoinClubStepProps {
   onJoined: (clubId: string) => void;
@@ -69,7 +70,14 @@ export default function JoinClubStep({ onJoined, onRequestStart }: JoinClubStepP
           {codeSubmitting ? 'Joining…' : 'Join'}
         </button>
       </div>
-      {codeError && <p style={{ color: 'var(--danger)', fontWeight: 600 }}>{codeError}</p>}
+      {codeError && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <p style={{ color: 'var(--danger)', fontWeight: 600, margin: 0 }}>{codeError}</p>
+          {(codeError.includes('Guest') || codeError.includes('Google')) && (
+            <GoogleSignInButton label="Sign in with Google to Join Instantly" />
+          )}
+        </div>
+      )}
       <p style={{ fontSize: 12, color: 'var(--muted)' }}>A code joins instantly — no approval needed. Get it from your club&apos;s admin.</p>
 
       <h2>Or find a club by name</h2>
