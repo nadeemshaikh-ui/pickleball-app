@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import { hasCompletedOnboarding } from '@/lib/onboarding';
 import { getOwnPlayer } from '@/lib/players';
-import { getLatestActiveSession, type SessionRow } from '@/lib/db';
+import { getLatestActiveSession, deleteSession, type SessionRow } from '@/lib/db';
 import { fetchLifetimeLeaderboard, fetchStreaks, type LifetimePlayerStats } from '@/lib/leagueStats';
 import { fetchStreakRecords } from '@/lib/streakRecords';
 import { fetchPendingChallenges } from '@/lib/challenges';
@@ -21,7 +21,7 @@ import {
 } from '@/lib/clubs';
 import { computeBadges, buildBadgeInput, type Badge } from '@/lib/badges';
 import SignInGate from '@/components/SignInGate';
-import { Flame, Crown, Zap, Bell } from 'lucide-react';
+import { Flame, Crown, Zap, Bell, Trash2 } from 'lucide-react';
 import BadgeMedallion from '@/components/BadgeMedallion';
 
 export default function HomePage() {
@@ -41,8 +41,19 @@ export default function HomePage() {
   const [activeSession, setActiveSession] = useState<SessionRow | null>(null);
 
   useEffect(() => {
-    getLatestActiveSession().then(setActiveSession).catch(() => setActiveSession(null));
-  }, []);
+    getLatestActiveSession(currentClubId).then(setActiveSession).catch(() => setActiveSession(null));
+  }, [currentClubId]);
+
+  async function handleAbandonSession() {
+    if (!activeSession) return;
+    if (!confirm('Are you sure you want to abandon and delete this active session? All round scores logged so far will be permanently removed.')) return;
+    try {
+      await deleteSession(activeSession.id);
+      setActiveSession(null);
+    } catch (err) {
+      alert('Failed to abandon session. Please try again.');
+    }
+  }
 
   useEffect(() => {
     if (clubLoading) return;
@@ -162,9 +173,30 @@ export default function HomePage() {
                 Ongoing Session Active
               </span>
             </div>
-            <span style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'monospace', background: 'var(--card)', padding: '2px 8px', borderRadius: 6, border: '1px solid var(--border)' }}>
-              #{activeSession.id}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'monospace', background: 'var(--card)', padding: '2px 8px', borderRadius: 6, border: '1px solid var(--border)' }}>
+                #{activeSession.id}
+              </span>
+              <button
+                onClick={handleAbandonSession}
+                title="Abandon & Delete Session"
+                style={{
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  color: '#ef4444',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  borderRadius: 6,
+                  padding: '3px 8px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  cursor: 'pointer',
+                }}
+              >
+                <Trash2 size={12} /> Abandon
+              </button>
+            </div>
           </div>
 
           <h3 style={{ margin: '0 0 6px 0', fontSize: 18, fontWeight: 800 }}>

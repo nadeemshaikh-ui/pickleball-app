@@ -8,6 +8,7 @@ import GlobalNav from "@/components/GlobalNav";
 import DevModePanel from "@/components/DevModePanel";
 import ErrorLogger from "@/components/ErrorLogger";
 import UpgradePrompt from "@/components/UpgradePrompt";
+import AiChatDrawer from "@/components/AiChatDrawer";
 
 const bebas = Bebas_Neue({
   variable: "--font-display",
@@ -39,6 +40,7 @@ export default function RootLayout({
         <ClubSwitcher />
         <div style={{ paddingBottom: 80 }}>{children}</div>
         <GlobalNav />
+        <AiChatDrawer />
         <DevModePanel />
         <ErrorLogger />
         <UpgradePrompt />

@@ -1,0 +1,2182 @@
+{
+  "session": {
+    "id": "1u03ob",
+    "created_at": "2026-07-27T17:50:53.704063+00:00",
+    "format": "team_championship",
+    "players": [
+      "Karan",
+      "Tushar",
+      "Saurabh",
+      "Sagar",
+      "Hemal",
+      "Gopal",
+      "Amit",
+      "MBS",
+      "Rahul",
+      "Hiten",
+      "Viki",
+      "Deep",
+      "Sid",
+      "Aryan",
+      "Nadeem",
+      "Amresh",
+      "Vinit",
+      "Sumeet",
+      "Kris",
+      "Ankit"
+    ],
+    "round_count": 15,
+    "status": "completed",
+    "court_labels": [
+      "1",
+      "2",
+      "3"
+    ],
+    "round_duration_minutes": 10,
+    "rounds_per_block": 5,
+    "group_name": "Home Team vs Challengers",
+    "logo_url_1": "https://ltbnjtgzpwxulbczmzdr.supabase.co/storage/v1/object/public/group-logos/squad-hcf2iwlf4n.jpeg",
+    "logo_url_2": null,
+    "start_time": "8:00 PM",
+    "court_cost": null,
+    "ball_cost": 200,
+    "is_ladder": false,
+    "king_of_court_fixed_pairs": null,
+    "club_id": "d5b57890-3787-41bb-bf23-38bc95345011",
+    "venue": "Juhu Millennium Club",
+    "storylines": [],
+    "booker_upi_vpa": null,
+    "squads": [
+      {
+        "id": "team1",
+        "label": "Home Team",
+        "logoUrl": null,
+        "players": [
+          "Karan",
+          "Tushar",
+          "Saurabh",
+          "Sagar",
+          "Hemal",
+          "Gopal",
+          "Amit",
+          "MBS",
+          "Rahul",
+          "Hiten"
+        ]
+      },
+      {
+        "id": "team2",
+        "label": "Challengers",
+        "logoUrl": null,
+        "players": [
+          "Viki",
+          "Deep",
+          "Sid",
+          "Aryan",
+          "Nadeem",
+          "Amresh",
+          "Vinit",
+          "Sumeet",
+          "Kris",
+          "Ankit"
+        ]
+      }
+    ],
+    "stage_config": [
+      {
+        "roundEnd": 5,
+        "roundStart": 1,
+        "stageLabel": "Session 1",
+        "pointsPerWin": 1
+      },
+      {
+        "roundEnd": 10,
+        "roundStart": 6,
+        "stageLabel": "Session 2",
+        "pointsPerWin": 2
+      },
+      {
+        "roundEnd": 15,
+        "roundStart": 11,
+        "stageLabel": "Session 3",
+        "pointsPerWin": 3
+      }
+    ],
+    "rapid_fire_config": {
+      "bonusPoints": 10,
+      "targetPoints": 31
+    },
+    "circle_id": null,
+    "match_scoring_rule": "golden_14",
+    "event_date": null,
+    "designated_scorers": [
+      "Tushar",
+      "Hemal",
+      "Gopal",
+      "Nadeem",
+      "Tushar Shah",
+      "HEMAL SHAH",
+      "Gopal Parwal",
+      "nadim shaikh"
+    ],
+    "absent_players": []
+  },
+  "rounds": [
+    {
+      "id": "2ae3a8ec-d748-418c-910e-697208f6e708",
+      "session_id": "1u03ob",
+      "round_number": 1,
+      "court": 2,
+      "team_a": [
+        "Gopal",
+        "Amit"
+      ],
+      "team_b": [
+        "Sid",
+        "Aryan"
+      ],
+      "sitting_out": [
+        "Saurabh",
+        "Hiten",
+        "Hemal",
+        "Sagar",
+        "Ankit",
+        "Vinit",
+        "Sumeet",
+        "Kris"
+      ],
+      "score_a": 12,
+      "score_b": 15
+    },
+    {
+      "id": "eec90148-e63d-467a-9ddb-6f67660ed9c0",
+      "session_id": "1u03ob",
+      "round_number": 1,
+      "court": 1,
+      "team_a": [
+        "Karan",
+        "Tushar"
+      ],
+      "team_b": [
+        "Viki",
+        "Deep"
+      ],
+      "sitting_out": [
+        "Saurabh",
+        "Hiten",
+        "Hemal",
+        "Sagar",
+        "Ankit",
+        "Vinit",
+        "Sumeet",
+        "Kris"
+      ],
+      "score_a": 15,
+      "score_b": 13
+    },
+    {
+      "id": "2825e3c9-e5d8-43db-9399-9ee4f590f4e6",
+      "session_id": "1u03ob",
+      "round_number": 1,
+      "court": 3,
+      "team_a": [
+        "MBS",
+        "Rahul"
+      ],
+      "team_b": [
+        "Nadeem",
+        "Amresh"
+      ],
+      "sitting_out": [
+        "Saurabh",
+        "Hiten",
+        "Hemal",
+        "Sagar",
+        "Ankit",
+        "Vinit",
+        "Sumeet",
+        "Kris"
+      ],
+      "score_a": 14,
+      "score_b": 15
+    },
+    {
+      "id": "5b3f519e-2635-465f-b6de-765d6a66b07f",
+      "session_id": "1u03ob",
+      "round_number": 2,
+      "court": 2,
+      "team_a": [
+        "Hemal",
+        "Hiten"
+      ],
+      "team_b": [
+        "Sumeet",
+        "Aryan"
+      ],
+      "sitting_out": [
+        "Gopal",
+        "Amit",
+        "MBS",
+        "Tushar",
+        "Nadeem",
+        "Deep",
+        "Viki",
+        "Kris"
+      ],
+      "score_a": 14,
+      "score_b": 15
+    },
+    {
+      "id": "789eaf1b-59c0-4e90-89e5-005ef0a6ab9d",
+      "session_id": "1u03ob",
+      "round_number": 2,
+      "court": 3,
+      "team_a": [
+        "Karan",
+        "Rahul"
+      ],
+      "team_b": [
+        "Sid",
+        "Ankit"
+      ],
+      "sitting_out": [
+        "Gopal",
+        "Amit",
+        "MBS",
+        "Tushar",
+        "Nadeem",
+        "Deep",
+        "Viki",
+        "Kris"
+      ],
+      "score_a": 15,
+      "score_b": 13
+    },
+    {
+      "id": "241155fc-88c4-466e-9dbc-127e7651edcb",
+      "session_id": "1u03ob",
+      "round_number": 2,
+      "court": 1,
+      "team_a": [
+        "Saurabh",
+        "Sagar"
+      ],
+      "team_b": [
+        "Amresh",
+        "Vinit"
+      ],
+      "sitting_out": [
+        "Gopal",
+        "Amit",
+        "MBS",
+        "Tushar",
+        "Nadeem",
+        "Deep",
+        "Viki",
+        "Kris"
+      ],
+      "score_a": 8,
+      "score_b": 15
+    },
+    {
+      "id": "fdf060ca-3877-45b0-8592-9325443e88e0",
+      "session_id": "1u03ob",
+      "round_number": 3,
+      "court": 1,
+      "team_a": [
+        "Hemal",
+        "Tushar"
+      ],
+      "team_b": [
+        "Sumeet",
+        "Kris"
+      ],
+      "sitting_out": [
+        "Karan",
+        "Hiten",
+        "Gopal",
+        "Rahul",
+        "Nadeem",
+        "Amresh",
+        "Sid",
+        "Aryan"
+      ],
+      "score_a": 15,
+      "score_b": 11
+    },
+    {
+      "id": "30edb7d8-7322-4527-ad31-605bac376b2f",
+      "session_id": "1u03ob",
+      "round_number": 3,
+      "court": 3,
+      "team_a": [
+        "Saurabh",
+        "Amit"
+      ],
+      "team_b": [
+        "Viki",
+        "Ankit"
+      ],
+      "sitting_out": [
+        "Karan",
+        "Hiten",
+        "Gopal",
+        "Rahul",
+        "Nadeem",
+        "Amresh",
+        "Sid",
+        "Aryan"
+      ],
+      "score_a": 14,
+      "score_b": 15
+    },
+    {
+      "id": "bac2896f-a3de-443d-ba87-d9fdf207960c",
+      "session_id": "1u03ob",
+      "round_number": 3,
+      "court": 2,
+      "team_a": [
+        "MBS",
+        "Sagar"
+      ],
+      "team_b": [
+        "Deep",
+        "Vinit"
+      ],
+      "sitting_out": [
+        "Karan",
+        "Hiten",
+        "Gopal",
+        "Rahul",
+        "Nadeem",
+        "Amresh",
+        "Sid",
+        "Aryan"
+      ],
+      "score_a": 15,
+      "score_b": 9
+    },
+    {
+      "id": "7701ae6d-3cfc-446e-865a-9827f407b47f",
+      "session_id": "1u03ob",
+      "round_number": 4,
+      "court": 3,
+      "team_a": [
+        "MBS",
+        "Hiten"
+      ],
+      "team_b": [
+        "Viki",
+        "Aryan"
+      ],
+      "sitting_out": [
+        "Saurabh",
+        "Tushar",
+        "Hemal",
+        "Sagar",
+        "Ankit",
+        "Sid",
+        "Vinit",
+        "Sumeet"
+      ],
+      "score_a": 14,
+      "score_b": 15
+    },
+    {
+      "id": "8b9ca692-17cf-4c97-8bd8-852310f1e84f",
+      "session_id": "1u03ob",
+      "round_number": 4,
+      "court": 2,
+      "team_a": [
+        "Gopal",
+        "Rahul"
+      ],
+      "team_b": [
+        "Deep",
+        "Amresh"
+      ],
+      "sitting_out": [
+        "Saurabh",
+        "Tushar",
+        "Hemal",
+        "Sagar",
+        "Ankit",
+        "Sid",
+        "Vinit",
+        "Sumeet"
+      ],
+      "score_a": 5,
+      "score_b": 15
+    },
+    {
+      "id": "492212a7-b07d-461f-90b5-8dd84b9b41e8",
+      "session_id": "1u03ob",
+      "round_number": 4,
+      "court": 1,
+      "team_a": [
+        "Karan",
+        "Amit"
+      ],
+      "team_b": [
+        "Nadeem",
+        "Kris"
+      ],
+      "sitting_out": [
+        "Saurabh",
+        "Tushar",
+        "Hemal",
+        "Sagar",
+        "Ankit",
+        "Sid",
+        "Vinit",
+        "Sumeet"
+      ],
+      "score_a": 15,
+      "score_b": 12
+    },
+    {
+      "id": "74ec5c2d-f8e4-4810-83fc-af8ee77499eb",
+      "session_id": "1u03ob",
+      "round_number": 5,
+      "court": 2,
+      "team_a": [
+        "Hemal",
+        "Sagar"
+      ],
+      "team_b": [
+        "Nadeem",
+        "Ankit"
+      ],
+      "sitting_out": [
+        "Karan",
+        "Amit",
+        "MBS",
+        "Rahul",
+        "Amresh",
+        "Deep",
+        "Viki",
+        "Aryan"
+      ],
+      "score_a": 15,
+      "score_b": 8
+    },
+    {
+      "id": "53bf6395-2688-406a-9d09-f2270b332783",
+      "session_id": "1u03ob",
+      "round_number": 5,
+      "court": 1,
+      "team_a": [
+        "Gopal",
+        "Hiten"
+      ],
+      "team_b": [
+        "Kris",
+        "Vinit"
+      ],
+      "sitting_out": [
+        "Karan",
+        "Amit",
+        "MBS",
+        "Rahul",
+        "Amresh",
+        "Deep",
+        "Viki",
+        "Aryan"
+      ],
+      "score_a": 15,
+      "score_b": 7
+    },
+    {
+      "id": "7db14e3a-350d-468b-a937-4bc4f9e84880",
+      "session_id": "1u03ob",
+      "round_number": 5,
+      "court": 3,
+      "team_a": [
+        "Saurabh",
+        "Tushar"
+      ],
+      "team_b": [
+        "Sid",
+        "Sumeet"
+      ],
+      "sitting_out": [
+        "Karan",
+        "Amit",
+        "MBS",
+        "Rahul",
+        "Amresh",
+        "Deep",
+        "Viki",
+        "Aryan"
+      ],
+      "score_a": 11,
+      "score_b": 15
+    },
+    {
+      "id": "7b2abc36-3798-4ca8-840b-613e089ad542",
+      "session_id": "1u03ob",
+      "round_number": 6,
+      "court": 2,
+      "team_a": [
+        "Hemal",
+        "Karan"
+      ],
+      "team_b": [
+        "Deep",
+        "Sid"
+      ],
+      "sitting_out": [
+        "Hiten",
+        "Gopal",
+        "Amit",
+        "Tushar",
+        "Aryan",
+        "Amresh",
+        "Ankit",
+        "Kris"
+      ],
+      "score_a": 15,
+      "score_b": 8
+    },
+    {
+      "id": "b8099c01-6589-4573-9d83-51072c32fe00",
+      "session_id": "1u03ob",
+      "round_number": 6,
+      "court": 1,
+      "team_a": [
+        "MBS",
+        "Saurabh"
+      ],
+      "team_b": [
+        "Viki",
+        "Sumeet"
+      ],
+      "sitting_out": [
+        "Hiten",
+        "Gopal",
+        "Amit",
+        "Tushar",
+        "Aryan",
+        "Amresh",
+        "Ankit",
+        "Kris"
+      ],
+      "score_a": 14,
+      "score_b": 15
+    },
+    {
+      "id": "9b3ef1e1-ba18-4afd-8d7e-346be096c4ee",
+      "session_id": "1u03ob",
+      "round_number": 6,
+      "court": 3,
+      "team_a": [
+        "Rahul",
+        "Sagar"
+      ],
+      "team_b": [
+        "Vinit",
+        "Nadeem"
+      ],
+      "sitting_out": [
+        "Hiten",
+        "Gopal",
+        "Amit",
+        "Tushar",
+        "Aryan",
+        "Amresh",
+        "Ankit",
+        "Kris"
+      ],
+      "score_a": 15,
+      "score_b": 9
+    },
+    {
+      "id": "e244e132-d799-4d35-b499-f21579fbcde7",
+      "session_id": "1u03ob",
+      "round_number": 7,
+      "court": 2,
+      "team_a": [
+        "Hiten",
+        "Tushar"
+      ],
+      "team_b": [
+        "Kris",
+        "Viki"
+      ],
+      "sitting_out": [
+        "Hemal",
+        "Karan",
+        "MBS",
+        "Rahul",
+        "Nadeem",
+        "Deep",
+        "Vinit",
+        "Sid"
+      ],
+      "score_a": 7,
+      "score_b": 15
+    },
+    {
+      "id": "789bfd1f-959a-43a6-9d2b-52b6298dd61c",
+      "session_id": "1u03ob",
+      "round_number": 7,
+      "court": 1,
+      "team_a": [
+        "Sagar",
+        "Amit"
+      ],
+      "team_b": [
+        "Amresh",
+        "Sumeet"
+      ],
+      "sitting_out": [
+        "Hemal",
+        "Karan",
+        "MBS",
+        "Rahul",
+        "Nadeem",
+        "Deep",
+        "Vinit",
+        "Sid"
+      ],
+      "score_a": 10,
+      "score_b": 15
+    },
+    {
+      "id": "58058134-2f93-4830-a14f-f9b520884599",
+      "session_id": "1u03ob",
+      "round_number": 7,
+      "court": 3,
+      "team_a": [
+        "Saurabh",
+        "Gopal"
+      ],
+      "team_b": [
+        "Aryan",
+        "Ankit"
+      ],
+      "sitting_out": [
+        "Hemal",
+        "Karan",
+        "MBS",
+        "Rahul",
+        "Nadeem",
+        "Deep",
+        "Vinit",
+        "Sid"
+      ],
+      "score_a": 15,
+      "score_b": 12
+    },
+    {
+      "id": "db600211-4cc1-4ba1-81b9-db0b916b666b",
+      "session_id": "1u03ob",
+      "round_number": 8,
+      "court": 1,
+      "team_a": [
+        "Gopal",
+        "Hemal"
+      ],
+      "team_b": [
+        "Sid",
+        "Vinit"
+      ],
+      "sitting_out": [
+        "Saurabh",
+        "Hiten",
+        "Amit",
+        "Sagar",
+        "Ankit",
+        "Viki",
+        "Sumeet",
+        "Kris"
+      ],
+      "score_a": 15,
+      "score_b": 9
+    },
+    {
+      "id": "5b52ede8-c5d3-45ce-97dc-4afd0a09900b",
+      "session_id": "1u03ob",
+      "round_number": 8,
+      "court": 2,
+      "team_a": [
+        "Karan",
+        "MBS"
+      ],
+      "team_b": [
+        "Deep",
+        "Nadeem"
+      ],
+      "sitting_out": [
+        "Saurabh",
+        "Hiten",
+        "Amit",
+        "Sagar",
+        "Ankit",
+        "Viki",
+        "Sumeet",
+        "Kris"
+      ],
+      "score_a": 15,
+      "score_b": 9
+    },
+    {
+      "id": "31e4b0ee-4222-4a05-9952-92ef61d133e2",
+      "session_id": "1u03ob",
+      "round_number": 8,
+      "court": 3,
+      "team_a": [
+        "Tushar",
+        "Rahul"
+      ],
+      "team_b": [
+        "Amresh",
+        "Aryan"
+      ],
+      "sitting_out": [
+        "Saurabh",
+        "Hiten",
+        "Amit",
+        "Sagar",
+        "Ankit",
+        "Viki",
+        "Sumeet",
+        "Kris"
+      ],
+      "score_a": 15,
+      "score_b": 13
+    },
+    {
+      "id": "14f1f021-279e-401c-bf39-44fce07ce111",
+      "session_id": "1u03ob",
+      "round_number": 9,
+      "court": 1,
+      "team_a": [
+        "Karan",
+        "Hiten"
+      ],
+      "team_b": [
+        "Sid",
+        "Kris"
+      ],
+      "sitting_out": [
+        "Gopal",
+        "Tushar",
+        "MBS",
+        "Sagar",
+        "Nadeem",
+        "Amresh",
+        "Deep",
+        "Aryan"
+      ],
+      "score_a": 14,
+      "score_b": 15
+    },
+    {
+      "id": "21d0e175-acb3-4215-a1e4-8ddc8436b9ad",
+      "session_id": "1u03ob",
+      "round_number": 9,
+      "court": 2,
+      "team_a": [
+        "Saurabh",
+        "Rahul"
+      ],
+      "team_b": [
+        "Sumeet",
+        "Ankit"
+      ],
+      "sitting_out": [
+        "Gopal",
+        "Tushar",
+        "MBS",
+        "Sagar",
+        "Nadeem",
+        "Amresh",
+        "Deep",
+        "Aryan"
+      ],
+      "score_a": 11,
+      "score_b": 15
+    },
+    {
+      "id": "ee4ecac7-9b75-4d55-ad56-4b52d091642c",
+      "session_id": "1u03ob",
+      "round_number": 9,
+      "court": 3,
+      "team_a": [
+        "Hemal",
+        "Amit"
+      ],
+      "team_b": [
+        "Viki",
+        "Vinit"
+      ],
+      "sitting_out": [
+        "Gopal",
+        "Tushar",
+        "MBS",
+        "Sagar",
+        "Nadeem",
+        "Amresh",
+        "Deep",
+        "Aryan"
+      ],
+      "score_a": 15,
+      "score_b": 8
+    },
+    {
+      "id": "1ec1c401-faee-483d-9c18-a4e9f465a397",
+      "session_id": "1u03ob",
+      "round_number": 10,
+      "court": 1,
+      "team_a": [
+        "Amit",
+        "Hiten"
+      ],
+      "team_b": [
+        "Nadeem",
+        "Aryan"
+      ],
+      "sitting_out": [
+        "Saurabh",
+        "Karan",
+        "Hemal",
+        "Rahul",
+        "Sid",
+        "Vinit",
+        "Viki",
+        "Sumeet"
+      ],
+      "score_a": 9,
+      "score_b": 15
+    },
+    {
+      "id": "0dc3d008-37b0-4516-bf06-1c66ef60be6c",
+      "session_id": "1u03ob",
+      "round_number": 10,
+      "court": 2,
+      "team_a": [
+        "Gopal",
+        "Sagar"
+      ],
+      "team_b": [
+        "Amresh",
+        "Ankit"
+      ],
+      "sitting_out": [
+        "Saurabh",
+        "Karan",
+        "Hemal",
+        "Rahul",
+        "Sid",
+        "Vinit",
+        "Viki",
+        "Sumeet"
+      ],
+      "score_a": 11,
+      "score_b": 15
+    },
+    {
+      "id": "fee92870-3772-4075-8816-921a7abe563d",
+      "session_id": "1u03ob",
+      "round_number": 10,
+      "court": 3,
+      "team_a": [
+        "MBS",
+        "Tushar"
+      ],
+      "team_b": [
+        "Deep",
+        "Kris"
+      ],
+      "sitting_out": [
+        "Saurabh",
+        "Karan",
+        "Hemal",
+        "Rahul",
+        "Sid",
+        "Vinit",
+        "Viki",
+        "Sumeet"
+      ],
+      "score_a": 9,
+      "score_b": 15
+    },
+    {
+      "id": "9f93f76b-bb64-4782-a96f-ed93f2ed7b21",
+      "session_id": "1u03ob",
+      "round_number": 11,
+      "court": 1,
+      "team_a": [
+        "Hemal",
+        "Rahul"
+      ],
+      "team_b": [
+        "Sumeet",
+        "Nadeem"
+      ],
+      "sitting_out": [
+        "Saurabh",
+        "Hiten",
+        "Gopal",
+        "MBS",
+        "Ankit",
+        "Deep",
+        "Vinit",
+        "Aryan"
+      ],
+      "score_a": 13,
+      "score_b": 15
+    },
+    {
+      "id": "3dfc6bf2-ea75-4891-938c-cfd4ff939421",
+      "session_id": "1u03ob",
+      "round_number": 11,
+      "court": 2,
+      "team_a": [
+        "Tushar",
+        "Amit"
+      ],
+      "team_b": [
+        "Sid",
+        "Viki"
+      ],
+      "sitting_out": [
+        "Saurabh",
+        "Hiten",
+        "Gopal",
+        "MBS",
+        "Ankit",
+        "Deep",
+        "Vinit",
+        "Aryan"
+      ],
+      "score_a": 15,
+      "score_b": 13
+    },
+    {
+      "id": "7e37f930-6c25-40b5-b80c-fb00727603c8",
+      "session_id": "1u03ob",
+      "round_number": 11,
+      "court": 3,
+      "team_a": [
+        "Karan",
+        "Sagar"
+      ],
+      "team_b": [
+        "Amresh",
+        "Kris"
+      ],
+      "sitting_out": [
+        "Saurabh",
+        "Hiten",
+        "Gopal",
+        "MBS",
+        "Ankit",
+        "Deep",
+        "Vinit",
+        "Aryan"
+      ],
+      "score_a": 11,
+      "score_b": 15
+    },
+    {
+      "id": "3875211d-0288-4f35-8bea-2003e64ce945",
+      "session_id": "1u03ob",
+      "round_number": 12,
+      "court": 1,
+      "team_a": [
+        "Rahul",
+        "Hiten"
+      ],
+      "team_b": [
+        "Aryan",
+        "Vinit"
+      ],
+      "sitting_out": [
+        "Hemal",
+        "Amit",
+        "Tushar",
+        "Sagar",
+        "Amresh",
+        "Viki",
+        "Sumeet",
+        "Kris"
+      ],
+      "score_a": 13,
+      "score_b": 15
+    },
+    {
+      "id": "257490e5-5aa5-4e02-906b-8622b438ee5b",
+      "session_id": "1u03ob",
+      "round_number": 12,
+      "court": 2,
+      "team_a": [
+        "Saurabh",
+        "Karan"
+      ],
+      "team_b": [
+        "Deep",
+        "Ankit"
+      ],
+      "sitting_out": [
+        "Hemal",
+        "Amit",
+        "Tushar",
+        "Sagar",
+        "Amresh",
+        "Viki",
+        "Sumeet",
+        "Kris"
+      ],
+      "score_a": 15,
+      "score_b": 8
+    },
+    {
+      "id": "77eaebd4-a160-431a-a687-adbac513f6ca",
+      "session_id": "1u03ob",
+      "round_number": 12,
+      "court": 3,
+      "team_a": [
+        "Gopal",
+        "MBS"
+      ],
+      "team_b": [
+        "Sid",
+        "Nadeem"
+      ],
+      "sitting_out": [
+        "Hemal",
+        "Amit",
+        "Tushar",
+        "Sagar",
+        "Amresh",
+        "Viki",
+        "Sumeet",
+        "Kris"
+      ],
+      "score_a": 15,
+      "score_b": 14
+    },
+    {
+      "id": "1b869a41-0508-4dbc-90d2-858e25c86a0e",
+      "session_id": "1u03ob",
+      "round_number": 13,
+      "court": 1,
+      "team_a": [
+        "Amit",
+        "Rahul"
+      ],
+      "team_b": [
+        "Viki",
+        "Amresh"
+      ],
+      "sitting_out": [
+        "Hiten",
+        "Gopal",
+        "MBS",
+        "Karan",
+        "Nadeem",
+        "Deep",
+        "Sumeet",
+        "Sid"
+      ],
+      "score_a": 14,
+      "score_b": 15
+    },
+    {
+      "id": "97c710a9-cd30-4704-9b3a-82ad316d2af2",
+      "session_id": "1u03ob",
+      "round_number": 13,
+      "court": 2,
+      "team_a": [
+        "Hemal",
+        "Saurabh"
+      ],
+      "team_b": [
+        "Aryan",
+        "Kris"
+      ],
+      "sitting_out": [
+        "Hiten",
+        "Gopal",
+        "MBS",
+        "Karan",
+        "Nadeem",
+        "Deep",
+        "Sumeet",
+        "Sid"
+      ],
+      "score_a": 11,
+      "score_b": 15
+    },
+    {
+      "id": "f91e6cc2-90a4-4882-a5bc-d14150aff0b3",
+      "session_id": "1u03ob",
+      "round_number": 13,
+      "court": 3,
+      "team_a": [
+        "Sagar",
+        "Tushar"
+      ],
+      "team_b": [
+        "Ankit",
+        "Vinit"
+      ],
+      "sitting_out": [
+        "Hiten",
+        "Gopal",
+        "MBS",
+        "Karan",
+        "Nadeem",
+        "Deep",
+        "Sumeet",
+        "Sid"
+      ],
+      "score_a": 15,
+      "score_b": 12
+    },
+    {
+      "id": "af8eff0c-3c34-44f3-a880-3904076f830a",
+      "session_id": "1u03ob",
+      "round_number": 14,
+      "court": 2,
+      "team_a": [
+        "Hiten",
+        "Sagar"
+      ],
+      "team_b": [
+        "Viki",
+        "Nadeem"
+      ],
+      "sitting_out": [
+        "Saurabh",
+        "Karan",
+        "Hemal",
+        "Rahul",
+        "Amresh",
+        "Sid",
+        "Vinit",
+        "Aryan"
+      ],
+      "score_a": 10,
+      "score_b": 15
+    },
+    {
+      "id": "e7e672c1-4ba2-4c2d-8d83-7693574bb1df",
+      "session_id": "1u03ob",
+      "round_number": 14,
+      "court": 1,
+      "team_a": [
+        "Gopal",
+        "Tushar"
+      ],
+      "team_b": [
+        "Deep",
+        "Sumeet"
+      ],
+      "sitting_out": [
+        "Saurabh",
+        "Karan",
+        "Hemal",
+        "Rahul",
+        "Amresh",
+        "Sid",
+        "Vinit",
+        "Aryan"
+      ],
+      "score_a": 15,
+      "score_b": 6
+    },
+    {
+      "id": "c758fb89-c7b6-44e5-bd17-aee4e5943bb2",
+      "session_id": "1u03ob",
+      "round_number": 14,
+      "court": 3,
+      "team_a": [
+        "MBS",
+        "Amit"
+      ],
+      "team_b": [
+        "Ankit",
+        "Kris"
+      ],
+      "sitting_out": [
+        "Saurabh",
+        "Karan",
+        "Hemal",
+        "Rahul",
+        "Amresh",
+        "Sid",
+        "Vinit",
+        "Aryan"
+      ],
+      "score_a": 12,
+      "score_b": 15
+    },
+    {
+      "id": "437e98b5-1617-4cc3-9d5a-48495f5cf93a",
+      "session_id": "1u03ob",
+      "round_number": 15,
+      "court": 2,
+      "team_a": [
+        "MBS",
+        "Hemal"
+      ],
+      "team_b": [
+        "Sid",
+        "Amresh"
+      ],
+      "sitting_out": [
+        "Amit",
+        "Tushar",
+        "Rahul",
+        "Sagar",
+        "Nadeem",
+        "Ankit",
+        "Viki",
+        "Kris"
+      ],
+      "score_a": 15,
+      "score_b": 6
+    },
+    {
+      "id": "9ac09625-30e0-4960-a067-7bb96da9034d",
+      "session_id": "1u03ob",
+      "round_number": 15,
+      "court": 1,
+      "team_a": [
+        "Karan",
+        "Gopal"
+      ],
+      "team_b": [
+        "Deep",
+        "Aryan"
+      ],
+      "sitting_out": [
+        "Amit",
+        "Tushar",
+        "Rahul",
+        "Sagar",
+        "Nadeem",
+        "Ankit",
+        "Viki",
+        "Kris"
+      ],
+      "score_a": 15,
+      "score_b": 8
+    },
+    {
+      "id": "9a616e97-28a4-4bb3-b5e3-0cd39458bc37",
+      "session_id": "1u03ob",
+      "round_number": 15,
+      "court": 3,
+      "team_a": [
+        "Saurabh",
+        "Hiten"
+      ],
+      "team_b": [
+        "Sumeet",
+        "Vinit"
+      ],
+      "sitting_out": [
+        "Amit",
+        "Tushar",
+        "Rahul",
+        "Sagar",
+        "Nadeem",
+        "Ankit",
+        "Viki",
+        "Kris"
+      ],
+      "score_a": 15,
+      "score_b": 13
+    }
+  ],
+  "rfLogs": [
+    {
+      "id": "410d7f56-ff3c-4022-92ea-ba25dfdf6a38",
+      "session_id": "1u03ob",
+      "event_order": 1,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Karan",
+        "Gopal",
+        "Sid",
+        "Amresh"
+      ],
+      "created_at": "2026-07-29T17:29:20.498675+00:00"
+    },
+    {
+      "id": "405b2c92-634d-4dc4-8df4-743b10ab9abb",
+      "session_id": "1u03ob",
+      "event_order": 2,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Karan",
+        "Gopal",
+        "Sid",
+        "Amresh"
+      ],
+      "created_at": "2026-07-29T17:29:38.323913+00:00"
+    },
+    {
+      "id": "08a9a7bb-59a5-469e-9394-4fd433c00433",
+      "session_id": "1u03ob",
+      "event_order": 3,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Karan",
+        "Gopal",
+        "Sid",
+        "Amresh"
+      ],
+      "created_at": "2026-07-29T17:29:59.243994+00:00"
+    },
+    {
+      "id": "509c006d-ea49-415f-82ce-06dfe457e6ee",
+      "session_id": "1u03ob",
+      "event_order": 4,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Hemal",
+        "MBS",
+        "Nadeem",
+        "Viki"
+      ],
+      "created_at": "2026-07-29T17:31:20.180159+00:00"
+    },
+    {
+      "id": "c117199e-b526-4b01-828f-69ea480c0275",
+      "session_id": "1u03ob",
+      "event_order": 5,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Hemal",
+        "MBS",
+        "Nadeem",
+        "Viki"
+      ],
+      "created_at": "2026-07-29T17:31:21.9669+00:00"
+    },
+    {
+      "id": "180f2c82-c05f-4070-ba6c-db46df20a7a5",
+      "session_id": "1u03ob",
+      "event_order": 6,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Hemal",
+        "MBS",
+        "Nadeem",
+        "Viki"
+      ],
+      "created_at": "2026-07-29T17:31:35.529919+00:00"
+    },
+    {
+      "id": "332f87b5-d084-4794-bd99-5fbbeeca9b58",
+      "session_id": "1u03ob",
+      "event_order": 7,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Rahul",
+        "Amit",
+        "Sumeet",
+        "Vinit"
+      ],
+      "created_at": "2026-07-29T17:32:27.126669+00:00"
+    },
+    {
+      "id": "23b47df8-4942-4a45-9c5b-42ef51e77c70",
+      "session_id": "1u03ob",
+      "event_order": 8,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Rahul",
+        "Amit",
+        "Sumeet",
+        "Vinit"
+      ],
+      "created_at": "2026-07-29T17:32:47.84552+00:00"
+    },
+    {
+      "id": "860f99d0-47f2-4955-bb31-58864965baa1",
+      "session_id": "1u03ob",
+      "event_order": 9,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Rahul",
+        "Amit",
+        "Sumeet",
+        "Vinit"
+      ],
+      "created_at": "2026-07-29T17:33:02.392696+00:00"
+    },
+    {
+      "id": "7fdd028d-0b14-47d8-b8ee-9c366e95d555",
+      "session_id": "1u03ob",
+      "event_order": 10,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Tushar",
+        "Sagar",
+        "Deep",
+        "Aryan"
+      ],
+      "created_at": "2026-07-29T17:33:32.188926+00:00"
+    },
+    {
+      "id": "e3dfcd63-3c30-4e73-8f27-3b27a0b6794c",
+      "session_id": "1u03ob",
+      "event_order": 11,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Tushar",
+        "Sagar",
+        "Deep",
+        "Aryan"
+      ],
+      "created_at": "2026-07-29T17:33:46.909453+00:00"
+    },
+    {
+      "id": "1612b96a-7dd9-4203-963b-be13f32cedb1",
+      "session_id": "1u03ob",
+      "event_order": 12,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Tushar",
+        "Sagar",
+        "Deep",
+        "Aryan"
+      ],
+      "created_at": "2026-07-29T17:34:00.803425+00:00"
+    },
+    {
+      "id": "53dc3f81-018e-4de7-9a29-75dd0be14d5a",
+      "session_id": "1u03ob",
+      "event_order": 13,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Saurabh",
+        "Hiten",
+        "Kris",
+        "Ankit"
+      ],
+      "created_at": "2026-07-29T17:34:31.746049+00:00"
+    },
+    {
+      "id": "005bae2f-04ff-4d08-8c7f-3aa6b14df7ad",
+      "session_id": "1u03ob",
+      "event_order": 14,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Saurabh",
+        "Hiten",
+        "Kris",
+        "Ankit"
+      ],
+      "created_at": "2026-07-29T17:34:48.624979+00:00"
+    },
+    {
+      "id": "24cff84c-9e4e-4641-af45-69770cee7b4f",
+      "session_id": "1u03ob",
+      "event_order": 15,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Saurabh",
+        "Hiten",
+        "Kris",
+        "Ankit"
+      ],
+      "created_at": "2026-07-29T17:35:02.31844+00:00"
+    },
+    {
+      "id": "3f53ceb1-92eb-43ed-bef8-ec98ff95a8db",
+      "session_id": "1u03ob",
+      "event_order": 16,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Karan",
+        "Gopal",
+        "Sid",
+        "Amresh"
+      ],
+      "created_at": "2026-07-29T17:35:27.190755+00:00"
+    },
+    {
+      "id": "c5ef7ab0-6ce3-4212-acbc-1cc43b55fbfc",
+      "session_id": "1u03ob",
+      "event_order": 17,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Karan",
+        "Gopal",
+        "Sid",
+        "Amresh"
+      ],
+      "created_at": "2026-07-29T17:35:42.451307+00:00"
+    },
+    {
+      "id": "299dd800-51a5-4ee1-b508-c336598a51d5",
+      "session_id": "1u03ob",
+      "event_order": 18,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Karan",
+        "Gopal",
+        "Sid",
+        "Amresh"
+      ],
+      "created_at": "2026-07-29T17:36:00.535777+00:00"
+    },
+    {
+      "id": "17972387-253b-4c19-9513-a0035b158ce6",
+      "session_id": "1u03ob",
+      "event_order": 19,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "MBS",
+        "Hemal",
+        "Nadeem",
+        "Viki"
+      ],
+      "created_at": "2026-07-29T17:36:37.315977+00:00"
+    },
+    {
+      "id": "3a1f7412-89c6-4ee7-a117-9396348cede0",
+      "session_id": "1u03ob",
+      "event_order": 20,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "MBS",
+        "Hemal",
+        "Nadeem",
+        "Viki"
+      ],
+      "created_at": "2026-07-29T17:36:53.063455+00:00"
+    },
+    {
+      "id": "68f0b826-34a0-49b7-a40b-8bfd17beb21f",
+      "session_id": "1u03ob",
+      "event_order": 21,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "MBS",
+        "Hemal",
+        "Nadeem",
+        "Viki"
+      ],
+      "created_at": "2026-07-29T17:37:12.232907+00:00"
+    },
+    {
+      "id": "07bb6ebe-833b-44a7-ba1c-0a7c3d110396",
+      "session_id": "1u03ob",
+      "event_order": 22,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Rahul",
+        "Amit",
+        "Sumeet",
+        "Vinit"
+      ],
+      "created_at": "2026-07-29T17:37:47.314247+00:00"
+    },
+    {
+      "id": "b4499a54-e127-44af-ac4e-5a69cfc375bf",
+      "session_id": "1u03ob",
+      "event_order": 23,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Rahul",
+        "Amit",
+        "Sumeet",
+        "Vinit"
+      ],
+      "created_at": "2026-07-29T17:38:02.932698+00:00"
+    },
+    {
+      "id": "4e36bf70-a187-49fe-b97e-56b8550f82c0",
+      "session_id": "1u03ob",
+      "event_order": 24,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Rahul",
+        "Amit",
+        "Sumeet",
+        "Vinit"
+      ],
+      "created_at": "2026-07-29T17:38:22.312757+00:00"
+    },
+    {
+      "id": "d8d589c1-059d-4a30-bd37-ea64e42fc768",
+      "session_id": "1u03ob",
+      "event_order": 25,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Tushar",
+        "Sagar",
+        "Deep",
+        "Aryan"
+      ],
+      "created_at": "2026-07-29T17:38:43.755404+00:00"
+    },
+    {
+      "id": "f4061581-45f2-4638-a5df-3486d37d8ce9",
+      "session_id": "1u03ob",
+      "event_order": 26,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Tushar",
+        "Sagar",
+        "Deep",
+        "Aryan"
+      ],
+      "created_at": "2026-07-29T17:38:56.623417+00:00"
+    },
+    {
+      "id": "2af9271a-db23-41de-8485-fa211e9ba00c",
+      "session_id": "1u03ob",
+      "event_order": 27,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Tushar",
+        "Sagar",
+        "Deep",
+        "Aryan"
+      ],
+      "created_at": "2026-07-29T17:39:09.470947+00:00"
+    },
+    {
+      "id": "8cf88093-4f51-4df4-b4a6-7752f0e95df6",
+      "session_id": "1u03ob",
+      "event_order": 28,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Saurabh",
+        "Hiten",
+        "Kris",
+        "Ankit"
+      ],
+      "created_at": "2026-07-29T17:39:38.012944+00:00"
+    },
+    {
+      "id": "6be8385d-9da9-42e0-9ee5-4a9ced0d44f4",
+      "session_id": "1u03ob",
+      "event_order": 29,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Saurabh",
+        "Hiten",
+        "Kris",
+        "Ankit"
+      ],
+      "created_at": "2026-07-29T17:39:49.069798+00:00"
+    },
+    {
+      "id": "1eb6a53c-dd0f-4306-a960-125412ddeada",
+      "session_id": "1u03ob",
+      "event_order": 30,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Saurabh",
+        "Hiten",
+        "Kris",
+        "Ankit"
+      ],
+      "created_at": "2026-07-29T17:40:10.234828+00:00"
+    },
+    {
+      "id": "0f714280-fb19-4ad2-8bd0-49d96f1a17f0",
+      "session_id": "1u03ob",
+      "event_order": 31,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Karan",
+        "Gopal",
+        "Sid",
+        "Amresh"
+      ],
+      "created_at": "2026-07-29T17:40:35.429287+00:00"
+    },
+    {
+      "id": "58bfd2cc-995e-443d-b463-d31f3f94696c",
+      "session_id": "1u03ob",
+      "event_order": 32,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Karan",
+        "Gopal",
+        "Sid",
+        "Amresh"
+      ],
+      "created_at": "2026-07-29T17:41:06.275431+00:00"
+    },
+    {
+      "id": "9604198d-218b-47a2-915e-fc6b1c3a94f5",
+      "session_id": "1u03ob",
+      "event_order": 33,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Karan",
+        "Gopal",
+        "Sid",
+        "Amresh"
+      ],
+      "created_at": "2026-07-29T17:41:20.787095+00:00"
+    },
+    {
+      "id": "160c34b3-2de2-46cb-8e97-c79b094c3520",
+      "session_id": "1u03ob",
+      "event_order": 34,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Hemal",
+        "MBS",
+        "Nadeem",
+        "Viki"
+      ],
+      "created_at": "2026-07-29T17:41:55.105768+00:00"
+    },
+    {
+      "id": "f2bd4e32-62af-417e-abb8-265b9f643e4d",
+      "session_id": "1u03ob",
+      "event_order": 35,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Hemal",
+        "MBS",
+        "Nadeem",
+        "Viki"
+      ],
+      "created_at": "2026-07-29T17:42:10.141915+00:00"
+    },
+    {
+      "id": "310fc77c-b57a-4286-8d8c-cf8f9d517f8b",
+      "session_id": "1u03ob",
+      "event_order": 36,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Hemal",
+        "MBS",
+        "Nadeem",
+        "Viki"
+      ],
+      "created_at": "2026-07-29T17:42:32.906749+00:00"
+    },
+    {
+      "id": "9aa7bb43-ce45-423c-b2b6-0999dad17ec0",
+      "session_id": "1u03ob",
+      "event_order": 37,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Rahul",
+        "Amit",
+        "Sumeet",
+        "Vinit"
+      ],
+      "created_at": "2026-07-29T17:42:58.26826+00:00"
+    },
+    {
+      "id": "8f2fc92e-df5e-41a2-a159-7752d0281799",
+      "session_id": "1u03ob",
+      "event_order": 38,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Rahul",
+        "Amit",
+        "Sumeet",
+        "Vinit"
+      ],
+      "created_at": "2026-07-29T17:43:14.686871+00:00"
+    },
+    {
+      "id": "107c6453-a580-4fb0-ba26-624e8ef2a45a",
+      "session_id": "1u03ob",
+      "event_order": 39,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Rahul",
+        "Amit",
+        "Sumeet",
+        "Vinit"
+      ],
+      "created_at": "2026-07-29T17:43:31.966909+00:00"
+    },
+    {
+      "id": "08377e09-13e6-4c61-b74c-0d12e0d08d5a",
+      "session_id": "1u03ob",
+      "event_order": 40,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Tushar",
+        "Sagar",
+        "Aryan",
+        "Deep"
+      ],
+      "created_at": "2026-07-29T17:44:00.107606+00:00"
+    },
+    {
+      "id": "4700da22-b26b-4ea0-8996-be9b5b7adc69",
+      "session_id": "1u03ob",
+      "event_order": 41,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Tushar",
+        "Sagar",
+        "Aryan",
+        "Deep"
+      ],
+      "created_at": "2026-07-29T17:44:14.550667+00:00"
+    },
+    {
+      "id": "06c9c394-e684-4cf9-824d-50d72040f73d",
+      "session_id": "1u03ob",
+      "event_order": 42,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Tushar",
+        "Sagar",
+        "Aryan",
+        "Deep"
+      ],
+      "created_at": "2026-07-29T17:44:29.109874+00:00"
+    },
+    {
+      "id": "1eb6e609-4c78-4b58-8297-5e5810bcb659",
+      "session_id": "1u03ob",
+      "event_order": 43,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Saurabh",
+        "Hiten",
+        "Kris",
+        "Ankit"
+      ],
+      "created_at": "2026-07-29T17:45:02.315196+00:00"
+    },
+    {
+      "id": "8f14d509-4ee3-4491-badf-fac9e236f162",
+      "session_id": "1u03ob",
+      "event_order": 44,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Saurabh",
+        "Hiten",
+        "Kris",
+        "Ankit"
+      ],
+      "created_at": "2026-07-29T17:45:10.217777+00:00"
+    },
+    {
+      "id": "81c03e28-2c2a-4d1f-b82b-576fd6a2d8f3",
+      "session_id": "1u03ob",
+      "event_order": 45,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Saurabh",
+        "Hiten",
+        "Kris",
+        "Ankit"
+      ],
+      "created_at": "2026-07-29T17:45:23.774614+00:00"
+    },
+    {
+      "id": "2a628956-2df6-437b-99d5-e2b4b82a8cdb",
+      "session_id": "1u03ob",
+      "event_order": 46,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Karan",
+        "Gopal",
+        "Sid",
+        "Amresh"
+      ],
+      "created_at": "2026-07-29T17:45:54.37147+00:00"
+    },
+    {
+      "id": "941a15a5-61bf-44ac-8cc0-b6a99b76d7c6",
+      "session_id": "1u03ob",
+      "event_order": 47,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Karan",
+        "Gopal",
+        "Sid",
+        "Amresh"
+      ],
+      "created_at": "2026-07-29T17:46:20.927131+00:00"
+    },
+    {
+      "id": "2efe8ea7-e3db-4c6c-b8cf-837789cea290",
+      "session_id": "1u03ob",
+      "event_order": 48,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Karan",
+        "Gopal",
+        "Sid",
+        "Amresh"
+      ],
+      "created_at": "2026-07-29T17:46:46.415361+00:00"
+    },
+    {
+      "id": "302ef991-6aab-42da-a40d-a82b38b9e1b8",
+      "session_id": "1u03ob",
+      "event_order": 49,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "MBS",
+        "Hemal",
+        "Viki",
+        "Nadeem"
+      ],
+      "created_at": "2026-07-29T17:47:12.721409+00:00"
+    },
+    {
+      "id": "69b89cf9-07b8-44bc-a0dd-b18d00931420",
+      "session_id": "1u03ob",
+      "event_order": 50,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "MBS",
+        "Hemal",
+        "Viki",
+        "Nadeem"
+      ],
+      "created_at": "2026-07-29T17:47:28.036529+00:00"
+    },
+    {
+      "id": "90b51d70-896e-4fb7-b8b0-96c2dee1fd57",
+      "session_id": "1u03ob",
+      "event_order": 51,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "MBS",
+        "Hemal",
+        "Viki",
+        "Nadeem"
+      ],
+      "created_at": "2026-07-29T17:47:50.228426+00:00"
+    },
+    {
+      "id": "e3d4f328-d4ed-4b91-b6d9-e8a1e088b600",
+      "session_id": "1u03ob",
+      "event_order": 52,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Rahul",
+        "Amit",
+        "Sumeet",
+        "Vinit"
+      ],
+      "created_at": "2026-07-29T17:48:25.882053+00:00"
+    },
+    {
+      "id": "07293707-8c82-46b1-acf8-c2af0c973429",
+      "session_id": "1u03ob",
+      "event_order": 53,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Rahul",
+        "Amit",
+        "Sumeet",
+        "Vinit"
+      ],
+      "created_at": "2026-07-29T17:48:44.629108+00:00"
+    },
+    {
+      "id": "47c7647a-61fc-46d2-b1db-760e08f13548",
+      "session_id": "1u03ob",
+      "event_order": 54,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Rahul",
+        "Amit",
+        "Sumeet",
+        "Vinit"
+      ],
+      "created_at": "2026-07-29T17:49:03.047343+00:00"
+    },
+    {
+      "id": "54bb96d6-a724-42f6-bd8a-6baa397aacf3",
+      "session_id": "1u03ob",
+      "event_order": 55,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Tushar",
+        "Sagar",
+        "Deep",
+        "Aryan"
+      ],
+      "created_at": "2026-07-29T17:49:42.074083+00:00"
+    },
+    {
+      "id": "0e75beed-1c21-49a6-9aae-17a4875ea018",
+      "session_id": "1u03ob",
+      "event_order": 56,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Tushar",
+        "Sagar",
+        "Deep",
+        "Aryan"
+      ],
+      "created_at": "2026-07-29T17:50:11.600337+00:00"
+    },
+    {
+      "id": "003359cf-a5ef-48a0-a8cb-d54dfae8baf5",
+      "session_id": "1u03ob",
+      "event_order": 57,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Tushar",
+        "Sagar",
+        "Deep",
+        "Aryan"
+      ],
+      "created_at": "2026-07-29T17:50:33.989043+00:00"
+    },
+    {
+      "id": "56da61ae-b79f-4d10-ac34-5c27b34bbf04",
+      "session_id": "1u03ob",
+      "event_order": 58,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Saurabh",
+        "Hiten",
+        "Kris",
+        "Ankit"
+      ],
+      "created_at": "2026-07-29T17:50:59.086053+00:00"
+    },
+    {
+      "id": "4cc874aa-b894-469f-8722-67d029c2d947",
+      "session_id": "1u03ob",
+      "event_order": 59,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Saurabh",
+        "Hiten",
+        "Kris",
+        "Ankit"
+      ],
+      "created_at": "2026-07-29T17:51:27.343672+00:00"
+    },
+    {
+      "id": "faf3ca2e-f34b-4676-8d1e-aa7fcadf3b6d",
+      "session_id": "1u03ob",
+      "event_order": 60,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Saurabh",
+        "Hiten",
+        "Kris",
+        "Ankit"
+      ],
+      "created_at": "2026-07-29T17:51:43.490011+00:00"
+    },
+    {
+      "id": "5655fb17-de24-4a6e-80b3-615639c7c7b6",
+      "session_id": "1u03ob",
+      "event_order": 61,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Karan",
+        "Gopal",
+        "Sid",
+        "Amresh"
+      ],
+      "created_at": "2026-07-30T04:04:32.271476+00:00"
+    },
+    {
+      "id": "f549c205-a0ac-4931-bec4-856897f261e2",
+      "session_id": "1u03ob",
+      "event_order": 62,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Karan",
+        "Gopal",
+        "Sid",
+        "Amresh"
+      ],
+      "created_at": "2026-07-30T04:04:32.271476+00:00"
+    },
+    {
+      "id": "eab4545b-f3d1-4f67-b115-a568e42d4524",
+      "session_id": "1u03ob",
+      "event_order": 63,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Karan",
+        "Gopal",
+        "Sid",
+        "Amresh"
+      ],
+      "created_at": "2026-07-30T04:04:32.271476+00:00"
+    },
+    {
+      "id": "9f9fa1c3-d832-4060-a583-b138f6d8e5ca",
+      "session_id": "1u03ob",
+      "event_order": 64,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Hemal",
+        "MBS",
+        "Nadeem",
+        "Viki"
+      ],
+      "created_at": "2026-07-30T04:04:32.271476+00:00"
+    },
+    {
+      "id": "ae460eab-327c-40d7-8000-4dd6c8a4468d",
+      "session_id": "1u03ob",
+      "event_order": 65,
+      "scoring_team_id": "team1",
+      "on_court_players": [
+        "Hemal",
+        "MBS",
+        "Nadeem",
+        "Viki"
+      ],
+      "created_at": "2026-07-30T04:04:32.271476+00:00"
+    },
+    {
+      "id": "5d3a5aad-25cc-490c-bac0-4db9cbbb7785",
+      "session_id": "1u03ob",
+      "event_order": 66,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Hemal",
+        "MBS",
+        "Nadeem",
+        "Viki"
+      ],
+      "created_at": "2026-07-30T04:04:32.271476+00:00"
+    },
+    {
+      "id": "b3c24adb-a388-4ad2-8a27-39b71bd27b9d",
+      "session_id": "1u03ob",
+      "event_order": 67,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Rahul",
+        "Amit",
+        "Sumeet",
+        "Vinit"
+      ],
+      "created_at": "2026-07-30T04:04:36.316683+00:00"
+    },
+    {
+      "id": "3a1ef654-6d58-4af9-aed1-a3d04e71aa73",
+      "session_id": "1u03ob",
+      "event_order": 68,
+      "scoring_team_id": "team2",
+      "on_court_players": [
+        "Rahul",
+        "Amit",
+        "Sumeet",
+        "Vinit"
+      ],
+      "created_at": "2026-07-30T04:04:36.316683+00:00"
+    }
+  ]
+}

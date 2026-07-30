@@ -313,6 +313,7 @@ export async function getLatestActiveSession(clubId?: string | null): Promise<Se
   let query = supabase
     .from('sessions')
     .select('*')
+    .eq('status', 'in_progress')
     .order('created_at', { ascending: false })
     .limit(1);
 
