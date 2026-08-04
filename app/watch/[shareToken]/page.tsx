@@ -487,17 +487,17 @@ export default function WatchTournamentPage() {
                       </div>
 
                       <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left', minWidth: 620 }}>
                           <thead>
                             <tr style={{ borderBottom: '2px solid var(--border)', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: 0.5 }}>
-                              <th style={{ padding: '10px 8px', width: 45, textAlign: 'center' }}>Rank</th>
-                              <th style={{ padding: '10px 12px' }}>Player Name</th>
-                              <th style={{ padding: '10px 8px', textAlign: 'center' }}>Played</th>
-                              <th style={{ padding: '10px 8px', textAlign: 'center' }}>W - L</th>
-                              <th style={{ padding: '10px 8px', textAlign: 'center' }}>Total Points</th>
-                              <th style={{ padding: '10px 8px', textAlign: 'center' }}>Points Allowed</th>
-                              <th style={{ padding: '10px 8px', textAlign: 'center' }}>Point Diff (+/-)</th>
-                              <th style={{ padding: '10px 8px', textAlign: 'right' }}>Win %</th>
+                              <th style={{ padding: '10px 8px', minWidth: 50, textAlign: 'center', whiteSpace: 'nowrap' }}>Rank</th>
+                              <th style={{ padding: '10px 12px', minWidth: 120, whiteSpace: 'nowrap' }}>Player Name</th>
+                              <th style={{ padding: '10px 8px', minWidth: 65, textAlign: 'center', whiteSpace: 'nowrap' }}>Played</th>
+                              <th style={{ padding: '10px 8px', minWidth: 70, textAlign: 'center', whiteSpace: 'nowrap' }}>W–L</th>
+                              <th style={{ padding: '10px 8px', minWidth: 95, textAlign: 'center', whiteSpace: 'nowrap' }}>Total Points</th>
+                              <th style={{ padding: '10px 8px', minWidth: 95, textAlign: 'center', whiteSpace: 'nowrap' }}>Points Allowed</th>
+                              <th style={{ padding: '10px 8px', minWidth: 90, textAlign: 'center', whiteSpace: 'nowrap' }}>Point Diff</th>
+                              <th style={{ padding: '10px 12px', minWidth: 65, textAlign: 'right', whiteSpace: 'nowrap' }}>Win %</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -515,10 +515,10 @@ export default function WatchTournamentPage() {
                                     fontWeight: isTop3 ? 700 : 500,
                                   }}
                                 >
-                                  <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 800, color: idx === 0 ? '#eab308' : 'inherit' }}>
+                                  <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 800, color: idx === 0 ? '#eab308' : 'inherit', whiteSpace: 'nowrap' }}>
                                     {rankDisplay}
                                   </td>
-                                  <td style={{ padding: '10px 12px', fontWeight: 800, color: idx === 0 ? '#fef08a' : '#ffffff' }}>
+                                  <td style={{ padding: '10px 12px', fontWeight: 800, color: idx === 0 ? '#fef08a' : '#ffffff', whiteSpace: 'nowrap' }}>
                                     {p.name}
                                     {idx === 0 && playedMatchesCount > 0 && (
                                       <span style={{ fontSize: 10, background: '#eab308', color: '#0f172a', fontWeight: 900, padding: '1px 5px', borderRadius: 4, marginLeft: 6 }}>
@@ -526,22 +526,23 @@ export default function WatchTournamentPage() {
                                       </span>
                                     )}
                                   </td>
-                                  <td style={{ padding: '10px 8px', textAlign: 'center', color: 'var(--muted)' }}>{p.played} / 8</td>
-                                  <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 800 }}>{p.won} - {p.lost}</td>
-                                  <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 800, color: '#60a5fa' }}>{p.pf} pts</td>
-                                  <td style={{ padding: '10px 8px', textAlign: 'center', color: 'var(--muted)' }}>{p.pa} pts</td>
+                                  <td style={{ padding: '10px 8px', textAlign: 'center', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{p.played} / 8</td>
+                                  <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 800, whiteSpace: 'nowrap' }}>{p.won}–{p.lost}</td>
+                                  <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 800, color: '#60a5fa', whiteSpace: 'nowrap' }}>{p.pf} pts</td>
+                                  <td style={{ padding: '10px 8px', textAlign: 'center', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{p.pa} pts</td>
                                   <td
                                     style={{
                                       padding: '10px 8px',
                                       textAlign: 'center',
                                       fontWeight: 900,
                                       fontSize: 14,
+                                      whiteSpace: 'nowrap',
                                       color: diff > 0 ? '#10b981' : diff < 0 ? '#ef4444' : 'var(--muted)',
                                     }}
                                   >
                                     {diff > 0 ? `+${diff}` : diff}
                                   </td>
-                                  <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 800, color: winPct >= 60 ? '#10b981' : 'inherit' }}>
+                                  <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 800, whiteSpace: 'nowrap', color: winPct >= 60 ? '#10b981' : 'inherit' }}>
                                     {winPct}%
                                   </td>
                                 </tr>
