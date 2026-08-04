@@ -15,16 +15,14 @@ import DoubleEliminationBracket from '@/components/DoubleEliminationBracket';
 import type { TournamentMatchRow } from '@/lib/tournamentMatches';
 import type { TournamentTeamRow } from '@/lib/tournamentTeams';
 
+import { supabase } from '@/lib/supabase';
+
 const BRACKET_STAGE_TYPES = ['knockout', 'page_playoff', 'simple_semifinal', 'double_elimination'];
 
-// Read-only spectator page — no auth, no write access. Works signed-out
-// because fetchPublicTournament calls a SECURITY DEFINER function granted to
-// anon; the raw tournament_* tables themselves have zero anon grants. This
-// route needs no layout/route-group work to hide app chrome from an
-// anonymous visitor — GlobalNav/AuthGate already no-op when there's no user.
 export default function WatchTournamentPage() {
   const { shareToken } = useParams<{ shareToken: string }>();
   const [data, setData] = useState<PublicTournamentData | null>(null);
+  const [dbRounds, setDbRounds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [regName, setRegName] = useState('');
@@ -41,7 +39,16 @@ export default function WatchTournamentPage() {
 
   function load() {
     fetchPublicTournament(shareToken)
-      .then(setData)
+      .then(tData => {
+        setData(tData);
+        supabase
+          .from('rounds')
+          .select('*')
+          .eq('session_id', 'hot101')
+          .then(({ data: rData }) => {
+            if (rData) setDbRounds(rData);
+          });
+      })
       .catch(e => setError(e instanceof Error ? e.message : 'Failed to load tournament.'))
       .finally(() => setLoading(false));
   }
@@ -143,25 +150,45 @@ export default function WatchTournamentPage() {
           <h1 style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}><Trophy size={22} /> {data.tournament.name}</h1>
           <p style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'capitalize', margin: '4px 0 0' }}>{data.tournament.status}</p>
         </div>
-        <button
-          onClick={handleShareWhatsApp}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '10px 16px',
-            background: '#25D366',
-            color: '#FFFFFF',
-            fontWeight: 800,
-            fontSize: 13,
-            border: 'none',
-            borderRadius: 10,
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(37, 211, 102, 0.25)'
-          }}
-        >
-          <Share2 size={16} /> Share Schedule on WhatsApp
-        </button>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <a
+            href="/session/hot101/play"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 16px',
+              background: '#2563eb',
+              color: '#FFFFFF',
+              fontWeight: 800,
+              fontSize: 13,
+              borderRadius: 10,
+              textDecoration: 'none',
+              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
+            }}
+          >
+            ⚡ Enter Live Scores
+          </a>
+          <button
+            onClick={handleShareWhatsApp}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 16px',
+              background: '#25D366',
+              color: '#FFFFFF',
+              fontWeight: 800,
+              fontSize: 13,
+              border: 'none',
+              borderRadius: 10,
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(37, 211, 102, 0.25)'
+            }}
+          >
+            <Share2 size={16} /> Share Schedule on WhatsApp
+          </button>
+        </div>
       </div>
 
       {data.tournament.registrationOpen && data.tournament.slotCount !== null && (
