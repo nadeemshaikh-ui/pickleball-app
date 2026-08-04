@@ -475,10 +475,10 @@ export default function WatchTournamentPage() {
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
                         <div>
                           <h3 style={{ fontSize: 16, textTransform: 'uppercase', letterSpacing: 1.2, color: 'var(--accent, #3b82f6)', margin: 0, fontWeight: 900 }}>
-                            🏆 Tournament Player Standings (18 Players)
+                            🔥 Who is the Hot Shot — Standings (18 Players)
                           </h3>
                           <p style={{ fontSize: 12, color: 'var(--muted)', margin: '3px 0 0 0' }}>
-                            Tie-Breaker Rule: Most Wins (W) ➔ Point Differential (+/-) ➔ Total Points Scored
+                            Winner declared as THE HOTSHOT | Tie-Breaker: Most Wins (W) ➔ Point Diff (+/-) ➔ Points Scored
                           </p>
                         </div>
                         <span style={{ fontSize: 11, background: playedMatchesCount > 0 ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.08)', color: playedMatchesCount > 0 ? '#10b981' : 'var(--muted)', border: `1px solid ${playedMatchesCount > 0 ? 'rgba(16,185,129,0.3)' : 'var(--border)'}`, padding: '4px 10px', borderRadius: 8, fontWeight: 800 }}>
@@ -520,9 +520,9 @@ export default function WatchTournamentPage() {
                                   </td>
                                   <td style={{ padding: '10px 12px', fontWeight: 800, color: idx === 0 ? '#fef08a' : '#ffffff', whiteSpace: 'nowrap' }}>
                                     {p.name}
-                                    {idx === 0 && playedMatchesCount > 0 && (
-                                      <span style={{ fontSize: 10, background: '#eab308', color: '#0f172a', fontWeight: 900, padding: '1px 5px', borderRadius: 4, marginLeft: 6 }}>
-                                        LEADER
+                                    {idx === 0 && (
+                                      <span style={{ fontSize: 10, background: '#eab308', color: '#0f172a', fontWeight: 900, padding: '2px 6px', borderRadius: 4, marginLeft: 8 }}>
+                                        🔥 THE HOTSHOT
                                       </span>
                                     )}
                                   </td>
