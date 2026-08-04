@@ -53,7 +53,21 @@ export default function WatchTournamentPage() {
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, [shareToken]);
+  useEffect(() => {
+    load();
+    const interval = setInterval(() => {
+      supabase
+        .from('rounds')
+        .select('*')
+        .eq('session_id', 'hot101')
+        .then(({ data: rData }) => {
+          if (rData && rData.length > 0) {
+            setDbRounds(rData);
+          }
+        });
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [shareToken]);
 
   function handleShareWhatsApp() {
     if (typeof window === 'undefined' || !data) return;
@@ -404,13 +418,17 @@ export default function WatchTournamentPage() {
                     });
                   }
 
-                  // Calculate stats from scored matches
-                  customSchedule.forEach((r: any) => {
-                    ['court_1', 'court_2', 'court_3'].forEach(crtKey => {
+                  // Calculate stats from scored matches (merging dbRounds live scores)
+                  customSchedule.forEach((r: any, rIdx: number) => {
+                    const rNum = parseInt((r.round || '').replace(/\D/g, '')) || (rIdx + 1);
+                    ['court_1', 'court_2', 'court_3'].forEach((crtKey, cIdx) => {
                       const match = r[crtKey];
                       if (!match) return;
-                      const s1 = match.score_1 ?? match.score_a;
-                      const s2 = match.score_2 ?? match.score_b;
+                      const cNum = cIdx + 1;
+                      const dbR = dbRounds.find((dr: any) => dr.round_number === rNum && dr.court === cNum);
+
+                      const s1 = dbR?.score_a ?? match.score_1 ?? match.score_a;
+                      const s2 = dbR?.score_b ?? match.score_2 ?? match.score_b;
 
                       if (s1 !== undefined && s1 !== null && s2 !== undefined && s2 !== null && s1 !== '' && s2 !== '') {
                         const num1 = Number(s1);
@@ -552,15 +570,40 @@ export default function WatchTournamentPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {customSchedule.map((m: any) => (
-                          <tr key={m.round} style={{ borderBottom: '1px solid var(--border)' }}>
-                            <td style={{ padding: 10, fontWeight: 800, color: 'var(--accent)' }}>{m.round}</td>
-                            <td style={{ padding: 10, color: 'var(--muted)' }}>{m.time_slot}</td>
-                            <td style={{ padding: 10, fontWeight: 700 }}>{m.court_1.team_1} <span style={{ color: 'var(--muted)', fontSize: 11 }}>VS</span> {m.court_1.team_2}</td>
-                            <td style={{ padding: 10, fontWeight: 700 }}>{m.court_2.team_1} <span style={{ color: 'var(--muted)', fontSize: 11 }}>VS</span> {m.court_2.team_2}</td>
-                            <td style={{ padding: 10, fontWeight: 700 }}>{m.court_3.team_1} <span style={{ color: 'var(--muted)', fontSize: 11 }}>VS</span> {m.court_3.team_2}</td>
-                          </tr>
-                        ))}
+                        {customSchedule.map((m: any, idx: number) => {
+                          const rNum = parseInt((m.round || '').replace(/\D/g, '')) || (idx + 1);
+                          const renderCourtCell = (cKey: string, cNum: number) => {
+                            const match = m[cKey];
+                            if (!match) return null;
+                            const dbR = dbRounds.find((dr: any) => dr.round_number === rNum && dr.court === cNum);
+                            const s1 = dbR?.score_a ?? match.score_1 ?? match.score_a;
+                            const s2 = dbR?.score_b ?? match.score_2 ?? match.score_b;
+                            const hasScore = s1 !== undefined && s1 !== null && s2 !== undefined && s2 !== null && s1 !== '' && s2 !== '';
+
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <span style={{ fontWeight: 700 }}>
+                                  {match.team_1} <span style={{ color: 'var(--muted)', fontSize: 11 }}>VS</span> {match.team_2}
+                                </span>
+                                {hasScore && (
+                                  <span style={{ fontSize: 11, background: 'rgba(16,185,129,0.15)', color: '#10b981', padding: '1px 6px', borderRadius: 4, fontWeight: 800, width: 'fit-content' }}>
+                                    Score: {s1} - {s2}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          };
+
+                          return (
+                            <tr key={m.round} style={{ borderBottom: '1px solid var(--border)' }}>
+                              <td style={{ padding: 10, fontWeight: 800, color: 'var(--accent)' }}>{m.round}</td>
+                              <td style={{ padding: 10, color: 'var(--muted)' }}>{m.time_slot}</td>
+                              <td style={{ padding: 10 }}>{renderCourtCell('court_1', 1)}</td>
+                              <td style={{ padding: 10 }}>{renderCourtCell('court_2', 2)}</td>
+                              <td style={{ padding: 10 }}>{renderCourtCell('court_3', 3)}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
