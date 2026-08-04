@@ -365,6 +365,19 @@ export default function WatchTournamentPage() {
                     return playerStatsMap.get(trimmed)!;
                   }
 
+                  // Pre-populate all 18 players from court rosters
+                  if (customRosters) {
+                    ['hour1', 'hour2'].forEach(hKey => {
+                      const hr = customRosters[hKey] || {};
+                      Object.values(hr).forEach((pls: any) => {
+                        if (Array.isArray(pls)) {
+                          pls.forEach((pName: string) => getOrCreatePlayer(pName));
+                        }
+                      });
+                    });
+                  }
+
+                  // Calculate stats from scored matches
                   customSchedule.forEach((r: any) => {
                     ['court_1', 'court_2', 'court_3'].forEach(crtKey => {
                       const match = r[crtKey];
@@ -401,6 +414,7 @@ export default function WatchTournamentPage() {
                     });
                   });
 
+                  // Official Tie-breaker Sort: 1. Wins (W) desc -> 2. Point Differential (+/-) desc -> 3. Total Points (PF) desc
                   const sortedPlayers = [...playerStatsMap.values()].sort((a, b) => {
                     if (b.won !== a.won) return b.won - a.won;
                     const diffB = b.pf - b.pa;
@@ -412,61 +426,85 @@ export default function WatchTournamentPage() {
                   const playedMatchesCount = sortedPlayers.reduce((sum, p) => sum + p.played, 0);
 
                   return (
-                    <div className="card" style={{ marginBottom: 20 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                        <h3 style={{ fontSize: 14, textTransform: 'uppercase', letterSpacing: 1.5, color: 'var(--accent)', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                          🏆 Individual Player Standings & Analytics
-                        </h3>
-                        {playedMatchesCount > 0 && (
-                          <span style={{ fontSize: 11, background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }}>
-                            Live Updates Active
-                          </span>
-                        )}
+                    <div className="card" style={{ marginBottom: 24, border: '1.5px solid var(--accent, #2563eb)', background: 'linear-gradient(180deg, rgba(37,99,235,0.06) 0%, rgba(15,23,42,0.4) 100%)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+                        <div>
+                          <h3 style={{ fontSize: 16, textTransform: 'uppercase', letterSpacing: 1.2, color: 'var(--accent, #3b82f6)', margin: 0, fontWeight: 900 }}>
+                            🏆 Tournament Player Standings (18 Players)
+                          </h3>
+                          <p style={{ fontSize: 12, color: 'var(--muted)', margin: '3px 0 0 0' }}>
+                            Tie-Breaker Rule: Most Wins (W) ➔ Point Differential (+/-) ➔ Total Points Scored
+                          </p>
+                        </div>
+                        <span style={{ fontSize: 11, background: playedMatchesCount > 0 ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.08)', color: playedMatchesCount > 0 ? '#10b981' : 'var(--muted)', border: `1px solid ${playedMatchesCount > 0 ? 'rgba(16,185,129,0.3)' : 'var(--border)'}`, padding: '4px 10px', borderRadius: 8, fontWeight: 800 }}>
+                          {playedMatchesCount > 0 ? '● Live Scores Updating' : 'Ready for Match Scores'}
+                        </span>
                       </div>
 
-                      {playedMatchesCount === 0 ? (
-                        <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>
-                          Scores will automatically update individual player ranks, win rates, and point differentials as matches are played!
-                        </p>
-                      ) : (
-                        <div style={{ overflowX: 'auto' }}>
-                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                            <thead>
-                              <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>
-                                <th style={{ padding: '8px 10px', width: 45 }}>#</th>
-                                <th style={{ padding: '8px 10px' }}>Player</th>
-                                <th style={{ padding: '8px 10px', textAlign: 'center' }}>P</th>
-                                <th style={{ padding: '8px 10px', textAlign: 'center' }}>W-L</th>
-                                <th style={{ padding: '8px 10px', textAlign: 'center' }}>Win %</th>
-                                <th style={{ padding: '8px 10px', textAlign: 'center' }}>PF</th>
-                                <th style={{ padding: '8px 10px', textAlign: 'center' }}>PA</th>
-                                <th style={{ padding: '8px 10px', textAlign: 'right' }}>Diff</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {sortedPlayers.map((p, idx) => {
-                                const winPct = p.played > 0 ? Math.round((p.won / p.played) * 100) : 0;
-                                const diff = p.pf - p.pa;
-                                const rankIcon = idx === 0 ? '👑' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}`;
-                                return (
-                                  <tr key={p.name} style={{ borderBottom: '1px solid var(--border)', background: idx === 0 ? 'rgba(234,179,8,0.06)' : 'transparent' }}>
-                                    <td style={{ padding: '8px 10px', fontWeight: 800 }}>{rankIcon}</td>
-                                    <td style={{ padding: '8px 10px', fontWeight: 700 }}>{p.name}</td>
-                                    <td style={{ padding: '8px 10px', textAlign: 'center', color: 'var(--muted)' }}>{p.played}</td>
-                                    <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 700 }}>{p.won}-{p.lost}</td>
-                                    <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 700, color: winPct >= 60 ? '#10b981' : 'inherit' }}>{winPct}%</td>
-                                    <td style={{ padding: '8px 10px', textAlign: 'center' }}>{p.pf}</td>
-                                    <td style={{ padding: '8px 10px', textAlign: 'center', color: 'var(--muted)' }}>{p.pa}</td>
-                                    <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800, color: diff > 0 ? '#10b981' : diff < 0 ? '#ef4444' : 'inherit' }}>
-                                      {diff > 0 ? `+${diff}` : diff}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
+                          <thead>
+                            <tr style={{ borderBottom: '2px solid var(--border)', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: 0.5 }}>
+                              <th style={{ padding: '10px 8px', width: 45, textAlign: 'center' }}>Rank</th>
+                              <th style={{ padding: '10px 12px' }}>Player Name</th>
+                              <th style={{ padding: '10px 8px', textAlign: 'center' }}>Played</th>
+                              <th style={{ padding: '10px 8px', textAlign: 'center' }}>W - L</th>
+                              <th style={{ padding: '10px 8px', textAlign: 'center' }}>Total Points</th>
+                              <th style={{ padding: '10px 8px', textAlign: 'center' }}>Points Allowed</th>
+                              <th style={{ padding: '10px 8px', textAlign: 'center' }}>Point Diff (+/-)</th>
+                              <th style={{ padding: '10px 8px', textAlign: 'right' }}>Win %</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {sortedPlayers.map((p, idx) => {
+                              const winPct = p.played > 0 ? Math.round((p.won / p.played) * 100) : 0;
+                              const diff = p.pf - p.pa;
+                              const rankDisplay = idx === 0 ? '👑 #1' : idx === 1 ? '🥈 #2' : idx === 2 ? '🥉 #3' : `#${idx + 1}`;
+                              const isTop3 = idx < 3;
+                              return (
+                                <tr
+                                  key={p.name}
+                                  style={{
+                                    borderBottom: '1px solid var(--border)',
+                                    background: idx === 0 ? 'rgba(234,179,8,0.12)' : idx === 1 ? 'rgba(203,213,225,0.06)' : idx === 2 ? 'rgba(180,83,9,0.06)' : 'transparent',
+                                    fontWeight: isTop3 ? 700 : 500,
+                                  }}
+                                >
+                                  <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 800, color: idx === 0 ? '#eab308' : 'inherit' }}>
+                                    {rankDisplay}
+                                  </td>
+                                  <td style={{ padding: '10px 12px', fontWeight: 800, color: idx === 0 ? '#fef08a' : '#ffffff' }}>
+                                    {p.name}
+                                    {idx === 0 && playedMatchesCount > 0 && (
+                                      <span style={{ fontSize: 10, background: '#eab308', color: '#0f172a', fontWeight: 900, padding: '1px 5px', borderRadius: 4, marginLeft: 6 }}>
+                                        LEADER
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td style={{ padding: '10px 8px', textAlign: 'center', color: 'var(--muted)' }}>{p.played} / 8</td>
+                                  <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 800 }}>{p.won} - {p.lost}</td>
+                                  <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 800, color: '#60a5fa' }}>{p.pf} pts</td>
+                                  <td style={{ padding: '10px 8px', textAlign: 'center', color: 'var(--muted)' }}>{p.pa} pts</td>
+                                  <td
+                                    style={{
+                                      padding: '10px 8px',
+                                      textAlign: 'center',
+                                      fontWeight: 900,
+                                      fontSize: 14,
+                                      color: diff > 0 ? '#10b981' : diff < 0 ? '#ef4444' : 'var(--muted)',
+                                    }}
+                                  >
+                                    {diff > 0 ? `+${diff}` : diff}
+                                  </td>
+                                  <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 800, color: winPct >= 60 ? '#10b981' : 'inherit' }}>
+                                    {winPct}%
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   );
                 })()}
