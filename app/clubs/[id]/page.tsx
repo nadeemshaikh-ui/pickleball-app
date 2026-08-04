@@ -25,6 +25,7 @@ import { fetchLifetimeLeaderboard, fetchCrownBoards, fetchBestDuos, type RankedP
 import { computeCurrentStreaks } from '@/lib/streakRecords';
 import { fetchMyDuesForClub, buildUpiDeepLink, type MyDueRow } from '@/lib/dues';
 import { listSessions, type SessionRow } from '@/lib/db';
+import { fetchTournaments, type TournamentRow } from '@/lib/tournaments';
 import { formatLabel } from '@/lib/formatLabel';
 import SignInGate from '@/components/SignInGate';
 import { useCurrentClub } from '@/lib/useCurrentClub';
@@ -50,6 +51,7 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
   const [bestDuo, setBestDuo] = useState<RankedDuo | null>(null);
   const [myDues, setMyDues] = useState<MyDueRow[]>([]);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
+  const [tournaments, setTournaments] = useState<TournamentRow[]>([]);
   const [joinRequests, setJoinRequests] = useState<JoinRequestRow[]>([]);
   const [unlinkedPlayers, setUnlinkedPlayers] = useState<PlayerRow[]>([]);
   const [joinRequestError, setJoinRequestError] = useState<string | null>(null);
@@ -74,14 +76,15 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
         }
         setClub(mine.club);
         setRole(mine.role);
-        let [memberRows, playerRows, board, crownBoards, currentStreaks, duos, recentSessions, removedNames] = await Promise.all([
+        let [memberRows, playerRows, board, crownBoards, currentStreaks, duos, recentSessions, clubTournaments, removedNames] = await Promise.all([
           listClubMembers(id),
           listPlayers(id),
           fetchLifetimeLeaderboard(id),
           fetchCrownBoards(id),
           computeCurrentStreaks(id),
           fetchBestDuos(id),
-          listSessions(id, 5),
+          listSessions(id, 10),
+          fetchTournaments(id).catch(() => []),
           fetchRemovedMemberNames(id),
         ]);
 
@@ -117,6 +120,7 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
         setStreaks(currentStreaks);
         setBestDuo(duos.filter(d => !d.provisional).sort((a, b) => b.winPct - a.winPct || b.gamesPlayed - a.gamesPlayed)[0] ?? null);
         setSessions(recentSessions);
+        setTournaments(clubTournaments);
 
         if (ownPlayer) fetchMyDuesForClub(id, ownPlayer.name).then(setMyDues).catch(() => {});
 
@@ -510,19 +514,112 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
         </div>
       )}
 
+      {tournaments.length > 0 && (
+        <div className="card" style={{ marginBottom: 16, borderColor: 'var(--primary)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
+              <Trophy size={20} style={{ color: 'var(--primary)' }} /> Club Tournaments ({tournaments.length})
+            </h2>
+            <Link href="/tournaments" className="text-link-btn" style={{ fontSize: 12 }}>View All →</Link>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {tournaments.map(t => {
+              const isOngoing = t.status === 'active' || t.status === 'draft';
+              return (
+                <div
+                  key={t.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    background: isOngoing ? 'rgba(37,99,235,0.06)' : 'var(--surface-2, rgba(127,127,127,0.04))',
+                    border: isOngoing ? '1.5px solid rgba(37,99,235,0.25)' : '1px solid var(--border)',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--foreground)' }}>{t.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+                      Created {new Date(t.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 800,
+                        textTransform: 'uppercase',
+                        padding: '4px 8px',
+                        borderRadius: 6,
+                        background: isOngoing ? 'rgba(16,185,129,0.15)' : 'rgba(100,116,139,0.15)',
+                        color: isOngoing ? '#10b981' : '#64748b',
+                      }}
+                    >
+                      {isOngoing ? 'ONGOING / SCHEDULED' : 'COMPLETED'}
+                    </span>
+                    <Link
+                      href={`/watch/${t.share_token}`}
+                      className="btn-primary"
+                      style={{ padding: '6px 12px', fontSize: 12, fontWeight: 700, borderRadius: 8, textDecoration: 'none' }}
+                    >
+                      Watch / Schedule →
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {sessions.length > 0 && (
-        <div className="card" style={{ marginBottom: 12 }}>
-          <h2 style={{ marginTop: 0 }}>Recent Activity</h2>
-          {sessions.map(s => (
-            <Link
-              key={s.id}
-              href={resultsLinkFor(s)}
-              style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontSize: 13, color: 'inherit' }}
-            >
-              <span>{formatLabel(s.format)}{s.status === 'completed' && ' — Results'}</span>
-              <span style={{ color: 'var(--muted)' }}>{new Date(s.created_at).toLocaleDateString()}</span>
-            </Link>
-          ))}
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <h2 style={{ margin: 0, fontSize: 16 }}>Recent Session Matches & Activity</h2>
+            <Link href="/league/sessions" className="text-link-btn" style={{ fontSize: 12 }}>All Sessions →</Link>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {sessions.map(s => {
+              const isLive = s.status === 'in_progress';
+              return (
+                <Link
+                  key={s.id}
+                  href={resultsLinkFor(s)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '10px 14px',
+                    borderRadius: 10,
+                    background: isLive ? 'rgba(234,179,8,0.08)' : 'var(--surface-2, rgba(127,127,127,0.04))',
+                    border: '1px solid var(--border)',
+                    textDecoration: 'none',
+                    color: 'inherit',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>
+                      {formatLabel(s.format)}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                      {new Date(s.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 800,
+                      color: isLive ? '#eab308' : 'var(--muted)',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {isLive ? '🔴 LIVE IN PROGRESS' : 'RESULTS →'}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
         </div>
       )}
 

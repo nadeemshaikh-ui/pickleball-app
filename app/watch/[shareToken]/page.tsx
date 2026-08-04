@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Trophy, UserPlus } from 'lucide-react';
+import { Trophy, UserPlus, Share2 } from 'lucide-react';
 import { fetchPublicTournament, type PublicTournamentData } from '@/lib/tournamentPublic';
 import { registerForTournament, claimTournamentSlot } from '@/lib/tournamentRegistration';
 import { recordScoreSelf } from '@/lib/tournamentScorers';
@@ -47,6 +47,13 @@ export default function WatchTournamentPage() {
   }
 
   useEffect(load, [shareToken]);
+
+  function handleShareWhatsApp() {
+    if (typeof window === 'undefined' || !data) return;
+    const url = window.location.href;
+    const text = `🏓 *${data.tournament.name}*\nCheck out the live tournament bracket and scores here:\n${url}`;
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+  }
 
   function openScoreEntry(match: TournamentMatchRow) {
     if (match.status === 'completed') {
@@ -131,8 +138,31 @@ export default function WatchTournamentPage() {
 
   return (
     <main className="page">
-      <h1 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Trophy size={22} /> {data.tournament.name}</h1>
-      <p style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'capitalize', marginBottom: 16 }}>{data.tournament.status}</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+        <div>
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}><Trophy size={22} /> {data.tournament.name}</h1>
+          <p style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'capitalize', margin: '4px 0 0' }}>{data.tournament.status}</p>
+        </div>
+        <button
+          onClick={handleShareWhatsApp}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '10px 16px',
+            background: '#25D366',
+            color: '#FFFFFF',
+            fontWeight: 800,
+            fontSize: 13,
+            border: 'none',
+            borderRadius: 10,
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(37, 211, 102, 0.25)'
+          }}
+        >
+          <Share2 size={16} /> Share Schedule on WhatsApp
+        </button>
+      </div>
 
       {data.tournament.registrationOpen && data.tournament.slotCount !== null && (
         <div className="card" style={{ marginBottom: 16 }}>
@@ -276,35 +306,231 @@ export default function WatchTournamentPage() {
           : [];
         const teamNames = new Map(teams.map(t => [t.id, t.name]));
 
+        // Custom Schedule Render Support (Option 1 & custom rosters/schedules)
+        const customRosters = (stage.config as any)?.rosters;
+        const customSchedule = (stage.config as any)?.schedule;
+
         return (
           <section key={stage.id} style={{ marginBottom: 28 }}>
             <h2>{stage.name}</h2>
-            {combinedStandings && combinedStandings.length > 0 ? (
-              <div className="card" style={{ marginBottom: 16 }}>
-                <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 8px', fontWeight: 700, textTransform: 'uppercase' }}>
-                  Combined standings — all groups
-                </p>
-                {[...combinedStandings].sort((a, b) => a.rank - b.rank).map(s => (
-                  <div key={s.teamId} className="leaderboard-row">
-                    <span className={`rank-badge ${s.rank <= 3 ? `rank-${s.rank}` : ''}`}>{s.rank}</span>
-                    <span className="leaderboard-name">{teamNames.get(s.teamId) ?? 'Unknown'}{s.groupLabel ? ` (${s.groupLabel})` : ''}</span>
-                    <span className="leaderboard-stats">{s.won}-{s.lost} ({Math.round(s.winPct * 100)}%)</span>
+            
+            {customRosters && (
+              <div style={{ marginBottom: 24 }}>
+                <h3 style={{ fontSize: 14, textTransform: 'uppercase', letterSpacing: 1.5, color: 'var(--accent)', marginBottom: 12 }}>
+                  Court Allocations & Rosters
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginBottom: 20 }}>
+                  <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 12, padding: 18, color: '#f8fafc' }}>
+                    <h4 style={{ color: '#f87171', margin: '0 0 14px', fontSize: 15, fontWeight: 800 }}>Hour 1 (08:00 PM - 08:50 PM)</h4>
+                    {Object.entries(customRosters.hour1 || {}).map(([crt, pls]: any) => (
+                      <div key={crt} style={{ marginBottom: 14 }}>
+                        <div style={{ fontWeight: 800, fontSize: 12, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{crt}</div>
+                        <div style={{ fontSize: 13, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {pls.map((p: string) => (
+                            <span key={p} style={{ background: '#0f172a', color: '#f8fafc', border: '1px solid #334155', padding: '4px 10px', borderRadius: 6, fontWeight: 700 }}>{p}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : (
-              !isBracket && standings.length > 0 && (
-                <div className="card" style={{ marginBottom: 16 }}>
-                  <TournamentStandingsTable standings={standings} teamNames={teamNames} />
+
+                  <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 12, padding: 18, color: '#f8fafc' }}>
+                    <h4 style={{ color: '#60a5fa', margin: '0 0 14px', fontSize: 15, fontWeight: 800 }}>Hour 2 (09:00 PM - 09:50 PM)</h4>
+                    {Object.entries(customRosters.hour2 || {}).map(([crt, pls]: any) => (
+                      <div key={crt} style={{ marginBottom: 14 }}>
+                        <div style={{ fontWeight: 800, fontSize: 12, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{crt}</div>
+                        <div style={{ fontSize: 13, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {pls.map((p: string) => (
+                            <span key={p} style={{ background: '#0f172a', color: '#f8fafc', border: '1px solid #334155', padding: '4px 10px', borderRadius: 6, fontWeight: 700 }}>{p}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              )
+              </div>
             )}
-            {stage.stageType === 'double_elimination' ? (
-              <DoubleEliminationBracket matches={stageMatches} teams={teams} onScoreClick={data.tournament.selfScoreEnabled ? openScoreEntry : undefined} />
-            ) : isBracket ? (
-              <TournamentBracketTree matches={stageMatches} teams={teams} onScoreClick={data.tournament.selfScoreEnabled ? openScoreEntry : undefined} />
+
+            {customSchedule && customSchedule.length > 0 ? (
+              <>
+                {/* Live Individual Player Standings & Analytics */}
+                {(() => {
+                  const playerStatsMap = new Map<string, { name: string; played: number; won: number; lost: number; pf: number; pa: number }>();
+
+                  function getOrCreatePlayer(pName: string) {
+                    const trimmed = pName.trim();
+                    if (!playerStatsMap.has(trimmed)) {
+                      playerStatsMap.set(trimmed, { name: trimmed, played: 0, won: 0, lost: 0, pf: 0, pa: 0 });
+                    }
+                    return playerStatsMap.get(trimmed)!;
+                  }
+
+                  customSchedule.forEach((r: any) => {
+                    ['court_1', 'court_2', 'court_3'].forEach(crtKey => {
+                      const match = r[crtKey];
+                      if (!match) return;
+                      const s1 = match.score_1 ?? match.score_a;
+                      const s2 = match.score_2 ?? match.score_b;
+
+                      if (s1 !== undefined && s1 !== null && s2 !== undefined && s2 !== null && s1 !== '' && s2 !== '') {
+                        const num1 = Number(s1);
+                        const num2 = Number(s2);
+                        const team1Players = (match.team_1 || '').split('&').map((s: string) => s.trim());
+                        const team2Players = (match.team_2 || '').split('&').map((s: string) => s.trim());
+
+                        team1Players.forEach((p: string) => {
+                          if (!p) return;
+                          const stat = getOrCreatePlayer(p);
+                          stat.played++;
+                          stat.pf += num1;
+                          stat.pa += num2;
+                          if (num1 > num2) stat.won++;
+                          else if (num2 > num1) stat.lost++;
+                        });
+
+                        team2Players.forEach((p: string) => {
+                          if (!p) return;
+                          const stat = getOrCreatePlayer(p);
+                          stat.played++;
+                          stat.pf += num2;
+                          stat.pa += num1;
+                          if (num2 > num1) stat.won++;
+                          else if (num1 > num2) stat.lost++;
+                        });
+                      }
+                    });
+                  });
+
+                  const sortedPlayers = [...playerStatsMap.values()].sort((a, b) => {
+                    if (b.won !== a.won) return b.won - a.won;
+                    const diffB = b.pf - b.pa;
+                    const diffA = a.pf - a.pa;
+                    if (diffB !== diffA) return diffB - diffA;
+                    return b.pf - a.pf;
+                  });
+
+                  const playedMatchesCount = sortedPlayers.reduce((sum, p) => sum + p.played, 0);
+
+                  return (
+                    <div className="card" style={{ marginBottom: 20 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                        <h3 style={{ fontSize: 14, textTransform: 'uppercase', letterSpacing: 1.5, color: 'var(--accent)', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          🏆 Individual Player Standings & Analytics
+                        </h3>
+                        {playedMatchesCount > 0 && (
+                          <span style={{ fontSize: 11, background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }}>
+                            Live Updates Active
+                          </span>
+                        )}
+                      </div>
+
+                      {playedMatchesCount === 0 ? (
+                        <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>
+                          Scores will automatically update individual player ranks, win rates, and point differentials as matches are played!
+                        </p>
+                      ) : (
+                        <div style={{ overflowX: 'auto' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                            <thead>
+                              <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>
+                                <th style={{ padding: '8px 10px', width: 45 }}>#</th>
+                                <th style={{ padding: '8px 10px' }}>Player</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'center' }}>P</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'center' }}>W-L</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'center' }}>Win %</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'center' }}>PF</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'center' }}>PA</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'right' }}>Diff</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {sortedPlayers.map((p, idx) => {
+                                const winPct = p.played > 0 ? Math.round((p.won / p.played) * 100) : 0;
+                                const diff = p.pf - p.pa;
+                                const rankIcon = idx === 0 ? '👑' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}`;
+                                return (
+                                  <tr key={p.name} style={{ borderBottom: '1px solid var(--border)', background: idx === 0 ? 'rgba(234,179,8,0.06)' : 'transparent' }}>
+                                    <td style={{ padding: '8px 10px', fontWeight: 800 }}>{rankIcon}</td>
+                                    <td style={{ padding: '8px 10px', fontWeight: 700 }}>{p.name}</td>
+                                    <td style={{ padding: '8px 10px', textAlign: 'center', color: 'var(--muted)' }}>{p.played}</td>
+                                    <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 700 }}>{p.won}-{p.lost}</td>
+                                    <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 700, color: winPct >= 60 ? '#10b981' : 'inherit' }}>{winPct}%</td>
+                                    <td style={{ padding: '8px 10px', textAlign: 'center' }}>{p.pf}</td>
+                                    <td style={{ padding: '8px 10px', textAlign: 'center', color: 'var(--muted)' }}>{p.pa}</td>
+                                    <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800, color: diff > 0 ? '#10b981' : diff < 0 ? '#ef4444' : 'inherit' }}>
+                                      {diff > 0 ? `+${diff}` : diff}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                <div className="card">
+                  <h3 style={{ fontSize: 14, textTransform: 'uppercase', letterSpacing: 1.5, color: 'var(--accent)', margin: '0 0 16px' }}>
+                    12-Round Match Schedule
+                  </h3>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
+                          <th style={{ padding: 10, width: 70 }}>Round</th>
+                          <th style={{ padding: 10, width: 100 }}>Time</th>
+                          <th style={{ padding: 10 }}>Court 1</th>
+                          <th style={{ padding: 10 }}>Court 2</th>
+                          <th style={{ padding: 10 }}>Court 3</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {customSchedule.map((m: any) => (
+                          <tr key={m.round} style={{ borderBottom: '1px solid var(--border)' }}>
+                            <td style={{ padding: 10, fontWeight: 800, color: 'var(--accent)' }}>{m.round}</td>
+                            <td style={{ padding: 10, color: 'var(--muted)' }}>{m.time_slot}</td>
+                            <td style={{ padding: 10, fontWeight: 700 }}>{m.court_1.team_1} <span style={{ color: 'var(--muted)', fontSize: 11 }}>VS</span> {m.court_1.team_2}</td>
+                            <td style={{ padding: 10, fontWeight: 700 }}>{m.court_2.team_1} <span style={{ color: 'var(--muted)', fontSize: 11 }}>VS</span> {m.court_2.team_2}</td>
+                            <td style={{ padding: 10, fontWeight: 700 }}>{m.court_3.team_1} <span style={{ color: 'var(--muted)', fontSize: 11 }}>VS</span> {m.court_3.team_2}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
             ) : (
-              <TournamentFixturesList matches={stageMatches} teams={teams} onScoreClick={data.tournament.selfScoreEnabled ? openScoreEntry : undefined} />
+              <>
+                {combinedStandings && combinedStandings.length > 0 ? (
+                  <div className="card" style={{ marginBottom: 16 }}>
+                    <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 8px', fontWeight: 700, textTransform: 'uppercase' }}>
+                      Combined standings — all groups
+                    </p>
+                    {[...combinedStandings].sort((a, b) => a.rank - b.rank).map(s => (
+                      <div key={s.teamId} className="leaderboard-row">
+                        <span className={`rank-badge ${s.rank <= 3 ? `rank-${s.rank}` : ''}`}>{s.rank}</span>
+                        <span className="leaderboard-name">{teamNames.get(s.teamId) ?? 'Unknown'}{s.groupLabel ? ` (${s.groupLabel})` : ''}</span>
+                        <span className="leaderboard-stats">{s.won}-{s.lost} ({Math.round(s.winPct * 100)}%)</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  !isBracket && standings.length > 0 && (
+                    <div className="card" style={{ marginBottom: 16 }}>
+                      <TournamentStandingsTable standings={standings} teamNames={teamNames} />
+                    </div>
+                  )
+                )}
+                {stage.stageType === 'double_elimination' ? (
+                  <DoubleEliminationBracket matches={stageMatches} teams={teams} onScoreClick={data.tournament.selfScoreEnabled ? openScoreEntry : undefined} />
+                ) : isBracket ? (
+                  <TournamentBracketTree matches={stageMatches} teams={teams} onScoreClick={data.tournament.selfScoreEnabled ? openScoreEntry : undefined} />
+                ) : (
+                  <TournamentFixturesList matches={stageMatches} teams={teams} onScoreClick={data.tournament.selfScoreEnabled ? openScoreEntry : undefined} />
+                )}
+              </>
             )}
           </section>
         );
