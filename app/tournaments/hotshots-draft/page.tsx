@@ -1207,12 +1207,17 @@ export default function HotshotsDraftAdmin() {
                           display: 'flex', 
                           alignItems: 'center', 
                           justifyContent: 'center',
-                          fontSize: 16,
-                          fontWeight: 900,
-                          color: '#aa8529',
-                          fontFamily: 'serif'
+                          fontSize: 22,
+                          boxShadow: '0 4px 8px rgba(0,0,0,0.05)'
                         }}>
-                          HS
+                          {(() => {
+                            if (card.type === 'Steal') return '🎭';
+                            if (card.type === 'Shield') return '🛡️';
+                            if (card.type === 'Spyglass') return '🔮';
+                            if (card.type === 'DeckSwap') return '🔄';
+                            if (card.type === 'Block') return '⏳';
+                            return '🃏';
+                          })()}
                         </div>
                         <div style={{ 
                           background: '#ffffff', 
@@ -1224,7 +1229,7 @@ export default function HotshotsDraftAdmin() {
                           boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
                         }}>
                           <div style={{ fontSize: 13, fontWeight: 900, color: '#0f2922', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                            CARD {idx + 1}
+                            {card.type}
                           </div>
                         </div>
                       </div>
