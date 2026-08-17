@@ -2188,40 +2188,48 @@ export default function HotshotsDraftAdmin() {
                           <div style={{ display: 'flex', gap: 6 }}>
                             <input 
                               type="number"
-                              disabled={isSaved}
+                              disabled={isSaved || activeCaptainSessionIdx === -99}
                               style={{ 
                                 width: '100%', 
                                 padding: '8px 10px', 
                                 borderRadius: 6, 
                                 border: isSaved ? '1px solid #16a34a' : '1px solid #cbd5e1', 
                                 fontSize: 12, 
-                                background: isSaved ? '#f0fdf4' : '#ffffff',
-                                cursor: isSaved ? 'not-allowed' : 'text'
+                                background: isSaved ? '#f0fdf4' : (activeCaptainSessionIdx === -99 ? '#f1f5f9' : '#ffffff'),
+                                cursor: (isSaved || activeCaptainSessionIdx === -99) ? 'not-allowed' : 'text'
                               }}
-                              placeholder="e.g. 5"
+                              placeholder={activeCaptainSessionIdx === -99 ? "Locked" : "e.g. 5"}
                               value={roundPicks[idx]}
                               onChange={(e) => {
+                                if (activeCaptainSessionIdx === -99) return;
                                 const val = e.target.value;
                                 const updated = [...roundPicks];
                                 updated[idx] = val;
                                 setRoundPicks(updated);
                               }}
-                              onKeyDown={(e) => e.key === 'Enter' && handleSavePickNumber(idx)}
+                              onKeyDown={(e) => {
+                                if (activeCaptainSessionIdx === -99) return;
+                                if (e.key === 'Enter') handleSavePickNumber(idx);
+                              }}
                             />
-                            {isSaved ? (
-                              <button 
-                                onClick={() => handleClearPickNumber(idx)}
-                                style={{ background: '#ef4444', color: '#ffffff', border: 'none', padding: '8px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-                              >
-                                Edit
-                              </button>
-                            ) : (
-                              <button 
-                                onClick={() => handleSavePickNumber(idx)}
-                                style={{ background: '#0f2922', color: '#ffffff', border: 'none', padding: '8px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-                              >
-                                Save
-                              </button>
+                            {activeCaptainSessionIdx !== -99 && (
+                              <>
+                                {isSaved ? (
+                                  <button 
+                                    onClick={() => handleClearPickNumber(idx)}
+                                    style={{ background: '#ef4444', color: '#ffffff', border: 'none', padding: '8px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                                  >
+                                    Edit
+                                  </button>
+                                ) : (
+                                  <button 
+                                    onClick={() => handleSavePickNumber(idx)}
+                                    style={{ background: '#0f2922', color: '#ffffff', border: 'none', padding: '8px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                                  >
+                                    Save
+                                  </button>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
