@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { getCurrentUser, signInAnonymously } from '@/lib/auth';
-import { hasCompletedOnboarding } from '@/lib/onboarding';
+import { hasCompletedOnboarding, markOnboardingComplete } from '@/lib/onboarding';
 
 // Side-effect-only: renders nothing. Two jobs:
 // 1. Silent anon sign-in for a brand-new visitor with no session at all —
@@ -22,12 +22,25 @@ export default function AuthGate() {
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    if (checked || pathname?.startsWith('/onboarding') || pathname?.startsWith('/login')) return;
+    if (
+      checked ||
+      pathname?.startsWith('/onboarding') ||
+      pathname?.startsWith('/login') ||
+      pathname?.startsWith('/tournaments') ||
+      pathname?.startsWith('/session') ||
+      pathname?.startsWith('/league') ||
+      pathname?.startsWith('/clubs') ||
+      pathname?.startsWith('/watch') ||
+      pathname?.startsWith('/players')
+    ) return;
     async function check() {
       let user = await getCurrentUser();
       if (!user) {
         await signInAnonymously();
         user = await getCurrentUser();
+        if (user) {
+          await markOnboardingComplete(user.id).catch(() => {});
+        }
       }
       if (!user) {
         setChecked(true);

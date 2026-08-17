@@ -58,7 +58,7 @@ export function parsePairingConstraints(
         endRound,
       });
 
-      summaries.push(`🔒 ${p1} & ${p2} (Rounds ${startRound}–${endRound})`);
+      summaries.push(`${p1} & ${p2} (Rounds ${startRound}–${endRound})`);
     }
   });
 

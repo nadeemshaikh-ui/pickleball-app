@@ -1,0 +1,250 @@
+{
+  "rosters": {
+    "hour1": {
+      "Court 1 (Group 1)": [
+        "Deep",
+        "Shaan",
+        "Priyesh",
+        "Hemal",
+        "Ankit",
+        "Yule"
+      ],
+      "Court 2 (Group 2)": [
+        "Nadeem",
+        "Sid",
+        "Gopal",
+        "Gulshan",
+        "Anosh",
+        "Miten"
+      ],
+      "Court 3 (Group 3)": [
+        "Viki",
+        "Sumit",
+        "Amresh",
+        "PK",
+        "Shrinath",
+        "Karan"
+      ]
+    },
+    "hour2": {
+      "Court 1 (Group 1)": [
+        "Nadeem",
+        "Anosh",
+        "Sumit",
+        "Amresh",
+        "Karan",
+        "Gopal"
+      ],
+      "Court 2 (Group 2)": [
+        "Viki",
+        "Sid",
+        "Miten",
+        "Gulshan",
+        "Yule",
+        "Priyesh"
+      ],
+      "Court 3 (Group 3)": [
+        "Deep",
+        "Shaan",
+        "Ankit",
+        "PK",
+        "Shrinath",
+        "Hemal"
+      ]
+    }
+  },
+  "schedule": [
+    {
+      "court_1": {
+        "team_1": "Deep & Shaan",
+        "team_2": "Priyesh & Hemal"
+      },
+      "court_2": {
+        "team_1": "Nadeem & Sid",
+        "team_2": "Gopal & Gulshan"
+      },
+      "court_3": {
+        "team_1": "Viki & Sumit",
+        "team_2": "Amresh & PK"
+      },
+      "time_slot": "08:00 PM",
+      "round_number": 1
+    },
+    {
+      "court_1": {
+        "team_1": "Deep & Priyesh",
+        "team_2": "Ankit & Yule"
+      },
+      "court_2": {
+        "team_1": "Nadeem & Gopal",
+        "team_2": "Anosh & Miten"
+      },
+      "court_3": {
+        "team_1": "Viki & Amresh",
+        "team_2": "Shrinath & Karan"
+      },
+      "time_slot": "08:10 PM",
+      "round_number": 2
+    },
+    {
+      "court_1": {
+        "team_1": "Deep & Hemal",
+        "team_2": "Shaan & Priyesh"
+      },
+      "court_2": {
+        "team_1": "Nadeem & Gulshan",
+        "team_2": "Sid & Gopal"
+      },
+      "court_3": {
+        "team_1": "Viki & PK",
+        "team_2": "Sumit & Amresh"
+      },
+      "time_slot": "08:20 PM",
+      "round_number": 3
+    },
+    {
+      "court_1": {
+        "team_1": "Shaan & Ankit",
+        "team_2": "Hemal & Yule"
+      },
+      "court_2": {
+        "team_1": "Sid & Anosh",
+        "team_2": "Gulshan & Miten"
+      },
+      "court_3": {
+        "team_1": "Sumit & Shrinath",
+        "team_2": "PK & Karan"
+      },
+      "time_slot": "08:30 PM",
+      "round_number": 4
+    },
+    {
+      "court_1": {
+        "team_1": "Deep & Ankit",
+        "team_2": "Priyesh & Yule"
+      },
+      "court_2": {
+        "team_1": "Nadeem & Anosh",
+        "team_2": "Gopal & Miten"
+      },
+      "court_3": {
+        "team_1": "Viki & Shrinath",
+        "team_2": "Amresh & Karan"
+      },
+      "time_slot": "08:40 PM",
+      "round_number": 5
+    },
+    {
+      "court_1": {
+        "team_1": "Shaan & Yule",
+        "team_2": "Hemal & Ankit"
+      },
+      "court_2": {
+        "team_1": "Sid & Miten",
+        "team_2": "Gulshan & Anosh"
+      },
+      "court_3": {
+        "team_1": "Sumit & Karan",
+        "team_2": "PK & Shrinath"
+      },
+      "time_slot": "08:50 PM",
+      "round_number": 6
+    },
+    {
+      "court_1": {
+        "team_1": "Nadeem & Anosh",
+        "team_2": "Amresh & Gopal"
+      },
+      "court_2": {
+        "team_1": "Viki & Sid",
+        "team_2": "Miten & Priyesh"
+      },
+      "court_3": {
+        "team_1": "Deep & Shaan",
+        "team_2": "Ankit & PK"
+      },
+      "time_slot": "09:00 PM",
+      "round_number": 7
+    },
+    {
+      "court_1": {
+        "team_1": "Nadeem & Sumit",
+        "team_2": "Anosh & Karan"
+      },
+      "court_2": {
+        "team_1": "Viki & Miten",
+        "team_2": "Gulshan & Yule"
+      },
+      "court_3": {
+        "team_1": "Deep & Ankit",
+        "team_2": "Shrinath & Hemal"
+      },
+      "time_slot": "09:10 PM",
+      "round_number": 8
+    },
+    {
+      "court_1": {
+        "team_1": "Nadeem & Amresh",
+        "team_2": "Anosh & Gopal"
+      },
+      "court_2": {
+        "team_1": "Viki & Gulshan",
+        "team_2": "Sid & Priyesh"
+      },
+      "court_3": {
+        "team_1": "Deep & PK",
+        "team_2": "Shaan & Ankit"
+      },
+      "time_slot": "09:20 PM",
+      "round_number": 9
+    },
+    {
+      "court_1": {
+        "team_1": "Sumit & Amresh",
+        "team_2": "Karan & Gopal"
+      },
+      "court_2": {
+        "team_1": "Sid & Miten",
+        "team_2": "Yule & Priyesh"
+      },
+      "court_3": {
+        "team_1": "Shaan & Shrinath",
+        "team_2": "PK & Hemal"
+      },
+      "time_slot": "09:30 PM",
+      "round_number": 10
+    },
+    {
+      "court_1": {
+        "team_1": "Nadeem & Karan",
+        "team_2": "Anosh & Sumit"
+      },
+      "court_2": {
+        "team_1": "Viki & Yule",
+        "team_2": "Sid & Gulshan"
+      },
+      "court_3": {
+        "team_1": "Deep & Shrinath",
+        "team_2": "Ankit & Hemal"
+      },
+      "time_slot": "09:40 PM",
+      "round_number": 11
+    },
+    {
+      "court_1": {
+        "team_1": "Sumit & Gopal",
+        "team_2": "Amresh & Karan"
+      },
+      "court_2": {
+        "team_1": "Miten & Yule",
+        "team_2": "Gulshan & Priyesh"
+      },
+      "court_3": {
+        "team_1": "Shaan & Hemal",
+        "team_2": "PK & Shrinath"
+      },
+      "time_slot": "09:50 PM",
+      "round_number": 12
+    }
+  ]
+}

@@ -17,7 +17,10 @@ export function setDisplayNamePref(pref: DisplayNamePref): void {
 // Nickname preference still falls back to first name when no nickname is
 // set — the preference only matters for players who actually have one.
 export function displayName(player: { name: string; nickname?: string | null }): string {
-  const firstName = player.name.split(' ')[0];
+  const norm = player.name.trim();
+  if (norm.toLowerCase() === 'sid g') return 'Sid G';
+  if (norm.toLowerCase() === 'sid k') return 'Sid K';
+  const firstName = norm.split(' ')[0];
   if (getDisplayNamePref() === 'firstName') return firstName;
   return player.nickname?.trim() || firstName;
 }

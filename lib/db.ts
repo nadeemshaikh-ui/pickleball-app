@@ -71,6 +71,7 @@ export interface SessionRow {
   // score (today's behavior). Non-empty = only these players (by name) plus
   // club admins may log scores for this session.
   designated_scorers: string[] | null;
+  is_dupr_rated?: boolean;
 }
 
 export interface RoundRow {
@@ -152,6 +153,7 @@ export interface CreateSessionOptions {
   // note. circleId is mutually exclusive with clubId at the DB level (XOR
   // check); this type doesn't enforce that, callers must pass exactly one.
   circleId?: string | null;
+  isDuprRated?: boolean;
 }
 
 export async function createSession(options: CreateSessionOptions): Promise<string> {
@@ -310,18 +312,16 @@ export async function getMostRecentSession(clubId: string): Promise<SessionRow |
 }
 
 export async function getLatestActiveSession(clubId?: string | null): Promise<SessionRow | null> {
-  let query = supabase
+  if (!clubId) return null;
+  const { data, error } = await supabase
     .from('sessions')
     .select('*')
     .eq('status', 'in_progress')
+    .eq('club_id', clubId)
     .order('created_at', { ascending: false })
-    .limit(1);
+    .limit(1)
+    .maybeSingle();
 
-  if (clubId) {
-    query = query.eq('club_id', clubId);
-  }
-
-  const { data, error } = await query.maybeSingle();
   if (error) return null;
   return data as SessionRow | null;
 }

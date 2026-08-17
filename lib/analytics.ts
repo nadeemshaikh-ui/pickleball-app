@@ -50,10 +50,13 @@ export function computeLeaderboard(rounds: RoundRow[]): PlayerStats[] {
     const diff = Math.abs(round.score_a - round.score_b);
     const isClutch = diff <= 2;
     const isBlowout = diff >= 5;
-    const aWon = round.score_a > round.score_b;
+    const isTie = round.score_a === round.score_b;
+    const aWon = !isTie && round.score_a > round.score_b;
+    const bWon = !isTie && round.score_b > round.score_a;
 
     for (const name of round.team_a) {
-      const s = getOrCreate(name);
+      if (!name || !name.trim()) continue;
+      const s = getOrCreate(name.trim());
       s.gamesPlayed++;
       s.pointsFor += round.score_a;
       s.pointsAgainst += round.score_b;
@@ -61,21 +64,22 @@ export function computeLeaderboard(rounds: RoundRow[]): PlayerStats[] {
         s.wins++;
         if (isClutch) s.clutchWins = (s.clutchWins ?? 0) + 1;
         if (isBlowout) s.blowoutWins = (s.blowoutWins ?? 0) + 1;
-      } else {
+      } else if (bWon) {
         s.losses++;
         if (isClutch) s.clutchLosses = (s.clutchLosses ?? 0) + 1;
       }
     }
     for (const name of round.team_b) {
-      const s = getOrCreate(name);
+      if (!name || !name.trim()) continue;
+      const s = getOrCreate(name.trim());
       s.gamesPlayed++;
       s.pointsFor += round.score_b;
       s.pointsAgainst += round.score_a;
-      if (!aWon) {
+      if (bWon) {
         s.wins++;
         if (isClutch) s.clutchWins = (s.clutchWins ?? 0) + 1;
         if (isBlowout) s.blowoutWins = (s.blowoutWins ?? 0) + 1;
-      } else {
+      } else if (aWon) {
         s.losses++;
         if (isClutch) s.clutchLosses = (s.clutchLosses ?? 0) + 1;
       }

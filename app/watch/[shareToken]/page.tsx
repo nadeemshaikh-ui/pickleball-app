@@ -12,6 +12,7 @@ import TournamentStandingsTable from '@/components/TournamentStandingsTable';
 import TournamentFixturesList from '@/components/TournamentFixturesList';
 import TournamentBracketTree from '@/components/TournamentBracketTree';
 import DoubleEliminationBracket from '@/components/DoubleEliminationBracket';
+import TournamentDeepAnalytics from '@/components/TournamentDeepAnalytics';
 import type { TournamentMatchRow } from '@/lib/tournamentMatches';
 import type { TournamentTeamRow } from '@/lib/tournamentTeams';
 
@@ -41,13 +42,15 @@ export default function WatchTournamentPage() {
     fetchPublicTournament(shareToken)
       .then(tData => {
         setData(tData);
-        supabase
-          .from('rounds')
-          .select('*')
-          .eq('session_id', 'hot101')
-          .then(({ data: rData }) => {
-            if (rData) setDbRounds(rData);
-          });
+        if (tData?.tournament?.id) {
+          supabase
+            .from('rounds')
+            .select('*')
+            .eq('session_id', tData.tournament.id)
+            .then(({ data: rData }) => {
+              if (rData) setDbRounds(rData);
+            });
+        }
       })
       .catch(e => setError(e instanceof Error ? e.message : 'Failed to load tournament.'))
       .finally(() => setLoading(false));
@@ -56,15 +59,17 @@ export default function WatchTournamentPage() {
   useEffect(() => {
     load();
     const interval = setInterval(() => {
-      supabase
-        .from('rounds')
-        .select('*')
-        .eq('session_id', 'hot101')
-        .then(({ data: rData }) => {
-          if (rData && rData.length > 0) {
-            setDbRounds(rData);
-          }
-        });
+      if (data?.tournament?.id) {
+        supabase
+          .from('rounds')
+          .select('*')
+          .eq('session_id', data.tournament.id)
+          .then(({ data: rData }) => {
+            if (rData && rData.length > 0) {
+              setDbRounds(rData);
+            }
+          });
+      }
     }, 5000);
     return () => clearInterval(interval);
   }, [shareToken]);
@@ -72,7 +77,7 @@ export default function WatchTournamentPage() {
   function handleShareWhatsApp() {
     if (typeof window === 'undefined' || !data) return;
     const url = window.location.href;
-    const text = `🏓 *${data.tournament.name}*\nCheck out the live tournament bracket and scores here:\n${url}`;
+    const text = `*${data.tournament.name}*\nCheck out the live tournament bracket and scores here:\n${url}`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   }
 
@@ -166,7 +171,7 @@ export default function WatchTournamentPage() {
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <a
-            href="/session/hot101/play"
+            href={`/session/${data.tournament.id}/play`}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -471,7 +476,8 @@ export default function WatchTournamentPage() {
                   const playedMatchesCount = sortedPlayers.reduce((sum, p) => sum + p.played, 0);
 
                   return (
-                    <div className="card" style={{ marginBottom: 24, border: '1.5px solid var(--accent, #2563eb)', background: 'linear-gradient(180deg, rgba(37,99,235,0.06) 0%, rgba(15,23,42,0.4) 100%)' }}>
+                    <>
+                      <div className="card" style={{ marginBottom: 24, border: '1.5px solid var(--accent, #2563eb)', background: 'linear-gradient(180deg, rgba(37,99,235,0.06) 0%, rgba(15,23,42,0.4) 100%)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
                         <div>
                           <h3 style={{ fontSize: 16, textTransform: 'uppercase', letterSpacing: 1.2, color: 'var(--accent, #3b82f6)', margin: 0, fontWeight: 900 }}>
@@ -552,8 +558,11 @@ export default function WatchTournamentPage() {
                         </table>
                       </div>
                     </div>
-                  );
-                })()}
+
+                    <TournamentDeepAnalytics customSchedule={customSchedule} dbRounds={dbRounds} />
+                  </>
+                );
+              })()}
 
                 <div className="card">
                   <h3 style={{ fontSize: 14, textTransform: 'uppercase', letterSpacing: 1.5, color: 'var(--accent)', margin: '0 0 16px' }}>

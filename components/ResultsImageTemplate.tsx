@@ -54,7 +54,7 @@ export default function ResultsImageTemplate({
               <div style={{ fontFamily: 'var(--font-display), sans-serif', fontSize: 26 }}>{t.label ?? t.id}</div>
               <div style={{ fontSize: 18, color: '#555' }}>{record.wins}W – {record.losses}L</div>
               <div style={{ fontFamily: 'var(--font-display), sans-serif', fontSize: 44 }}>{grandTotals.get(t.id) ?? 0}</div>
-              {isLeader && <div style={{ fontSize: 16, fontWeight: 700 }}>🏆 LEADING</div>}
+              {isLeader && <div style={{ fontSize: 16, fontWeight: 700, color: '#d97706' }}>LEADING</div>}
             </div>
           );
         })}

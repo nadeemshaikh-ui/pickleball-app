@@ -125,7 +125,9 @@ function JoinClubInner() {
             clubId={pendingClub.id}
             onSubmit={async fields => {
               await requestToJoinClub(pendingClub.id, fields);
-              setRequestedClubName(pendingClub.name);
+              await markOnboardingComplete(user!.id);
+              setCurrentClubId(pendingClub.id);
+              router.push(`/clubs/${pendingClub.id}`);
             }}
           />
         </div>

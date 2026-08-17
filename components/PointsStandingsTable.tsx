@@ -122,8 +122,8 @@ export default function PointsStandingsTable({
                   }}
                 >
                   {/* Rank */}
-                  <td style={{ textAlign: 'center', fontWeight: 700, padding: '8px 4px' }}>
-                    {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank}
+                  <td style={{ textAlign: 'center', fontWeight: 800, padding: '8px 4px', color: isTop3 ? '#d97706' : 'inherit' }}>
+                    {rank <= 3 ? `#${rank}` : rank}
                   </td>
 
                   {/* Name + Avatar */}

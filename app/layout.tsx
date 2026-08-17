@@ -9,6 +9,7 @@ import DevModePanel from "@/components/DevModePanel";
 import ErrorLogger from "@/components/ErrorLogger";
 import UpgradePrompt from "@/components/UpgradePrompt";
 import AiChatDrawer from "@/components/AiChatDrawer";
+import TopBarHomeButton from "@/components/TopBarHomeButton";
 import { ActivityTracker } from "@/components/ActivityTracker";
 
 const bebas = Bebas_Neue({
@@ -34,9 +35,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${bebas.variable} ${oswald.variable}`}>
-      <body>
+    <html lang="en" className={`${bebas.variable} ${oswald.variable}`} suppressHydrationWarning>
+      <body suppressHydrationWarning>
         <ActivityTracker />
+        <TopBarHomeButton />
         <DecorativeBackground />
         <AuthGate />
         <ClubSwitcher />

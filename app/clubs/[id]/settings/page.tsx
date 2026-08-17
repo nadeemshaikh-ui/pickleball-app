@@ -22,10 +22,12 @@ import {
   resolveMemberDisplayName,
   formatEmailName,
   resetClubData,
+  updateClubDuprSettings,
   type ClubRow,
   type JoinRequestRow,
   type ClubMemberRow,
 } from '@/lib/clubs';
+import DuprToggle from '@/components/DuprToggle';
 import { listPlayers, type PlayerRow } from '@/lib/players';
 import { getCurrentUser } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';

@@ -113,9 +113,10 @@ export async function fetchLifetimeGameStats(clubId: string): Promise<Map<string
   for (const r of rows) {
     const margin = Math.abs(r.score_a - r.score_b);
     const aWon = r.score_a > r.score_b;
-    const startTime = r.sessions.start_time ?? '';
-    const isNight = startTime >= NIGHT_OWL_START_TIME;
-    const isEarly = startTime !== '' && startTime < EARLY_BIRD_END_TIME;
+    const rawStartTime = r.sessions.start_time ?? '';
+    const formattedTime = rawStartTime ? (rawStartTime.includes(':') && rawStartTime.split(':')[0].length === 1 ? `0${rawStartTime}` : rawStartTime) : '';
+    const isNight = formattedTime >= NIGHT_OWL_START_TIME;
+    const isEarly = formattedTime !== '' && formattedTime < EARLY_BIRD_END_TIME;
     const sessionDate = r.sessions.created_at.slice(0, 10);
     const dayOfWeek = new Date(r.sessions.created_at).getUTCDay(); // 0=Sun, 6=Sat
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;

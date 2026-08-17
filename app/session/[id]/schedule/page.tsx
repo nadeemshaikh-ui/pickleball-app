@@ -20,6 +20,8 @@ import ScheduleImageTemplate from '@/components/ScheduleImageTemplate';
 import { getCurrentUser } from '@/lib/auth';
 import { submitPrediction, fetchPredictionsForRounds, type PredictionRow } from '@/lib/predictions';
 import SquadLineupCard from '@/components/SquadLineupCard';
+import CourtBlockAllocationCard from '@/components/CourtBlockAllocationCard';
+import CourtAllocationImageTemplate from '@/components/CourtAllocationImageTemplate';
 
 const FLIGHT_RANK: Record<string, number> = { Platinum: 4, Gold: 3, Silver: 2, Bronze: 1 };
 
@@ -36,29 +38,36 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
   const [sharingImage, setSharingImage] = useState(false);
   const [imageShareError, setImageShareError] = useState<string | null>(null);
   const [scheduleImageFile, setScheduleImageFile] = useState<File | null>(null);
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
+  const [groupingImageFile, setGroupingImageFile] = useState<File | null>(null);
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [club, setClub] = useState<{ name: string; logo_url: string | null } | null>(null);
   const [ownPlayerName, setOwnPlayerName] = useState<string | null>(null);
   const [predictions, setPredictions] = useState<Map<string, PredictionRow[]>>(new Map());
   const [predictingRoundId, setPredictingRoundId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const tableCaptureRef = useRef<HTMLDivElement>(null);
+  const groupingCaptureRef = useRef<HTMLDivElement>(null);
 
   async function reload() {
-    const [s, r, user] = await Promise.all([getSession(id), getRounds(id), getCurrentUser()]);
-    setSession(s);
-    setRounds(r);
-    setNameDrafts(s.players);
-    getClubBranding(s.club_id).then(setClub).catch(() => setClub(null));
-    listPlayers(s.club_id)
-      .then(players => {
-        setPlayersByName(new Map(players.map(p => [p.name, p])));
-        setOwnPlayerName(user ? players.find(p => p.user_id === user.id)?.name ?? null : null);
-      })
-      .catch(() => setPlayersByName(new Map()));
-    fetchPredictionsForRounds(r.map(round => round.id))
-      .then(setPredictions)
-      .catch(() => setPredictions(new Map()));
-    preloadPlayerPhotos().catch(() => {});
+    try {
+      const [s, r, user] = await Promise.all([getSession(id), getRounds(id), getCurrentUser()]);
+      setSession(s);
+      setRounds(r);
+      setNameDrafts(s.players);
+      getClubBranding(s.club_id).then(setClub).catch(() => setClub(null));
+      listPlayers(s.club_id)
+        .then(players => {
+          setPlayersByName(new Map(players.map(p => [p.name, p])));
+          setOwnPlayerName(user ? players.find(p => p.user_id === user.id)?.name ?? null : null);
+        })
+        .catch(() => setPlayersByName(new Map()));
+      fetchPredictionsForRounds(r.map(round => round.id))
+        .then(setPredictions)
+        .catch(() => setPredictions(new Map()));
+      preloadPlayerPhotos().catch(() => {});
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handlePredict(roundId: string, team: 'a' | 'b') {
@@ -99,8 +108,16 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
       })
       .catch(e => {
         setScheduleImageFile(null);
-        setImageShareError(e instanceof Error ? `Couldn't prepare the image: ${e.message}` : "Couldn't prepare the image.");
+        setImageShareError(e instanceof Error ? `Couldn't prepare the schedule image: ${e.message}` : "Couldn't prepare the schedule image.");
       });
+
+    if (groupingCaptureRef.current) {
+      renderElementToImage(groupingCaptureRef.current, `court-groupings-${id}.png`)
+        .then(file => {
+          setGroupingImageFile(file);
+        })
+        .catch(console.error);
+    }
   }, [session, rounds, club, id]);
 
   const courtLabels = session?.court_labels ?? ['1', '2'];
@@ -141,8 +158,11 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
   }
   const sortedRoundNumbers = [...byRound.keys()].sort((a, b) => a - b);
 
+  const [whatsappFallbackUrl, setWhatsappFallbackUrl] = useState<string | null>(null);
+
   async function handleShareImage() {
     setImageShareError(null);
+    setWhatsappFallbackUrl(null);
     setSharingImage(true);
     try {
       const file = scheduleImageFile ?? (tableCaptureRef.current ? await renderElementToImage(tableCaptureRef.current, `schedule-${id}.png`) : null);
@@ -150,9 +170,12 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
         setImageShareError("Couldn't prepare the image — try again.");
         return;
       }
-      const result = await shareCachedImage(file);
+      const text = `🎾 Hotshots Official Schedule:\n${window.location.href}`;
+      const result = await shareCachedImage(file, text);
       if (result === 'downloaded') {
-        setImageShareError('Image downloaded — attach it to WhatsApp manually (direct share isn\'t supported on this browser).');
+        const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+        setWhatsappFallbackUrl(waUrl);
+        setImageShareError('Image saved to downloads! Tap "Open WhatsApp" below to send to your group.');
       }
     } catch (e) {
       setImageShareError(e instanceof Error ? e.message : 'Failed to share image.');
@@ -161,25 +184,107 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
     }
   }
 
+  async function handleShareGroupingImage() {
+    setImageShareError(null);
+    setWhatsappFallbackUrl(null);
+    setSharingImage(true);
+    try {
+      const file = groupingImageFile ?? (groupingCaptureRef.current ? await renderElementToImage(groupingCaptureRef.current, `court-groupings-${id}.png`) : null);
+      if (!file) {
+        setImageShareError("Couldn't prepare the groupings image — try again.");
+        return;
+      }
+      const text = `🎾 Hotshots Hourly Court & Player Groupings:\n${window.location.href}`;
+      const result = await shareCachedImage(file, text);
+      if (result === 'downloaded') {
+        const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+        setWhatsappFallbackUrl(waUrl);
+        setImageShareError('Groupings image saved to downloads! Tap "Open WhatsApp" below to send to your group.');
+      }
+    } catch (e) {
+      setImageShareError(e instanceof Error ? e.message : 'Failed to share groupings image.');
+    } finally {
+      setSharingImage(false);
+    }
+  }
+
   return (
     <>
       <main className="page">
-        <div className="page-header-row">
+        <div className="page-header-row" style={{ flexWrap: 'wrap', gap: 10 }}>
           <NewSessionLink />
-          <button
-            className="icon-btn"
-            aria-label="Share schedule image on WhatsApp"
-            onClick={handleShareImage}
-            disabled={sharingImage}
-          >
-            <WhatsAppIcon size={24} />
-          </button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', width: '100%', marginTop: 8 }}>
+            <button
+              className="btn-secondary"
+              style={{ flex: 1, minHeight: 48, fontSize: 14, fontWeight: 900, padding: '10px 14px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: '#121a2f', color: '#e5fa00', border: '1px solid #121a2f', borderRadius: 12 }}
+              onClick={handleShareGroupingImage}
+              disabled={sharingImage}
+            >
+              <WhatsAppIcon size={20} />
+              <span>Share Groupings Image</span>
+            </button>
+            <button
+              className="btn-secondary"
+              style={{ flex: 1, minHeight: 48, fontSize: 14, fontWeight: 900, padding: '10px 14px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 12 }}
+              onClick={handleShareImage}
+              disabled={sharingImage}
+            >
+              <WhatsAppIcon size={20} />
+              <span>Share Schedule Image</span>
+            </button>
+          </div>
         </div>
-        {sharingImage && <p style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'right', marginTop: -8 }}>Preparing image…</p>}
-        {imageShareError && <p style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 14 }}>{imageShareError}</p>}
+        {sharingImage && <p style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'right', marginTop: 4 }}>Preparing high-res image…</p>}
+        {imageShareError && (
+          <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 12, padding: 14, marginTop: 10 }}>
+            <p style={{ color: '#0f172a', fontWeight: 700, fontSize: 14, margin: 0 }}>{imageShareError}</p>
+            {whatsappFallbackUrl && (
+              <a
+                href={whatsappFallbackUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  marginTop: 10,
+                  background: '#25D366',
+                  color: '#ffffff',
+                  fontWeight: 900,
+                  fontSize: 15,
+                  padding: '10px 18px',
+                  borderRadius: 10,
+                  textDecoration: 'none'
+                }}
+              >
+                <WhatsAppIcon size={20} />
+                <span>Open WhatsApp Now →</span>
+              </a>
+            )}
+          </div>
+        )}
 
-        <Link href={`/session/${id}/play`} className="btn-primary" style={{ width: '100%', marginBottom: 16 }}>
-          Start Scoring →
+        <Link
+          href={`/session/${id}/play`}
+          className="btn-primary"
+          style={{
+            width: '100%',
+            marginBottom: 16,
+            minHeight: 54,
+            fontSize: 16,
+            fontWeight: 900,
+            background: '#0f172a',
+            color: '#e5fa00',
+            border: '2px solid #0f172a',
+            borderRadius: 14,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            boxShadow: '0 4px 14px rgba(15,23,42,0.15)'
+          }}
+        >
+          <span>🎾 Open Live Scoring Page →</span>
         </Link>
 
         {session && <GroupHeader groupName={session.group_name} logoUrl1={session.logo_url_1} logoUrl2={session.logo_url_2} />}
@@ -220,6 +325,8 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
             ))}
           </div>
         )}
+
+        {session && <CourtBlockAllocationCard session={session} rounds={rounds} />}
 
         {session && session.players.length > 0 && !(session.format === 'squad_rivalry' && session.squads) && (
           <div style={{ marginTop: 16 }}>
@@ -315,6 +422,9 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
             <div ref={tableCaptureRef}>
               <ScheduleImageTemplate session={session} rounds={rounds} club={club} />
             </div>
+            <div ref={groupingCaptureRef}>
+              <CourtAllocationImageTemplate session={session} rounds={rounds} club={club} />
+            </div>
           </div>
         )}
 
@@ -334,6 +444,13 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
             Card View
           </button>
         </div>
+
+        {loading && (
+          <div className="card" style={{ padding: '36px 24px', textAlign: 'center', margin: '24px 0', background: '#ffffff', borderRadius: 16 }}>
+            <p style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: 0 }}>⚡ Loading Official Schedule...</p>
+            <p style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>Fetching live match rounds</p>
+          </div>
+        )}
 
         {viewMode === 'table' && session && (
           <div style={{ overflowX: 'auto', margin: '0 -16px', padding: '0 16px 4px' }}>

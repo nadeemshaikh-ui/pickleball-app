@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { PartyPopper, TrendingDown, Crown, Frown, Egg } from 'lucide-react';
+import { PartyPopper, TrendingDown, Crown, Frown, Egg, CheckCircle2, Save } from 'lucide-react';
 import { getSession, getRounds, updateRoundScore, insertRounds, markSessionCompleted, updateDesignatedScorers, removeLastRound, addRoundRepeatingLast, type RoundRow, type SessionRow } from '@/lib/db';
 import { computeRoundTimeRange } from '@/lib/roundTiming';
 import { pickCourtScorer, newPlayersOnCourt } from '@/lib/nextMatch';
@@ -34,6 +34,7 @@ import { validateMatchScore } from '@/lib/matchScoring';
 import { computeTeamChampionshipStandings, computeTeamMatchRecords } from '@/lib/teamChampionship';
 import CourtQrModal from '@/components/CourtQrModal';
 import ScorecardReviewModal from '@/components/ScorecardReviewModal';
+import TournamentDeepAnalytics from '@/components/TournamentDeepAnalytics';
 import { type ScannedMatchResult } from '@/app/api/ai/scan-scorecard/route';
 
 export default function PlayPage({ params }: { params: Promise<{ id: string }> }) {
@@ -121,15 +122,30 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
       .find(rn => r.filter(x => x.round_number === rn).some(x => x.score_a === null));
   }
 
+  const [loading, setLoading] = useState(true);
+
   async function reload() {
-    const [s, r] = await Promise.all([getSession(id), getRounds(id)]);
-    setSession(s);
-    setRounds(r);
-    setScorerDraft(new Set(s?.designated_scorers ?? []));
-    if (s) {
-      const user = await getCurrentUser();
-      setCurrentUserId(user?.id ?? null);
-      if (user) setIsAdmin(await isCurrentUserAdmin(s.club_id));
+    try {
+      const [s, r] = await Promise.all([getSession(id), getRounds(id)]);
+      setSession(s);
+      setRounds(r);
+      setScorerDraft(new Set(s?.designated_scorers ?? []));
+      if (s) {
+        const user = await getCurrentUser();
+        setCurrentUserId(user?.id ?? null);
+        if (user) setIsAdmin(await isCurrentUserAdmin(s.club_id));
+
+        if (id === 'mw_mavericks_season_2_2026') {
+          router.push('/tournaments/mw-mavericks');
+          return;
+        }
+        if (s.format === 'team_championship') {
+          router.push(`/session/${id}/team-championship/stage/1`);
+          return;
+        }
+      }
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -261,7 +277,10 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
   // On-court display name — the full registered name (often first + last)
   // overflows the score box, and nobody needs the surname mid-match.
   function displayName(fullName: string): string {
-    const firstName = fullName.split(' ')[0];
+    const norm = fullName.trim();
+    if (norm.toLowerCase() === 'sid g') return 'Sid G';
+    if (norm.toLowerCase() === 'sid k') return 'Sid K';
+    const firstName = norm.split(' ')[0];
     if (getDisplayNamePref() === 'firstName') return firstName;
     return nicknameByName.get(fullName) ?? firstName;
   }
@@ -816,6 +835,13 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
           </div>
         )}
 
+        {loading ? (
+          <div className="card" style={{ padding: '36px 24px', textAlign: 'center', marginBottom: 24, background: '#ffffff', borderRadius: 16 }}>
+            <p style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: 0 }}>⚡ Loading Match Cards & Schedule...</p>
+            <p style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>Fetching live session rounds</p>
+          </div>
+        ) : null}
+
         {visibleRoundNumbers.map(roundNumber => {
           const courts = rounds.filter(r => r.round_number === roundNumber).sort((a, b) => a.court - b.court);
           const isDone = courts.every(c => c.score_a !== null && c.score_b !== null);
@@ -830,163 +856,154 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
               : null;
 
           return (
-            <div key={roundNumber} className={`round-card ${isCurrent ? 'is-current' : ''} ${isDone ? 'is-done' : ''}`}>
-              <div className="round-card-header">
-                <span className="round-label">
-                  Round {roundNumber}
-                  {tcStage && <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--muted)' }}> · {tcStage.stageLabel} · {tcStage.pointsPerWin} pt/win</span>}
-                </span>
-                <span className={`round-status-badge ${isDone ? '' : 'pending'}`}>
-                  {isDone ? 'Done' : 'Pending'}
+            <div
+              key={roundNumber}
+              style={{
+                background: 'rgba(255, 255, 255, 0.75)',
+                backdropFilter: 'blur(8px)',
+                border: isCurrent ? '2px solid #0f172a' : '1px solid #cbd5e1',
+                borderRadius: 20,
+                padding: '20px 18px',
+                marginBottom: 32,
+                boxShadow: isCurrent ? '0 8px 24px rgba(15,23,42,0.08)' : '0 4px 12px rgba(15,23,42,0.03)'
+              }}
+            >
+              {/* Round Section Grouping Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ background: '#0f172a', color: '#e5fa00', fontSize: 15, fontWeight: 900, padding: '6px 16px', borderRadius: 9999, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    ROUND {roundNumber}
+                  </span>
+                  {tcStage && (
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#475569' }}>
+                      · {tcStage.stageLabel} ({tcStage.pointsPerWin} pt/win)
+                    </span>
+                  )}
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 800, color: isDone ? '#059669' : '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  {isDone ? '✓ Round Complete' : 'In Progress'}
                 </span>
               </div>
 
-              {session?.format === 'king_of_court' && isDone && (kotcMovement[roundNumber] ?? []).length > 0 && (
-                <div className="resting-badge" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <strong style={{ fontSize: 12 }}>Next round movement</strong>
-                  {kotcMovement[roundNumber].map(m => (
-                    <span key={m} style={{ fontSize: 12 }}>{m}</span>
-                  ))}
-                </div>
-              )}
-
               {courts.map(court => {
                 const [scoreA, scoreB] = draftFor(court);
-                const aWins = court.score_a !== null && court.score_b !== null && court.score_a > court.score_b;
-                const bWins = court.score_a !== null && court.score_b !== null && court.score_b > court.score_a;
+                const isScored = court.score_a !== null && court.score_b !== null;
                 return (
-                  <div key={court.id} className="match-box" style={scoreErrors[court.id] ? { outline: '2px solid var(--danger)', outlineOffset: 2 } : undefined}>
-                    <span className="court-label-big">COURT {session?.court_labels?.[court.court - 1] ?? court.court}</span>
-                    <div className="match-teams-row">
-                      <div className={`team-box ${aWins ? 'winner' : ''}`}>
-                        <div className="team-names">{court.team_a.map(displayName).join(' & ')}</div>
+                  <div key={court.id} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 20, boxShadow: '0 2px 8px rgba(15,23,42,0.03)', marginBottom: 16 }}>
+                    {/* Card Subheader */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid #e2e8f0', paddingBottom: 12 }}>
+                      <span style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>
+                        Court {session?.court_labels?.[court.court - 1] ?? court.court}
+                      </span>
+                      {isScored ? (
+                        <span style={{ fontSize: 13, fontWeight: 800, color: '#0f172a', background: '#f1f5f9', padding: '4px 12px', borderRadius: 8, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <CheckCircle2 size={15} /> Scored ({court.score_a} – {court.score_b})
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#64748b' }}>
+                          Pending Match
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Team Pairs & Touch Score Inputs */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 16, alignItems: 'center', textAlign: 'center' }}>
+                      {/* Left Team */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', lineHeight: 1.3 }}>
+                          {court.team_a.map(displayName).join(' & ')}
+                        </div>
                         <input
-                          className="score-input"
                           type="number"
                           inputMode="numeric"
-                          max={99}
-                          aria-label={`${court.team_a.join(' & ')} score, court ${court.court}, round ${roundNumber}`}
-                          aria-invalid={!!scoreErrors[court.id]}
+                          placeholder="0"
                           value={scoreA}
-                          style={scoreErrors[court.id] ? { borderColor: 'var(--danger)', borderWidth: 2 } : undefined}
                           onChange={e => {
                             setDrafts(prev => ({ ...prev, [court.id]: [clampScore(e.target.value), draftFor(court)[1]] }));
                             setScoreErrors(prev => ({ ...prev, [court.id]: '' }));
                           }}
-                          onBlur={() => handleSaveCourt(court)}
+                          style={{
+                            width: '100%',
+                            maxWidth: 110,
+                            minHeight: 58,
+                            fontSize: 30,
+                            fontWeight: 900,
+                            textAlign: 'center',
+                            borderRadius: 12,
+                            border: '2px solid #cbd5e1',
+                            background: '#ffffff',
+                            color: '#0f172a'
+                          }}
                         />
                       </div>
-                      <span className="vs-pill">VS</span>
-                      <div className={`team-box ${bWins ? 'winner' : ''}`}>
-                        <div className="team-names">{court.team_b.map(displayName).join(' & ')}</div>
+
+                      {/* VS Divider */}
+                      <div style={{ fontSize: 16, fontWeight: 900, color: '#64748b', padding: '0 4px' }}>
+                        VS
+                      </div>
+
+                      {/* Right Team */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', lineHeight: 1.3 }}>
+                          {court.team_b.map(displayName).join(' & ')}
+                        </div>
                         <input
-                          className="score-input"
                           type="number"
                           inputMode="numeric"
-                          max={99}
-                          aria-label={`${court.team_b.join(' & ')} score, court ${court.court}, round ${roundNumber}`}
-                          aria-invalid={!!scoreErrors[court.id]}
+                          placeholder="0"
                           value={scoreB}
-                          style={scoreErrors[court.id] ? { borderColor: 'var(--danger)', borderWidth: 2 } : undefined}
                           onChange={e => {
                             setDrafts(prev => ({ ...prev, [court.id]: [draftFor(court)[0], clampScore(e.target.value)] }));
                             setScoreErrors(prev => ({ ...prev, [court.id]: '' }));
                           }}
-                          onBlur={() => handleSaveCourt(court)}
+                          style={{
+                            width: '100%',
+                            maxWidth: 110,
+                            minHeight: 58,
+                            fontSize: 30,
+                            fontWeight: 900,
+                            textAlign: 'center',
+                            borderRadius: 12,
+                            border: '2px solid #cbd5e1',
+                            background: '#ffffff',
+                            color: '#0f172a'
+                          }}
                         />
                       </div>
-                      {savingCourtId === court.id && <span style={{ fontSize: 12, color: 'var(--muted)' }}>Saving…</span>}
                     </div>
-                    {scoreErrors[court.id] && (
-                      <p style={{ color: 'var(--danger)', fontSize: 12, fontWeight: 600, marginTop: 4 }}>{scoreErrors[court.id]}</p>
-                    )}
-                    {upsetLabel(court) && (
-                      <div className="resting-badge">
-                        <Egg size={14} /> {upsetLabel(court)}
-                      </div>
-                    )}
-                    {(flightChanges[court.id] ?? []).map(msg => {
-                      const MsgIcon = MESSAGE_ICONS[msg.kind];
-                      return (
-                        <div key={msg.text} className="resting-badge">
-                          <MsgIcon size={14} /> {msg.text}
-                        </div>
-                      );
-                    })}
+
+                    {/* Save Score Button */}
+                    <div style={{ marginTop: 18 }}>
+                      <button
+                        onClick={() => handleSaveCourt(court)}
+                        style={{ width: '100%', minHeight: 50, fontSize: 15, fontWeight: 800, borderRadius: 12, border: '1px solid #0f172a', background: '#0f172a', color: '#ffffff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                      >
+                        <Save size={18} />
+                        <span>{savingCourtId === court.id ? 'Saving Score…' : 'Save Score'}</span>
+                      </button>
+                    </div>
+
+                    {/* Resting info */}
                     {!sameSitOut && court.sitting_out.length > 0 && (
-                      <div className="resting-badge">
-                        <span className="stat-icon"><ChairIcon size={20} /></span>
-                        Resting: {court.sitting_out.join(', ')}
+                      <div style={{ marginTop: 12, fontSize: 13, fontWeight: 700, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <ChairIcon size={16} />
+                        <span>Resting: {court.sitting_out.join(', ')}</span>
                       </div>
                     )}
-                    {session &&
-                      session.format !== 'team_championship' &&
-                      session.format !== 'king_of_court' &&
-                      roundNumber === currentRoundNumber &&
-                      court.score_a !== null &&
-                      court.score_b !== null &&
-                      (() => {
-                        const allCourtsDone = courts.every(c => c.score_a !== null && c.score_b !== null);
-                        if (!allCourtsDone) {
-                          const pending = courts.filter(c => c.score_a === null || c.score_b === null);
-                          return (
-                            <div className="resting-badge" style={{ fontSize: 13 }}>
-                              Waiting on Court {pending.map(c => session.court_labels?.[c.court - 1] ?? c.court).join(', ')}…
-                            </div>
-                          );
-                        }
-                        const nextRound = rounds.find(r => r.round_number === roundNumber + 1 && r.court === court.court);
-                        if (!nextRound) return null;
-                        const scorer = pickCourtScorer(nextRound.team_a, nextRound.team_b, roundNumber + 1, session.designated_scorers);
-                        const newPlayers = newPlayersOnCourt(
-                          [...nextRound.team_a, ...nextRound.team_b],
-                          roundNumber === 1 ? null : [...court.team_a, ...court.team_b]
-                        );
-                        return (
-                          <div className="card" style={{ marginTop: 8, padding: 12 }}>
-                            <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 4px', fontWeight: 700 }}>
-                              NEXT ON THIS COURT · {displayName(scorer)} scores
-                            </p>
-                            <p style={{ fontSize: 17, fontWeight: 700, margin: '0 0 2px' }}>
-                              {nextRound.team_a.map(p => `${displayName(p)}${newPlayers.has(p) ? ' ← joins' : ''}`).join(' + ')}
-                            </p>
-                            <p style={{ fontSize: 13, color: 'var(--muted)', margin: '2px 0' }}>vs</p>
-                            <p style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>
-                              {nextRound.team_b.map(p => `${displayName(p)}${newPlayers.has(p) ? ' ← joins' : ''}`).join(' + ')}
-                            </p>
-                            {nextRound.sitting_out.length > 0 && (
-                              <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>
-                                Sitting out: {nextRound.sitting_out.map(displayName).join(', ')}
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })()}
                   </div>
                 );
               })}
 
               {sameSitOut && courts[0]?.sitting_out.length > 0 && (
-                <div className="resting-badge">
-                  <span className="stat-icon"><ChairIcon size={20} /></span>
-                  Resting: {courts[0].sitting_out.join(', ')}
-                </div>
-              )}
-              {session && (
-                <div className="meta-bar">
-                  <span>ROUND {roundNumber}</span>
-                  <span>COURT {session.court_labels.join('/')}</span>
-                  <span>
-                    {session.round_duration_minutes
-                      ? `${session.round_duration_minutes} MIN`
-                      : new Date(session.created_at).toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase()}
-                  </span>
-                  <span>{formatLabel(session.format).toUpperCase()}</span>
+                <div style={{ marginTop: 12, padding: '10px 14px', background: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 14, fontWeight: 700, color: '#475569', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <ChairIcon size={18} />
+                  <span>Round Sit Out: {courts[0].sitting_out.join(', ')}</span>
                 </div>
               )}
             </div>
           );
         })}
+        <TournamentDeepAnalytics customSchedule={[]} dbRounds={rounds} players={session?.players || []} />
         <ScorecardReviewModal
           isOpen={scannedModalOpen}
           onClose={() => setScannedModalOpen(false)}

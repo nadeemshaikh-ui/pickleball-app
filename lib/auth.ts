@@ -58,6 +58,7 @@ export async function isCurrentUserAdmin(clubId: string): Promise<boolean> {
     .eq('club_id', clubId)
     .eq('user_id', user.id)
     .eq('role', 'admin')
+    .is('removed_at', null)
     .maybeSingle();
   if (error) return false;
   return Boolean(data);

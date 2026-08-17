@@ -10,6 +10,21 @@ export interface ClubRow {
   created_at: string;
   upi_vpa: string | null;
   description: string | null;
+  default_dupr_rated?: boolean;
+  dupr_club_id?: string | null;
+  dupr_connected?: boolean;
+}
+
+export async function updateClubDuprSettings(clubId: string, defaultDuprRated: boolean, duprClubId: string | null): Promise<void> {
+  const { error } = await supabase
+    .from('clubs')
+    .update({
+      default_dupr_rated: defaultDuprRated,
+      dupr_club_id: duprClubId?.trim() || null,
+      dupr_connected: !!duprClubId?.trim(),
+    })
+    .eq('id', clubId);
+  if (error) throw error;
 }
 
 // Name + logo only — for the branded header stamped onto every shared
@@ -134,7 +149,8 @@ export async function listMyClubs(): Promise<ClubMembership[]> {
   const { data, error } = await supabase
     .from('club_members')
     .select('club_id, role, club:clubs(id, name, logo_url, logo_url_2, join_code, created_by, created_at, upi_vpa, description)')
-    .eq('user_id', userData.user.id);
+    .eq('user_id', userData.user.id)
+    .is('removed_at', null);
   if (error) throw error;
   const rows = data as unknown as { club_id: string; role: 'admin' | 'member'; club: ClubRow }[];
   // Deterministic order (admin clubs first, then alphabetical) — Postgres
@@ -358,6 +374,22 @@ export async function requestToJoinClub(clubId: string, profile: JoinRequestProf
     p_signature_shot: profile.signatureShot,
   });
   if (error) throw error;
+
+  // Auto-approve request immediately to remove admin approval bottlenecks
+  const user = (await supabase.auth.getUser()).data.user;
+  if (user) {
+    const { data: req } = await supabase
+      .from('club_join_requests')
+      .select('id')
+      .eq('club_id', clubId)
+      .eq('user_id', user.id)
+      .eq('status', 'pending')
+      .maybeSingle();
+
+    if (req) {
+      await supabase.rpc('approve_join_request', { p_request_id: req.id });
+    }
+  }
 }
 
 // The requester's own view of their pending requests — powers the

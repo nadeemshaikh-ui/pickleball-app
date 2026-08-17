@@ -4,37 +4,35 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home } from 'lucide-react';
 
-// format is optional so every existing call site (most formats don't need
-// it) keeps working unchanged — only team_championship actually diverges.
-// Without this, Leaderboard/Analytics/Results always pointed at the
-// generic per-player pages (a "podium" of individual players) even for a
-// Team Championship session, which has its own team-standings pages —
-// real bug, found via live feedback: a captain scoring rounds through
-// /play (which Team Championship reuses, no dedicated scoring screen)
-// would tap "Results" here and land on the wrong page entirely.
 export default function SessionNav({ sessionId, format, clubId }: { sessionId: string; format?: string; clubId?: string }) {
   const pathname = usePathname();
 
+  const isMwMavericks = sessionId === 'mw_mavericks_season_2_2026';
   const isTeamChampionship = format === 'team_championship';
-  const tabs = [
-    { href: `/session/${sessionId}/schedule`, label: 'Schedule' },
-    { href: `/session/${sessionId}/play`, label: 'Score' },
-    { href: `/session/${sessionId}/${isTeamChampionship ? 'team-championship/results' : 'leaderboard'}`, label: 'Leaderboard' },
-    { href: `/session/${sessionId}/${isTeamChampionship ? 'team-championship/analytics' : 'analytics'}`, label: 'Analytics' },
-    { href: `/session/${sessionId}/${isTeamChampionship ? 'team-championship/results' : 'results'}`, label: 'Results' },
-  ];
+
+  const tabs = isMwMavericks
+    ? [
+        { href: `/tournaments/mw-mavericks`, label: 'Master Hub' },
+        { href: `/tournaments/mw-mavericks`, label: 'Live Scoring' },
+        { href: `/tournaments/mw-mavericks`, label: 'Standings' },
+        { href: `/tournaments/mw-mavericks`, label: 'Analytics' },
+      ]
+    : [
+        { href: `/session/${sessionId}/schedule`, label: 'Schedule' },
+        { href: `/session/${sessionId}/${isTeamChampionship ? 'team-championship/stage/1' : 'play'}`, label: 'Score' },
+        { href: `/session/${sessionId}/${isTeamChampionship ? 'team-championship/results' : 'leaderboard'}`, label: 'Leaderboard' },
+        { href: `/session/${sessionId}/${isTeamChampionship ? 'team-championship/analytics' : 'analytics'}`, label: 'Analytics' },
+        { href: `/session/${sessionId}/${isTeamChampionship ? 'team-championship/results' : 'results'}`, label: 'Results' },
+      ];
 
   return (
     <nav className="session-nav" aria-label="Session navigation">
-      {/* Only exit from inside a session — GlobalNav is hidden on /session/* routes.
-          Goes to the club's own dashboard (members, stats, awards) rather than the
-          generic app root, once the session's club is known. */}
       <Link href={clubId ? `/clubs/${clubId}` : '/'} aria-label="Club Home" title="Club Home">
         <Home size={16} />
       </Link>
       {tabs.map(tab => (
         <Link
-          key={tab.href}
+          key={tab.href + tab.label}
           href={tab.href}
           className={pathname === tab.href ? 'active' : ''}
           aria-current={pathname === tab.href ? 'page' : undefined}

@@ -23,7 +23,7 @@ export default function GlobalNav() {
   const { user, currentClubId, loading } = useCurrentClub();
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  if (loading || !user || !currentClubId) return null;
+  if (loading || !user) return null;
   if (HIDDEN_PREFIXES.some(p => pathname.startsWith(p))) return null;
 
   const sideTabs = [

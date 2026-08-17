@@ -14,6 +14,7 @@ import { WhatsAppIcon } from '@/components/icons';
 import ShareBrandedHeader from '@/components/ShareBrandedHeader';
 import SquadVersusHero from '@/components/SquadVersusHero';
 import PointsStandingsTable from '@/components/PointsStandingsTable';
+import TournamentDeepAnalytics from '@/components/TournamentDeepAnalytics';
 import { preloadPlayerPhotos } from '@/lib/playerPhotos';
 
 const POLL_INTERVAL_MS = 4000;
@@ -21,6 +22,7 @@ const POLL_INTERVAL_MS = 4000;
 export default function LeaderboardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [session, setSession] = useState<SessionRow | null>(null);
+  const [dbRounds, setDbRounds] = useState<any[]>([]);
   const [leaderboard, setLeaderboard] = useState<PlayerStats[]>([]);
   const [squadTotals, setSquadTotals] = useState<Map<string, number> | null>(null);
   const [gamesCompleted, setGamesCompleted] = useState(0);
@@ -36,6 +38,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
       const [s, rounds] = await Promise.all([getSession(id), getRounds(id), preloadPlayerPhotos()]);
       if (cancelled) return;
       setSession(s);
+      setDbRounds(rounds);
       setLeaderboard(computeLeaderboard(rounds));
       setGamesTotal(rounds.length);
       setGamesCompleted(rounds.filter(r => r.score_a !== null).length);
@@ -173,6 +176,8 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
         <div style={{ marginTop: 24 }}>
           <PointsStandingsTable stats={leaderboard} />
         </div>
+
+        <TournamentDeepAnalytics dbRounds={dbRounds} players={session?.players || []} />
         </div>
       </main>
       <SessionNav sessionId={id} clubId={session?.club_id} />

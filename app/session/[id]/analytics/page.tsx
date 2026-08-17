@@ -21,6 +21,7 @@ import SessionNav from '@/components/SessionNav';
 import NewSessionLink from '@/components/NewSessionLink';
 import SessionDate from '@/components/SessionDate';
 import GroupHeader from '@/components/GroupHeader';
+import TournamentDeepAnalytics from '@/components/TournamentDeepAnalytics';
 import {
   TargetIcon,
   FlameIcon,
@@ -245,6 +246,8 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
         {rounds.length === 0 && (
           <p style={{ color: 'var(--muted)', fontSize: 14 }}>No games scored yet — analytics fill in as you play.</p>
         )}
+
+        <TournamentDeepAnalytics dbRounds={rounds} players={session?.players || []} />
         </div>
       </main>
       <SessionNav sessionId={id} clubId={session?.club_id} />

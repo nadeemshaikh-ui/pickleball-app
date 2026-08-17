@@ -25,7 +25,7 @@ export async function processAiQuery(query: string, clubId?: string | null): Pro
       }
       const rounds = await getRounds(active.id);
       const scored = rounds.filter(r => r.score_a !== null && r.score_b !== null).length;
-      return `🟢 Active Session Found: "${active.group_name ?? 'Club Session'}" (#${active.id})\n` +
+      return `Active Session Found: "${active.group_name ?? 'Club Session'}" (#${active.id})\n` +
         `• Format: ${active.format.toUpperCase()}\n` +
         `• Players: ${active.players.length} | Rounds Scored: ${scored}/${rounds.length}\n` +
         `• Courts: ${active.court_labels.join(', ')}\n\n` +
@@ -42,24 +42,24 @@ export async function processAiQuery(query: string, clubId?: string | null): Pro
       const top3 = leaderboard.slice(0, 5).map((p, i) => 
         `${i + 1}. ${p.name} — ${p.wins}W-${p.losses}L (${(p.winPct * 100).toFixed(0)}% Win Rate) | PD: ${p.pointsFor - p.pointsAgainst > 0 ? '+' : ''}${p.pointsFor - p.pointsAgainst}`
       ).join('\n');
-      return `🏆 Club Leaderboard Standings:\n\n${top3}\n\nTap 'Stats' in the main menu for complete historical stats!`;
+      return `Club Leaderboard Standings:\n\n${top3}\n\nTap 'Stats' in the main menu for complete historical stats!`;
     }
 
     // 3. Rules & Kitchen Faults
     if (q.includes('kitchen') || q.includes('rule') || q.includes('double bounce') || q.includes('serve') || q.includes('scoring')) {
       if (q.includes('kitchen')) {
-        return "🏓 Kitchen (Non-Volley Zone) Rules:\n" +
+        return "Kitchen (Non-Volley Zone) Rules:\n" +
           "• You cannot volley (hit the ball in the air before it bounces) while standing inside the 7-foot kitchen zone or touching the kitchen line.\n" +
           "• Your momentum cannot carry you into the kitchen after hitting a volley.\n" +
           "• You CAN enter the kitchen anytime if the ball bounces inside it first!";
       }
       if (q.includes('double bounce')) {
-        return "🎾 Two-Bounce (Double Bounce) Rule:\n" +
+        return "Two-Bounce (Double Bounce) Rule:\n" +
           "• When the ball is served, the receiving team MUST let it bounce before returning.\n" +
           "• The serving team MUST also let the return bounce before hitting it.\n" +
           "• After two bounces (one on each side), both teams can either volley or play off the bounce!";
       }
-      return "🏓 Pickleball Basic Rules:\n" +
+      return "Pickleball Basic Rules:\n" +
         "• Serve underhand into the diagonal court.\n" +
         "• Obey the Two-Bounce Rule on serves and returns.\n" +
         "• Stay out of the Kitchen when volleying!\n" +
@@ -68,7 +68,7 @@ export async function processAiQuery(query: string, clubId?: string | null): Pro
 
     // 4. Lineup & Court Rebalancing Suggestion
     if (q.includes('rebalance') || q.includes('lineup') || q.includes('pair') || q.includes('how to split') || q.includes('courts')) {
-      return "💡 Court Setup & Lineup Recommendation:\n" +
+      return "Court Setup & Lineup Recommendation:\n" +
         "• For 4 Players: 1 Court (Scramble / 6 Rounds).\n" +
         "• For 6 Players: 1 Court (4 active, 2 sitting out per round, 9 Rounds total).\n" +
         "• For 8 Players: 2 Courts (4 per court, fair rotational partner shuffle).\n" +
@@ -83,17 +83,17 @@ export async function processAiQuery(query: string, clubId?: string | null): Pro
         const rounds = await getRounds(active.id);
         const stats = computeLeaderboard(rounds);
         const top = stats[0];
-        return `🔥 *PICKLEBALL RECAP — ${active.group_name ?? 'CLUB SESSION'}* 🔥\n\n` +
-          `🏆 Top Performer: ${top ? top.name : 'TBD'} (${top ? top.wins : 0} Wins)\n` +
-          `📊 Format: ${active.format.toUpperCase()}\n` +
-          `🎾 Total Games Completed: ${rounds.filter(r => r.score_a !== null).length}\n\n` +
-          `Great games tonight everyone! 🏓⚡`;
+        return `*PICKLEBALL RECAP — ${active.group_name ?? 'CLUB SESSION'}*\n\n` +
+          `Top Performer: ${top ? top.name : 'TBD'} (${top ? top.wins : 0} Wins)\n` +
+          `Format: ${active.format.toUpperCase()}\n` +
+          `Total Games Completed: ${rounds.filter(r => r.score_a !== null).length}\n\n` +
+          `Great games tonight everyone!`;
       }
       return "No recent completed session found to generate a recap for. Start a session to log scores!";
     }
 
     // General AI Companion response
-    return `🤖 Atelier AI Assistant:\n` +
+    return `DinkBot 3000 Assistant:\n` +
       `I can help you with:\n` +
       `• Checking active session scores & standings\n` +
       `• Querying club leaderboards & player stats\n` +

@@ -253,8 +253,13 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
   if (session.format !== 'team_championship' || !session.squads || !session.stage_config) {
     return <main className="page"><p>This session isn&apos;t a Team Championship, or is missing its team/stage setup.</p></main>;
   }
+  if (id === 'mw_mavericks_season_2_2026') {
+    router.push('/tournaments/mw-mavericks');
+    return <main className="page"><p>Redirecting to MW Mavericks Master Hub…</p></main>;
+  }
   if (!Number.isFinite(stageIndex) || stageIndex < 1 || stageIndex > session.stage_config.length) {
-    return <main className="page"><p>Invalid stage.</p></main>;
+    router.push(`/session/${id}/team-championship/stage/1`);
+    return <main className="page"><p>Redirecting to Stage 1…</p></main>;
   }
 
   const teams = session.squads;

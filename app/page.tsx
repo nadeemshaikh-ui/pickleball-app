@@ -4,45 +4,66 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCurrentClub } from '@/lib/useCurrentClub';
-import { hasCompletedOnboarding } from '@/lib/onboarding';
 import { getOwnPlayer } from '@/lib/players';
 import { getLatestActiveSession, deleteSession, type SessionRow } from '@/lib/db';
-import { fetchLifetimeLeaderboard, fetchStreaks, type LifetimePlayerStats } from '@/lib/leagueStats';
-import { fetchStreakRecords } from '@/lib/streakRecords';
-import { fetchPendingChallenges } from '@/lib/challenges';
-import {
-  listPendingJoinRequests,
-  listMyPendingJoinRequests,
-  listMyPendingClubCreationRequests,
-  checkAndExecutePendingJoinCode,
-  type JoinRequestRow,
-  type ClubRow,
-  type ClubCreationRequestRow,
-} from '@/lib/clubs';
+import { fetchLifetimeLeaderboard, type LifetimePlayerStats } from '@/lib/leagueStats';
 import { computeBadges, buildBadgeInput, type Badge } from '@/lib/badges';
-import SignInGate from '@/components/SignInGate';
-import { Flame, Crown, Zap, Bell, Trash2 } from 'lucide-react';
-import BadgeMedallion from '@/components/BadgeMedallion';
+import { listMyClubs, requestToJoinClub, type ClubMembership } from '@/lib/clubs';
+import AiScheduleImporter from '@/components/AiScheduleImporter';
+import { Play, Sparkles, Trophy, Zap, ShieldCheck, Plus, Users, ChevronRight, RefreshCw, BarChart2 } from 'lucide-react';
 
 export default function HomePage() {
   const router = useRouter();
-  const { user, currentClub, currentClubId, setCurrentClubId, isCurrentClubAdmin, loading: clubLoading } = useCurrentClub();
-  const [checkingOnboarding, setCheckingOnboarding] = useState(true);
-  const [streak, setStreak] = useState(0);
-  const [isStreakKing, setIsStreakKing] = useState(false);
-  const [pendingChallengeCount, setPendingChallengeCount] = useState(0);
-  const [pendingJoinRequests, setPendingJoinRequests] = useState<JoinRequestRow[]>([]);
-  const [myPendingRequests, setMyPendingRequests] = useState<(JoinRequestRow & { club: ClubRow })[]>([]);
-  const [myPendingClubCreationRequests, setMyPendingClubCreationRequests] = useState<ClubCreationRequestRow[]>([]);
-  const [dashboardLoading, setDashboardLoading] = useState(true);
+  const { user, currentClub, currentClubId, setCurrentClubId, loading: clubLoading } = useCurrentClub();
+  
   const [ownStats, setOwnStats] = useState<LifetimePlayerStats | null>(null);
   const [rank, setRank] = useState<number | null>(null);
   const [badges, setBadges] = useState<Badge[]>([]);
   const [activeSession, setActiveSession] = useState<SessionRow | null>(null);
+  const [myClubs, setMyClubs] = useState<ClubMembership[]>([]);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [showAiModal, setShowAiModal] = useState(false);
 
+  // Load My Clubs
+  useEffect(() => {
+    listMyClubs().then(setMyClubs).catch(() => setMyClubs([]));
+  }, [user]);
+
+  // Load active session
   useEffect(() => {
     getLatestActiveSession(currentClubId).then(setActiveSession).catch(() => setActiveSession(null));
   }, [currentClubId]);
+
+  // Load player stats & badges
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setDashboardLoading(true);
+      try {
+        if (currentClubId && user) {
+          const own = await getOwnPlayer(currentClubId, user.id);
+          if (cancelled) return;
+          if (own) {
+            const leaderboard = await fetchLifetimeLeaderboard(currentClubId);
+            if (cancelled) return;
+            const idx = leaderboard.findIndex(p => p.name.toLowerCase() === own.name.toLowerCase());
+            setRank(idx >= 0 ? idx + 1 : null);
+            const foundStats = idx >= 0 ? leaderboard[idx] : null;
+            setOwnStats(foundStats);
+            const input = await buildBadgeInput(currentClubId, own.name, foundStats?.gamesPlayed || 0, own.elo_rating || 1200);
+            if (cancelled) return;
+            setBadges(computeBadges(input));
+          }
+        }
+      } catch (err) {
+        console.error('Error loading dashboard stats:', err);
+      } finally {
+        if (!cancelled) setDashboardLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [user, currentClubId]);
 
   async function handleAbandonSession() {
     if (!activeSession) return;
@@ -55,245 +76,294 @@ export default function HomePage() {
     }
   }
 
-  useEffect(() => {
-    if (clubLoading) return;
-    if (!user) {
-      setCheckingOnboarding(false);
-      return;
-    }
-    async function checkAuth() {
-      const joinedClub = await checkAndExecutePendingJoinCode(user!.id);
-      if (joinedClub) {
-        setCurrentClubId(joinedClub.id);
-        router.replace(`/clubs/${joinedClub.id}`);
-        return;
-      }
-      const done = await hasCompletedOnboarding(user!.id);
-      if (!done) {
-        router.replace('/onboarding');
-        return;
-      }
-      setCheckingOnboarding(false);
-    }
-    checkAuth();
-  }, [user, clubLoading, router, setCurrentClubId]);
-
-  useEffect(() => {
-    if (checkingOnboarding || !user || currentClubId) return;
-    listMyPendingJoinRequests().then(setMyPendingRequests).catch(() => setMyPendingRequests([]));
-    listMyPendingClubCreationRequests().then(setMyPendingClubCreationRequests).catch(() => setMyPendingClubCreationRequests([]));
-  }, [checkingOnboarding, user, currentClubId]);
-
-  useEffect(() => {
-    if (checkingOnboarding || !user || !currentClubId) {
-      setDashboardLoading(false);
-      return;
-    }
-    // ClubSwitcher (in the global header) can change currentClubId without
-    // unmounting this page — without a staleness guard, a slow response for
-    // the club the user just switched AWAY from could resolve after the
-    // effect re-ran, see own=null for that stale club, and wrongly
-    // force-navigate a user looking at a perfectly valid club.
-    let cancelled = false;
-    async function load() {
-      setDashboardLoading(true);
-      try {
-        const own = await getOwnPlayer(currentClubId!, user!.id);
-        if (cancelled) return;
-        if (!own) {
-          // Member with no player row yet — pre-existing account from before
-          // onboarding shipped, or any other edge case that slipped past it.
-          // getInitialStep(hasClub=true) routes straight to ProfileStep, and
-          // upsertOwnPlayer is idempotent, so this is a safe one-way fallback.
-          router.replace('/onboarding');
-          return;
-        }
-        const [streaks, records, challenges, leaderboard] = await Promise.all([
-          fetchStreaks(currentClubId!),
-          fetchStreakRecords(currentClubId!),
-          fetchPendingChallenges(currentClubId!, own?.name ?? ''),
-          fetchLifetimeLeaderboard(currentClubId!),
-        ]);
-        if (cancelled) return;
-        if (own) {
-          setStreak(streaks.get(own.name) ?? 0);
-          const winRecordHolder = records.find(r => r.streakType === 'win')?.holderName;
-          setIsStreakKing(winRecordHolder === own.name);
-
-          const statsRow = leaderboard.find(p => p.name === own.name) ?? null;
-          setOwnStats(statsRow);
-          const rankedIndex = leaderboard.filter(p => !p.provisional).findIndex(p => p.name === own.name);
-          setRank(rankedIndex >= 0 ? rankedIndex + 1 : null);
-
-          buildBadgeInput(currentClubId!, own.name, own.games_played, own.elo_rating).then(input => setBadges(computeBadges(input)));
-        }
-        setPendingChallengeCount(challenges.length);
-        if (isCurrentClubAdmin) {
-          setPendingJoinRequests(await listPendingJoinRequests(currentClubId!));
-        } else {
-          setPendingJoinRequests([]);
-        }
-      } finally {
-        if (!cancelled) setDashboardLoading(false);
-      }
-    }
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [checkingOnboarding, user, currentClubId, isCurrentClubAdmin]);
-
-  if (clubLoading || checkingOnboarding) return <main className="page"><p>Loading…</p></main>;
-  if (!user) return <SignInGate message="Sign in to plan sessions and track your league stats." />;
+  const winRate = ownStats && ownStats.gamesPlayed > 0 ? Math.round((ownStats.wins / ownStats.gamesPlayed) * 100) : 0;
+  const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || (user?.email ? user.email.split('@')[0] : 'Pickleball Player');
 
   return (
-    <main className="page">
-      <Link href={currentClubId ? `/clubs/${currentClubId}` : '/clubs'} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, color: 'inherit', textDecoration: 'none' }}>
-        {currentClub?.logo_url && (
-          <img src={currentClub.logo_url} alt="" width={36} height={36} style={{ borderRadius: '50%', objectFit: 'cover' }} />
-        )}
-        <div>
-          <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-            {currentClub?.name ?? 'Pickleball Session'}
-            {isCurrentClubAdmin && (
-              <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--primary)', border: '1.5px solid var(--primary)', borderRadius: 4, padding: '2px 6px' }}>
-                Admin
-              </span>
-            )}
-          </h1>
-        </div>
-      </Link>
+    <main className="page" style={{ paddingBottom: 80, background: '#f8fafc' }}>
+      
+      {/* Hero Welcome Card */}
+      <div style={{ background: '#ffffff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 20, marginBottom: 20, boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: '#2563eb', textTransform: 'uppercase', letterSpacing: 1.1 }}>
+              {currentClub ? currentClub.name : 'Personal Player Dashboard'}
+            </div>
+            <h1 style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', margin: '4px 0 0 0' }}>
+              Welcome back, {userName}!
+            </h1>
+          </div>
 
+          {currentClub && rank && (
+            <div style={{ background: '#fef3c7', border: '1px solid #fde68a', color: '#d97706', padding: '6px 14px', borderRadius: 10, fontSize: 13, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Trophy size={16} /> Club Rank #{rank}
+            </div>
+          )}
+        </div>
+
+        {/* Player Lifetime Stats Bar */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 12, marginTop: 16, paddingTop: 16, borderTop: '1px solid #f1f5f9' }}>
+          <div style={{ background: '#fafafa', padding: 12, borderRadius: 10, textAlign: 'center', border: '1px solid #f1f5f9' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Elo Rating</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#0f172a', marginTop: 2 }}>{ownStats ? Math.round(ownStats.wilsonScore * 1000) : 1200}</div>
+          </div>
+          <div style={{ background: '#fafafa', padding: 12, borderRadius: 10, textAlign: 'center', border: '1px solid #f1f5f9' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Record</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#0f172a', marginTop: 2 }}>{ownStats ? `${ownStats.wins}W - ${ownStats.losses}L` : '0W - 0L'}</div>
+          </div>
+          <div style={{ background: '#fafafa', padding: 12, borderRadius: 10, textAlign: 'center', border: '1px solid #f1f5f9' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Win Rate</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#16a34a', marginTop: 2 }}>{winRate}%</div>
+          </div>
+          <div style={{ background: '#fafafa', padding: 12, borderRadius: 10, textAlign: 'center', border: '1px solid #f1f5f9' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Badges</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#d97706', marginTop: 2 }}>{badges.length} Earned</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Active Session Resume Banner */}
       {activeSession && (
-        <div className="card" style={{ marginBottom: 16, background: 'linear-gradient(135deg, rgba(0, 180, 216, 0.08) 0%, rgba(0, 119, 182, 0.12) 100%)', border: '1.5px solid var(--primary)', borderRadius: 16, padding: '16px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px #22c55e' }} />
-              <span style={{ fontWeight: 800, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--primary)' }}>
-                Ongoing Session Active
-              </span>
+        <div style={{ background: '#eff6ff', border: '1.5px solid #bfdbfe', borderRadius: 14, padding: 16, marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ background: '#2563eb', color: '#ffffff', width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Zap size={20} />
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'monospace', background: 'var(--card)', padding: '2px 8px', borderRadius: 6, border: '1px solid var(--border)' }}>
-                #{activeSession.id}
-              </span>
-              <button
-                onClick={handleAbandonSession}
-                title="Abandon & Delete Session"
-                style={{
-                  background: 'rgba(239, 68, 68, 0.15)',
-                  color: '#ef4444',
-                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                  borderRadius: 6,
-                  padding: '3px 8px',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  cursor: 'pointer',
-                }}
-              >
-                <Trash2 size={12} /> Abandon
-              </button>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#2563eb', textTransform: 'uppercase', letterSpacing: 0.5 }}>Active Live Session</div>
+              <div style={{ fontSize: 15, fontWeight: 900, color: '#0f172a' }}>{activeSession.group_name || 'Club Match Play'}</div>
             </div>
           </div>
 
-          <h3 style={{ margin: '0 0 6px 0', fontSize: 18, fontWeight: 800 }}>
-            {activeSession.group_name ?? (activeSession.club_id ? 'Club Session' : 'Guest Event')}
-          </h3>
-
-          <p style={{ margin: '0 0 14px 0', fontSize: 13, color: 'var(--muted)' }}>
-            {activeSession.players.length} Players · {activeSession.round_count} Rounds · Courts {activeSession.court_labels.join(' & ')}
-          </p>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-            <Link href={`/session/${activeSession.id}/schedule`} className="btn-primary" style={{ padding: '8px 12px', fontSize: 13, textAlign: 'center' }}>
-              📅 Schedule
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Link
+              href={`/session/${activeSession.id}/play`}
+              style={{
+                background: '#2563eb',
+                color: '#ffffff',
+                padding: '8px 16px',
+                borderRadius: 8,
+                fontWeight: 800,
+                fontSize: 13,
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6
+              }}
+            >
+              <Play size={14} /> Resume
             </Link>
-            <Link href={`/session/${activeSession.id}/play`} className="btn-primary" style={{ padding: '8px 12px', fontSize: 13, textAlign: 'center', background: 'var(--dark)' }}>
-              🎾 Score
-            </Link>
-            <Link href={`/session/${activeSession.id}/leaderboard`} className="btn-primary" style={{ padding: '8px 12px', fontSize: 13, textAlign: 'center', background: 'var(--card)', color: 'var(--text)', border: '1px solid var(--border)' }}>
-              🏆 Ranks
-            </Link>
+            <button
+              onClick={handleAbandonSession}
+              style={{
+                background: '#fef2f2',
+                color: '#dc2626',
+                border: '1px solid #fecaca',
+                padding: '8px 12px',
+                borderRadius: 8,
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: 'pointer'
+              }}
+            >
+              Abandon
+            </button>
           </div>
         </div>
       )}
 
-      {!currentClubId && (
-        <div className="card" style={{ marginBottom: 12 }}>
-          {myPendingRequests.length > 0 || myPendingClubCreationRequests.length > 0 ? (
-            <>
-              {myPendingRequests.map(r => (
-                <p key={r.id} style={{ margin: 0 }}>
-                  <Bell size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                  Your request to join <strong>{r.club.name}</strong> is pending — we&apos;ll let you in once the admin approves you.
-                </p>
-              ))}
-              {myPendingClubCreationRequests.map(r => (
-                <p key={r.id} style={{ margin: 0 }}>
-                  <Bell size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                  Your request to create <strong>{r.requested_name}</strong> is pending super-admin review.
-                </p>
-              ))}
-            </>
-          ) : (
-            <p style={{ margin: 0, color: 'var(--muted)' }}>
-              You&apos;re not in a club yet. <Link href="/clubs">Create or join one</Link> to start a session.
-            </p>
-          )}
-        </div>
-      )}
+      {/* Quick Play & Action Grid */}
+      <h2 style={{ fontSize: 16, fontWeight: 900, color: '#0f172a', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Zap size={18} style={{ color: '#2563eb' }} /> Quick Actions & Play Modes
+      </h2>
 
-      {!dashboardLoading && ownStats && (
-        <div className="card" style={{ marginBottom: 12 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-            <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Rank</div><div style={{ fontWeight: 800, fontSize: 20 }}>{rank ? `#${rank}` : '—'}</div></div>
-            <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Record</div><div style={{ fontWeight: 800, fontSize: 20 }}>{ownStats.wins}-{ownStats.losses}</div></div>
-            <div><div style={{ fontSize: 10, color: 'var(--muted)' }}>Streak</div><div style={{ fontWeight: 800, fontSize: 20, display: 'inline-flex', alignItems: 'center', gap: 3 }}>{streak > 0 ? <><Flame size={16} /> {streak}</> : '—'}{isStreakKing && <Crown size={16} />}</div></div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, marginBottom: 24 }}>
+        
+        {/* Instant Session Launch */}
+        <Link
+          href="/setup"
+          style={{
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: 14,
+            padding: 18,
+            textDecoration: 'none',
+            color: '#0f172a',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <div style={{ background: '#0f172a', color: '#ffffff', padding: 12, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Play size={22} />
           </div>
+          <div style={{ flex: 1 }}>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 900 }}>Start Club Session</h3>
+            <p style={{ margin: '2px 0 0 0', fontSize: 12, color: '#64748b' }}>Scramble, Squads, Fixed Pairs or King of Court</p>
+          </div>
+          <ChevronRight size={18} style={{ color: '#94a3b8' }} />
+        </Link>
 
-          {badges.length > 0 && (
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-              {badges.slice(0, 5).map(b => (
-                <BadgeMedallion key={b.id} badge={b} size={32} />
-              ))}
-              {badges.length > 5 && (
-                <Link href="/league/badges" style={{ fontSize: 11, color: 'var(--muted)' }}>+{badges.length - 5} more</Link>
-              )}
-            </div>
-          )}
+        {/* Dedicated Guest Mode Open Play Launcher */}
+        <Link
+          href="/setup?guest=true"
+          style={{
+            background: '#ffffff',
+            border: '1.5px solid #10b981',
+            borderRadius: 14,
+            padding: 18,
+            textDecoration: 'none',
+            color: '#0f172a',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+          }}
+        >
+          <div style={{ background: '#10b981', color: '#ffffff', padding: 12, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Users size={22} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#047857' }}>Guest Mode Open Play</h3>
+            <p style={{ margin: '2px 0 0 0', fontSize: 12, color: '#059669' }}>Host non-club matches with WhatsApp share & QR code</p>
+          </div>
+          <ChevronRight size={18} style={{ color: '#10b981' }} />
+        </Link>
 
-          <Link href="/league/stats" style={{ display: 'block', textAlign: 'right', fontSize: 12, color: 'var(--muted)', marginTop: 10 }}>
-            View full stats →
+        {/* AI Schedule & Rules Import */}
+        <div
+          onClick={() => setShowAiModal(true)}
+          style={{
+            background: '#ffffff',
+            border: '1.5px solid #93c5fd',
+            borderRadius: 14,
+            padding: 18,
+            cursor: 'pointer',
+            color: '#0f172a',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+          }}
+        >
+          <div style={{ background: '#2563eb', color: '#ffffff', padding: 12, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Sparkles size={22} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#1e40af' }}>AI Schedule Scanner</h3>
+            <p style={{ margin: '2px 0 0 0', fontSize: 12, color: '#3b82f6' }}>Upload PDF/image schedule & auto-create mode</p>
+          </div>
+          <ChevronRight size={18} style={{ color: '#2563eb' }} />
+        </div>
+
+        {/* League Standings & Analytics */}
+        <Link
+          href={currentClubId ? `/clubs/${currentClubId}` : '/league/stats'}
+          style={{
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: 14,
+            padding: 18,
+            textDecoration: 'none',
+            color: '#0f172a',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+          }}
+        >
+          <div style={{ background: '#d97706', color: '#ffffff', padding: 12, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <BarChart2 size={22} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 900 }}>Club Analytics & Leaderboard</h3>
+            <p style={{ margin: '2px 0 0 0', fontSize: 12, color: '#64748b' }}>H2H records, rankings, duo chemistry</p>
+          </div>
+          <ChevronRight size={18} style={{ color: '#94a3b8' }} />
+        </Link>
+      </div>
+
+      {/* My Clubs Section (Non-blocking) */}
+      <div style={{ background: '#ffffff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 20, marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 900, color: '#0f172a', margin: 0, textTransform: 'uppercase', letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Users size={18} /> My Pickleball Clubs ({myClubs.length})
+          </h2>
+
+          <Link
+            href="/clubs/join"
+            style={{
+              fontSize: 12,
+              fontWeight: 800,
+              color: '#2563eb',
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4
+            }}
+          >
+            <Plus size={14} /> Join / Create Club
           </Link>
         </div>
-      )}
 
-      {!dashboardLoading && !ownStats && currentClubId && (
-        <div className="card" style={{ marginBottom: 12 }}>
-          <p style={{ margin: 0, fontWeight: 700 }}>You&apos;re in!</p>
-          <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: 13 }}>
-            Play your first session to start tracking stats, streaks, and badges.
-          </p>
-          <Link href="/setup" className="btn-primary" style={{ display: 'inline-block', marginTop: 10 }}>
-            Start a session
-          </Link>
-        </div>
-      )}
+        {myClubs.length > 0 ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
+            {myClubs.map(m => {
+              const isActive = m.club_id === currentClubId;
+              return (
+                <div
+                  key={m.club_id}
+                  onClick={() => {
+                    setCurrentClubId(m.club_id);
+                    router.push(`/clubs/${m.club_id}`);
+                  }}
+                  style={{
+                    padding: 12,
+                    borderRadius: 10,
+                    border: isActive ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                    background: isActive ? '#eff6ff' : '#fafafa',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: 13, color: isActive ? '#1e40af' : '#0f172a' }}>{m.club.name}</div>
+                    <div style={{ fontSize: 11, color: '#64748b', textTransform: 'capitalize' }}>{m.role} · View Club Page →</div>
+                  </div>
+                  {isActive && <ShieldCheck size={16} style={{ color: '#2563eb' }} />}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div style={{ padding: 16, textAlign: 'center', background: '#fafafa', borderRadius: 10, border: '1px dashed #cbd5e1' }}>
+            <p style={{ margin: '0 0 8px 0', fontSize: 13, color: '#64748b' }}>You haven't joined a club yet. Join one to sync rankings with friends!</p>
+            <Link
+              href="/clubs/join"
+              style={{
+                background: '#0f172a',
+                color: '#ffffff',
+                padding: '6px 14px',
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 800,
+                textDecoration: 'none',
+                display: 'inline-block'
+              }}
+            >
+              Browse & Join Clubs
+            </Link>
+          </div>
+        )}
+      </div>
 
-      {pendingChallengeCount > 0 && (
-        <Link href="/league/h2h" className="card" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, color: 'var(--text-accent, inherit)' }}>
-          <Zap size={15} /> {pendingChallengeCount} pending challenge{pendingChallengeCount === 1 ? '' : 's'} — respond
-        </Link>
-      )}
+      {/* AI Schedule Modal */}
+      <AiScheduleImporter isOpen={showAiModal} onClose={() => setShowAiModal(false)} />
 
-      {isCurrentClubAdmin && pendingJoinRequests.length > 0 && currentClubId && (
-        <Link href={`/clubs/${currentClubId}/settings`} className="card" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, color: 'var(--text-accent, inherit)' }}>
-          <Bell size={15} /> {pendingJoinRequests.length} pending join request{pendingJoinRequests.length === 1 ? '' : 's'} — review
-        </Link>
-      )}
     </main>
   );
 }

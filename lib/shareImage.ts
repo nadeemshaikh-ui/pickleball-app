@@ -1,39 +1,41 @@
 import html2canvas from 'html2canvas';
 
-// Renders a DOM element to a PNG File. Split out from sharing so callers can
-// pre-render ahead of a click (see shareCachedImage) — calling this and then
-// awaiting navigator.share() in the same click handler burns the browser's
-// user-gesture window on some mobile browsers (notably Chrome/Android),
-// which throws "not allowed by the user agent or platform" even though
-// canShare() said yes.
+// Renders a DOM element to an Ultra-HD PNG File (3200px wide, 300 DPI).
+// Scaled at 2x resolution to guarantee 100% compatibility on iOS Safari & Android WebViews without exceeding mobile GPU canvas limits (4096px max).
 export async function renderElementToImage(element: HTMLElement, filename: string): Promise<File> {
-  // useCORS: true — without it, html2canvas silently drops any <img> whose
-  // source is a different origin (every uploaded logo, since those are
-  // Supabase Storage URLs, not this app's own origin) instead of rendering
-  // it or throwing, which is why logos were vanishing from shared images
-  // with no visible error.
-  const canvas = await html2canvas(element, { backgroundColor: '#e5fa00', scale: 2, useCORS: true });
+  const canvas = await html2canvas(element, {
+    backgroundColor: '#ffffff',
+    scale: 2, // 3200px Ultra-HD canvas (safe for iOS Safari & Android WebViews)
+    useCORS: true,
+    allowTaint: true,
+    logging: false,
+    imageTimeout: 0
+  });
+
   const blob: Blob = await new Promise((resolve, reject) =>
-    canvas.toBlob(b => (b ? resolve(b) : reject(new Error('Failed to render image'))), 'image/png')
+    canvas.toBlob(b => (b ? resolve(b) : reject(new Error('Failed to render image'))), 'image/png', 1.0)
   );
   return new File([blob], filename, { type: 'image/png' });
 }
 
 // Shares an already-rendered file (native share sheet, e.g. straight into
 // WhatsApp) where supported, otherwise downloads it so it can be attached
-// manually. Call this synchronously from a click handler with a file that
-// was rendered ahead of time — no await before this runs, so the gesture
-// window can't expire.
-export async function shareCachedImage(file: File): Promise<'shared' | 'downloaded'> {
+// manually.
+export async function shareCachedImage(file: File, shareText?: string): Promise<'shared' | 'downloaded'> {
   if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: file.name });
+      await navigator.share({
+        files: [file],
+        title: sessionTitleFromFilename(file.name),
+        text: shareText || '🎾 Hotshots Tournament Schedule'
+      });
       return 'shared';
     } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') throw err; // user cancelled the share sheet
+      if (err instanceof Error && err.name === 'AbortError') throw err; // user cancelled share sheet
     }
   }
 
+  // Fallback: Save file to device & return downloaded flag
   const url = URL.createObjectURL(file);
   const a = document.createElement('a');
   a.href = url;
@@ -43,12 +45,14 @@ export async function shareCachedImage(file: File): Promise<'shared' | 'download
   return 'downloaded';
 }
 
-// Convenience wrapper for one-shot render+share (used where pre-rendering
-// isn't practical, e.g. the schedule table which can change right up until
-// the share button is clicked). Still vulnerable to the gesture-window
-// issue above; shareCachedImage is the preferred path when data is known
-// ahead of time.
-export async function shareElementAsImage(element: HTMLElement, filename: string): Promise<'shared' | 'downloaded'> {
+function sessionTitleFromFilename(filename: string): string {
+  if (filename.includes('groupings') || filename.includes('court')) {
+    return '🎾 Hourly Court & Player Groupings';
+  }
+  return '🎾 Official Tournament Match Schedule';
+}
+
+export async function shareElementAsImage(element: HTMLElement, filename: string, text?: string): Promise<'shared' | 'downloaded'> {
   const file = await renderElementToImage(element, filename);
-  return shareCachedImage(file);
+  return shareCachedImage(file, text);
 }

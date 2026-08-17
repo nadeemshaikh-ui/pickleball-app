@@ -151,6 +151,8 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
       setJoinRequests(prev => prev.filter(r => r.id !== request.id));
       if (decision === 'approved') {
         const [memberRows, playerRows] = await Promise.all([listClubMembers(id), listPlayers(id)]);
+        setMembers(memberRows.filter(m => !m.removed_at));
+        setPlayersByUserId(new Map(playerRows.filter(p => p.user_id).map(p => [p.user_id as string, p])));
       }
     } catch (e) {
       setJoinRequestError(e instanceof Error ? e.message : 'Failed to resolve request.');
@@ -237,6 +239,110 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
       <div style={{ marginBottom: 12 }}>
         <ShareClubInviteButton clubName={club.name} joinCode={club.join_code} fullWidth />
       </div>
+
+      {/* DEDICATED COMBINED CLUB ANALYTICS BANNER */}
+      <div className="card" style={{ marginBottom: 16, border: '2px solid #0f172a', background: '#0f172a', color: '#ffffff', borderRadius: 16, padding: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <span style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1.2, color: '#e5fa00', background: 'rgba(229,250,0,0.1)', padding: '3px 8px', borderRadius: 4 }}>
+              DEDICATED CLUB ANALYTICS & PLAYER PERFORMANCE HUB
+            </span>
+            <h2 style={{ margin: '6px 0 0 0', fontSize: 20, fontWeight: 900, color: '#ffffff', display: 'flex', alignItems: 'center', gap: 8 }}>
+              📊 Combined Tournament Analytics
+            </h2>
+            <p style={{ margin: '4px 0 0 0', fontSize: 13, color: '#94a3b8', fontWeight: 600 }}>
+              Deep stats for all 139 matches across both tournaments: Player Self-Audit, Multi-Select Player Filter, Duo Synergy & Nemesis H2H.
+            </p>
+          </div>
+          <Link
+            href={`/clubs/${id}/analytics`}
+            className="btn-primary"
+            style={{ padding: '10px 18px', fontSize: 14, fontWeight: 900, textDecoration: 'none', background: '#e5fa00', color: '#0f172a', borderRadius: 10 }}
+          >
+            Open Analytics Page →
+          </Link>
+        </div>
+      </div>
+
+      {/* Active Tournament & Running Sessions Banner */}
+      {(() => {
+        const inProgress = sessions.filter(s => s.status === 'in_progress');
+        const isPickleboysClub = club.id === 'a99a150f-7bb8-4b4a-ab86-90f945dcbf36' || club.name.toLowerCase().replace(/[^a-z]/g, '').includes('pickleboys');
+        if (inProgress.length === 0 && !isPickleboysClub) return null;
+
+        return (
+          <div className="card" style={{ marginBottom: 16, border: '2px solid #2563eb', background: 'linear-gradient(135deg, rgba(37,99,235,0.05) 0%, rgba(37,99,235,0.02) 100%)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+              <div>
+                <span style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1.2, color: '#2563eb', background: '#eff6ff', padding: '3px 8px', borderRadius: 4 }}>
+                  Active Tournament / Live Session
+                </span>
+                <h2 style={{ margin: '6px 0 0 0', fontSize: 18, fontWeight: 900, color: 'var(--foreground)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Trophy size={20} style={{ color: '#d97706' }} /> Active Club Tournaments
+                </h2>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {isPickleboysClub && (
+                <div style={{ background: '#ffffff', borderRadius: 12, padding: 14, border: '1px solid #e2e8f0', boxShadow: '0 2px 6px rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                  <div>
+                    <div style={{ fontWeight: 900, fontSize: 15, color: '#0f172a' }}>Pickleboys Sunday 51-Point Championship</div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 2, fontWeight: 600 }}>
+                      8 Teams · 48 Players · 51-Point Rapid-Fire Format
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Link
+                      href="/tournaments/pickleboys"
+                      className="btn-primary"
+                      style={{ padding: '8px 14px', fontSize: 13, fontWeight: 800, textDecoration: 'none', background: '#2563eb', color: '#fff', borderRadius: 8 }}
+                    >
+                      View Tournament Hub →
+                    </Link>
+                  </div>
+                </div>
+              )}
+
+              {inProgress.map(s => {
+                const title = s.group_name || formatLabel(s.format);
+                const isMwMavericks = s.id === 'mw_mavericks_season_2_2026';
+                const playUrl = isMwMavericks ? '/tournaments/mw-mavericks' : (s.format === 'team_championship' ? `/session/${s.id}/play` : `/session/${s.id}/schedule`);
+                const hubUrl = isMwMavericks ? '/tournaments/mw-mavericks' : (s.format === 'team_championship' ? `/session/${s.id}/team-championship/results` : `/session/${s.id}/analytics`);
+
+                return (
+                  <div key={s.id} style={{ background: '#ffffff', borderRadius: 12, padding: 14, border: '1px solid #e2e8f0', boxShadow: '0 2px 6px rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                    <div>
+                      <div style={{ fontWeight: 900, fontSize: 15, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ color: '#dc2626', fontSize: 12 }}>🔴</span> {title}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#64748b', marginTop: 2, fontWeight: 600 }}>
+                        Created {new Date(s.created_at).toLocaleDateString()} · {s.players?.length || 0} Players
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Link
+                        href={playUrl}
+                        className="btn-primary"
+                        style={{ padding: '8px 14px', fontSize: 13, fontWeight: 800, textDecoration: 'none', background: '#16a34a', color: '#fff', borderRadius: 8 }}
+                      >
+                        Live Scorekeeper →
+                      </Link>
+                      <Link
+                        href={hubUrl}
+                        className="btn-secondary"
+                        style={{ padding: '8px 14px', fontSize: 13, fontWeight: 800, textDecoration: 'none', borderRadius: 8 }}
+                      >
+                        Standings
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {role === 'admin' && (joinRequests.length > 0 || joinRequestError) && (
         <div className="card" style={{ marginBottom: 12, borderColor: 'var(--primary)' }}>

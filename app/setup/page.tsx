@@ -37,6 +37,7 @@ import SignInGate from '@/components/SignInGate';
 import InfoModal from '@/components/InfoModal';
 import { displayName } from '@/lib/displayNamePref';
 import ScheduleImageUploader from '@/components/ScheduleImageUploader';
+import DuprToggle from '@/components/DuprToggle';
 import { parsePairingConstraints } from '@/lib/aiPairing';
 
 const MIN_GAMES_FOR_NEMESIS_ALERT = 3;
@@ -219,6 +220,7 @@ function SetupPageInner() {
   const [startTime, setStartTime] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [venue, setVenue] = useState(draft.venue ?? '');
+  const [isDuprRated, setIsDuprRated] = useState(false);
 
   const [roundsPerBlock, setRoundsPerBlock] = useState(6);
   const [swapCount, setSwapCount] = useState(2);
@@ -890,6 +892,7 @@ function SetupPageInner() {
         venue: venue.trim() || null,
         storylines,
         bookerUpiVpa: bookerUpiVpa.trim() || null,
+        isDuprRated,
       };
 
       let sessionId: string;
@@ -2249,6 +2252,10 @@ function SetupPageInner() {
           )}
         </div>
       )}
+
+      <div style={{ marginBottom: 16 }}>
+        <DuprToggle checked={isDuprRated} onChange={setIsDuprRated} />
+      </div>
 
       {error && <p ref={errorRef} style={{ color: 'var(--danger)', marginTop: 12, fontWeight: 600 }}>{error}</p>}
 

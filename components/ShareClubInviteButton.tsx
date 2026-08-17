@@ -22,7 +22,7 @@ export default function ShareClubInviteButton({
     ? `${window.location.origin}/clubs/join?code=${joinCode.toUpperCase()}`
     : `https://pickleball-app-two.vercel.app/clubs/join?code=${joinCode.toUpperCase()}`;
 
-  const shareText = `🎾 Join ${clubName} on Réstorée Pickleball! Tap here to join instantly: ${inviteUrl}`;
+  const shareText = `Join ${clubName} on Pickleball App! Tap here to join instantly: ${inviteUrl}`;
 
   async function handleShare(e: React.MouseEvent) {
     e.preventDefault();

@@ -18,7 +18,15 @@ export function expectedScore(ownRating: number, oppRating: number): number {
 // Returns the same delta for both players on a team — they won or lost
 // together.
 export function eloDelta(ownRating: number, oppRating: number, won: boolean, marginAbs: number): number {
-  const expected = expectedScore(ownRating, oppRating);
-  const actual = won ? 1 : 0;
-  return Math.round(BASE_K * marginMultiplier(marginAbs) * (actual - expected));
+  if (won) {
+    const expected = expectedScore(ownRating, oppRating);
+    const rawDelta = BASE_K * marginMultiplier(marginAbs) * (1 - expected);
+    return Math.max(1, Math.round(rawDelta));
+  } else {
+    // Loser delta is the exact inverse of opponent's win delta to preserve zero-sum rating equilibrium
+    const oppExpected = expectedScore(oppRating, ownRating);
+    const oppRawDelta = BASE_K * marginMultiplier(marginAbs) * (1 - oppExpected);
+    const oppWinDelta = Math.max(1, Math.round(oppRawDelta));
+    return -oppWinDelta;
+  }
 }

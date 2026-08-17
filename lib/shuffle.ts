@@ -58,13 +58,13 @@ export function pickSitOuts(
   if (count <= 0) return [];
   const tieBreakers = new Map(pool.map(p => [p, rand()]));
   const sorted = [...pool].sort((a, b) => {
-    const diff = sitCounts.get(a)! - sitCounts.get(b)!;
+    const diff = (sitCounts.get(a) ?? 0) - (sitCounts.get(b) ?? 0);
     return diff !== 0 ? diff : tieBreakers.get(a)! - tieBreakers.get(b)!;
   });
   const eligible = sorted.filter(p => !lastSitOut.has(p));
   const repeats = sorted.filter(p => lastSitOut.has(p));
   const chosen = [...eligible, ...repeats].slice(0, count);
-  for (const p of chosen) sitCounts.set(p, sitCounts.get(p)! + 1);
+  for (const p of chosen) sitCounts.set(p, (sitCounts.get(p) ?? 0) + 1);
   return chosen;
 }
 

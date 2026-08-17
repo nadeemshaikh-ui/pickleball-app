@@ -17,6 +17,9 @@ export interface PlayerRow {
   playing_since_year: number | null;
   signature_shot: string | null;
   email?: string | null;
+  dupr_id?: string | null;
+  dupr_rating?: number | null;
+  dupr_verified?: boolean;
 }
 
 export const MIN_GAMES_FOR_SKILL_RATING = 20;
