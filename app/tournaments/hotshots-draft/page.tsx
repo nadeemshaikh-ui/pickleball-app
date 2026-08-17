@@ -193,42 +193,48 @@ export default function HotshotsDraftAdmin() {
 
     setMounted(true);
 
-    // Real-time synchronization across different tabs/devices
-    const syncStates = () => {
-      const liveVal = localStorage.getItem('hotshots_powerups_selection_live');
-      if (liveVal !== null) {
-        setPowerupsSelectionLive(liveVal === 'true');
-      }
-      
-      const stepVal = localStorage.getItem('hotshots_step');
-      if (stepVal !== null) {
-        setStep(parseInt(stepVal, 10));
-      }
-
-      const startedVal = localStorage.getItem('hotshots_draft_started');
-      if (startedVal !== null) {
-        setDraftStarted(startedVal === 'true');
-      }
-
-      const pileVal = localStorage.getItem('hotshots_powerup_pile_v2');
-      if (pileVal !== null) {
-        setPowerupPile(JSON.parse(pileVal));
-      }
-
-      const cardsVal = localStorage.getItem('hotshots_cards_v4');
-      if (cardsVal !== null) {
-        setCards(JSON.parse(cardsVal));
+    // Real-time synchronization across different tabs/devices via server-side API polling
+    const syncStates = async () => {
+      try {
+        const res = await fetch('/api/tournaments/hotshots-draft');
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        // Sync local states with server global cache
+        if (typeof data.powerupsSelectionLive === 'boolean') setPowerupsSelectionLive(data.powerupsSelectionLive);
+        if (typeof data.step === 'number') setStep(data.step);
+        if (typeof data.draftStarted === 'boolean') setDraftStarted(data.draftStarted);
+        if (Array.isArray(data.cards) && data.cards.length > 0) setCards(data.cards);
+        if (Array.isArray(data.roundPicks)) setRoundPicks(data.roundPicks);
+        if (Array.isArray(data.picksSaved)) setPicksSaved(data.picksSaved);
+        if (Array.isArray(data.powerupPile) && data.powerupPile.length > 0) setPowerupPile(data.powerupPile);
+        if (Array.isArray(data.blockedTeamsThisRound)) setBlockedTeamsThisRound(data.blockedTeamsThisRound);
+        if (Array.isArray(data.chatLog)) setChatLog(data.chatLog);
+      } catch (e) {
+        // fail silently during offline/render moments
       }
     };
 
-    window.addEventListener('storage', syncStates);
-    const interval = setInterval(syncStates, 2000);
+    const interval = setInterval(syncStates, 1500);
+    syncStates();
 
     return () => {
-      window.removeEventListener('storage', syncStates);
       clearInterval(interval);
     };
   }, []);
+
+  // API State Poster (Pushes updates to the server when state changes locally)
+  const pushStateToServer = async (payload: any) => {
+    try {
+      await fetch('/api/tournaments/hotshots-draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {
+      // fail silently
+    }
+  };
 
   // Synchronizers
   useEffect(() => {
@@ -240,39 +246,66 @@ export default function HotshotsDraftAdmin() {
   }, [captainNames, mounted]);
 
   useEffect(() => {
-    if (mounted) localStorage.setItem('hotshots_team_names', JSON.stringify(teamNames));
+    if (mounted) {
+      localStorage.setItem('hotshots_team_names', JSON.stringify(teamNames));
+      pushStateToServer({ teamNames });
+    }
   }, [teamNames, mounted]);
 
   useEffect(() => {
-    if (mounted) localStorage.setItem('hotshots_team_logos', JSON.stringify(teamLogos));
+    if (mounted) {
+      localStorage.setItem('hotshots_team_logos', JSON.stringify(teamLogos));
+      pushStateToServer({ teamLogos });
+    }
   }, [teamLogos, mounted]);
 
   useEffect(() => {
-    if (mounted) localStorage.setItem('hotshots_step', step.toString());
+    if (mounted) {
+      localStorage.setItem('hotshots_step', step.toString());
+      pushStateToServer({ step });
+    }
   }, [step, mounted]);
 
   useEffect(() => {
-    if (mounted) localStorage.setItem('hotshots_draft_started', draftStarted.toString());
+    if (mounted) {
+      localStorage.setItem('hotshots_draft_started', draftStarted.toString());
+      pushStateToServer({ draftStarted });
+    }
   }, [draftStarted, mounted]);
 
   useEffect(() => {
-    if (mounted) localStorage.setItem('hotshots_cards_v4', JSON.stringify(cards));
+    if (mounted) {
+      localStorage.setItem('hotshots_cards_v4', JSON.stringify(cards));
+      pushStateToServer({ cards });
+    }
   }, [cards, mounted]);
 
   useEffect(() => {
-    if (mounted) localStorage.setItem('hotshots_round_picks', JSON.stringify(roundPicks));
+    if (mounted) {
+      localStorage.setItem('hotshots_round_picks', JSON.stringify(roundPicks));
+      pushStateToServer({ roundPicks });
+    }
   }, [roundPicks, mounted]);
 
   useEffect(() => {
-    if (mounted) localStorage.setItem('hotshots_picks_saved', JSON.stringify(picksSaved));
+    if (mounted) {
+      localStorage.setItem('hotshots_picks_saved', JSON.stringify(picksSaved));
+      pushStateToServer({ picksSaved });
+    }
   }, [picksSaved, mounted]);
 
   useEffect(() => {
-    if (mounted) localStorage.setItem('hotshots_powerup_pile_v2', JSON.stringify(powerupPile));
+    if (mounted) {
+      localStorage.setItem('hotshots_powerup_pile_v2', JSON.stringify(powerupPile));
+      pushStateToServer({ powerupPile });
+    }
   }, [powerupPile, mounted]);
 
   useEffect(() => {
-    if (mounted) localStorage.setItem('hotshots_powerups_selection_live', powerupsSelectionLive.toString());
+    if (mounted) {
+      localStorage.setItem('hotshots_powerups_selection_live', powerupsSelectionLive.toString());
+      pushStateToServer({ powerupsSelectionLive });
+    }
   }, [powerupsSelectionLive, mounted]);
 
   const showFeedback = (text: string, type: 'error' | 'success') => {
