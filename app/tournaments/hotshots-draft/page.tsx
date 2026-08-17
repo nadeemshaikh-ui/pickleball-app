@@ -200,10 +200,8 @@ export default function HotshotsDraftAdmin() {
         if (!res.ok) return;
         const data = await res.json();
         
-        // Sync local states with server global cache
+        // Sync local states with server global cache (excluding local step navigation to prevent screen hopping)
         if (typeof data.powerupsSelectionLive === 'boolean') setPowerupsSelectionLive(data.powerupsSelectionLive);
-        if (typeof data.step === 'number') setStep(data.step);
-        if (typeof data.draftStarted === 'boolean') setDraftStarted(data.draftStarted);
         if (Array.isArray(data.cards) && data.cards.length > 0) setCards(data.cards);
         if (Array.isArray(data.roundPicks)) setRoundPicks(data.roundPicks);
         if (Array.isArray(data.picksSaved)) setPicksSaved(data.picksSaved);
@@ -262,14 +260,14 @@ export default function HotshotsDraftAdmin() {
   useEffect(() => {
     if (mounted) {
       localStorage.setItem('hotshots_step', step.toString());
-      pushStateToServer({ step });
+      // Step state remains local to prevent jumping other users' screens
     }
   }, [step, mounted]);
 
   useEffect(() => {
     if (mounted) {
       localStorage.setItem('hotshots_draft_started', draftStarted.toString());
-      pushStateToServer({ draftStarted });
+      // DraftStarted state remains local to prevent jumping other users' screens
     }
   }, [draftStarted, mounted]);
 
