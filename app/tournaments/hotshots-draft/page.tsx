@@ -172,9 +172,8 @@ export default function HotshotsDraftAdmin() {
           // Check if this captain has already selected their powerup card
           const pile = savedPile ? JSON.parse(savedPile) : defaultPile;
           const alreadyClaimed = pile.some((c: any) => c.claimedByTeamIndex === idx);
-          const started = savedDraftStarted === 'true';
           
-          if (!alreadyClaimed && !started) {
+          if (!alreadyClaimed) {
             setStep(3); // Direct to step 3 (powerup pile selection) first
             setDraftStarted(false);
           } else {
