@@ -1222,14 +1222,7 @@ export default function HotshotsDraftAdmin() {
                           fontSize: 22,
                           boxShadow: '0 4px 8px rgba(0,0,0,0.05)'
                         }}>
-                          {(() => {
-                            if (card.type === 'Steal') return '🎭';
-                            if (card.type === 'Shield') return '🛡️';
-                            if (card.type === 'Spyglass') return '🔮';
-                            if (card.type === 'DeckSwap') return '🔄';
-                            if (card.type === 'Block') return '⏳';
-                            return '🃏';
-                          })()}
+                          ❓
                         </div>
                         <div style={{ 
                           background: '#ffffff', 
@@ -1241,7 +1234,7 @@ export default function HotshotsDraftAdmin() {
                           boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
                         }}>
                           <div style={{ fontSize: 13, fontWeight: 900, color: '#0f2922', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                            {card.type}
+                            Card #{idx + 1}
                           </div>
                         </div>
                       </div>
