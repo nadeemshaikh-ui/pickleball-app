@@ -1040,22 +1040,128 @@ export default function HotshotsDraftAdmin() {
                     }}
                   >
                     {isClaimed ? (
-                      <div style={{ textAlign: 'center', padding: 8 }}>
-                        <div style={{ fontSize: 20, marginBottom: 8 }}>🔒</div>
-                        <div style={{ fontSize: 11, color: '#d4af37', fontWeight: 900, textTransform: 'uppercase' }}>
-                          {isClaimedByMe ? card.type : 'CLAIMED'}
-                        </div>
-                        <div style={{ fontSize: 10, color: '#ffffff', marginTop: 4 }}>
-                          {isClaimedByMe ? 'YOUR CARD' : 'SECRET PILE'}
-                        </div>
+                      <div style={{ 
+                        textAlign: 'center', 
+                        padding: 12,
+                        width: '100%',
+                        height: '100%',
+                        backgroundImage: isClaimedByMe ? 'url(/hotshots_empty_white_1786961957195.jpg)' : 'url(/hotshots_clean_back_1786954882257.jpg)',
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        borderRadius: 10,
+                        border: '2px solid #d4af37',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        boxSizing: 'border-box'
+                      }}>
+                        {isClaimedByMe ? (
+                          <>
+                            <div style={{ height: 10 }} />
+                            <div style={{ 
+                              width: 50, 
+                              height: 50, 
+                              borderRadius: '50%', 
+                              background: 'rgba(212,175,55,0.1)', 
+                              border: '1.5px solid #d4af37', 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'center',
+                              fontSize: 22,
+                              boxShadow: '0 4px 8px rgba(0,0,0,0.05)'
+                            }}>
+                              {(() => {
+                                if (card.type === 'Steal') return '🎭';
+                                if (card.type === 'Shield') return '🛡️';
+                                if (card.type === 'Spyglass') return '🔮';
+                                if (card.type === 'DeckSwap') return '🔄';
+                                if (card.type === 'Block') return '⏳';
+                                return '🃏';
+                              })()}
+                            </div>
+                            
+                            <div style={{ 
+                              background: '#ffffff', 
+                              border: '1px solid #d4af37', 
+                              borderRadius: 4, 
+                              padding: '4px 2px', 
+                              width: '90%',
+                              textAlign: 'center',
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                            }}>
+                              <div style={{ fontSize: 9, fontWeight: 900, color: '#0f172a', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                {card.type}
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div style={{ height: 10 }} />
+                            <span style={{ fontSize: 16 }}>🔒</span>
+                            <div style={{ 
+                              background: '#ffffff', 
+                              border: '1px solid #d4af37', 
+                              borderRadius: 4, 
+                              padding: '4px 2px', 
+                              width: '90%',
+                              textAlign: 'center',
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                            }}>
+                              <div style={{ fontSize: 9, fontWeight: 900, color: '#0f2922', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                CLAIMED
+                              </div>
+                            </div>
+                          </>
+                        )}
                       </div>
                     ) : (
-                      <>
-                        <div style={{ fontSize: 20, fontWeight: 900, color: '#aa8529', fontFamily: 'serif' }}>
-                          {card.type}
+                      <div style={{
+                        width: '100%',
+                        height: '100%',
+                        backgroundImage: 'url(/hotshots_clean_back_1786954882257.jpg)',
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        borderRadius: 10,
+                        border: '2px solid #d4af37',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: 12,
+                        boxSizing: 'border-box'
+                      }}>
+                        <div style={{ height: 10 }} />
+                        <div style={{ 
+                          width: 44, 
+                          height: 44, 
+                          borderRadius: '50%', 
+                          background: 'rgba(255,255,255,0.9)', 
+                          border: '2px solid #d4af37', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center',
+                          fontSize: 16,
+                          fontWeight: 900,
+                          color: '#aa8529',
+                          fontFamily: 'serif'
+                        }}>
+                          HS
                         </div>
-                        <div style={{ fontSize: 10, color: '#64748b', marginTop: 8, fontWeight: 700 }}>Card {idx + 1}</div>
-                      </>
+                        <div style={{ 
+                          background: '#ffffff', 
+                          border: '1px solid #d4af37', 
+                          borderRadius: 4, 
+                          padding: '4px 2px', 
+                          width: '90%',
+                          textAlign: 'center',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                        }}>
+                          <div style={{ fontSize: 9, fontWeight: 900, color: '#0f2922', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            CARD {idx + 1}
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
                 );
