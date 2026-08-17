@@ -192,6 +192,42 @@ export default function HotshotsDraftAdmin() {
     }
 
     setMounted(true);
+
+    // Real-time synchronization across different tabs/devices
+    const syncStates = () => {
+      const liveVal = localStorage.getItem('hotshots_powerups_selection_live');
+      if (liveVal !== null) {
+        setPowerupsSelectionLive(liveVal === 'true');
+      }
+      
+      const stepVal = localStorage.getItem('hotshots_step');
+      if (stepVal !== null) {
+        setStep(parseInt(stepVal, 10));
+      }
+
+      const startedVal = localStorage.getItem('hotshots_draft_started');
+      if (startedVal !== null) {
+        setDraftStarted(startedVal === 'true');
+      }
+
+      const pileVal = localStorage.getItem('hotshots_powerup_pile_v2');
+      if (pileVal !== null) {
+        setPowerupPile(JSON.parse(pileVal));
+      }
+
+      const cardsVal = localStorage.getItem('hotshots_cards_v4');
+      if (cardsVal !== null) {
+        setCards(JSON.parse(cardsVal));
+      }
+    };
+
+    window.addEventListener('storage', syncStates);
+    const interval = setInterval(syncStates, 2000);
+
+    return () => {
+      window.removeEventListener('storage', syncStates);
+      clearInterval(interval);
+    };
   }, []);
 
   // Synchronizers
