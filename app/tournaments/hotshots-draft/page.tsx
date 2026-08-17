@@ -931,8 +931,11 @@ export default function HotshotsDraftAdmin() {
           </div>
           {activeCaptainSessionIdx === null && (
             <button 
-              onClick={() => {
+              onClick={async () => {
                 localStorage.clear();
+                try {
+                  await fetch('/api/tournaments/hotshots-draft', { method: 'DELETE' });
+                } catch(e) {}
                 window.location.reload();
               }} 
               style={{ background: '#ef4444', border: 'none', color: '#ffffff', fontWeight: 700, padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}
