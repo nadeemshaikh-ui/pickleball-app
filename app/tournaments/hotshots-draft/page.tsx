@@ -1151,12 +1151,12 @@ export default function HotshotsDraftAdmin() {
                               background: '#ffffff', 
                               border: '1px solid #d4af37', 
                               borderRadius: 4, 
-                              padding: '4px 2px', 
-                              width: '90%',
+                              padding: '6px 4px', 
+                              width: '95%',
                               textAlign: 'center',
                               boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
                             }}>
-                              <div style={{ fontSize: 9, fontWeight: 900, color: '#0f172a', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                              <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                                 {card.type}
                               </div>
                             </div>
@@ -1218,12 +1218,12 @@ export default function HotshotsDraftAdmin() {
                           background: '#ffffff', 
                           border: '1px solid #d4af37', 
                           borderRadius: 4, 
-                          padding: '4px 2px', 
-                          width: '90%',
+                          padding: '6px 4px', 
+                          width: '95%',
                           textAlign: 'center',
                           boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
                         }}>
-                          <div style={{ fontSize: 9, fontWeight: 900, color: '#0f2922', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                          <div style={{ fontSize: 13, fontWeight: 900, color: '#0f2922', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                             CARD {idx + 1}
                           </div>
                         </div>
