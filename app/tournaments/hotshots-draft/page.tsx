@@ -168,6 +168,19 @@ export default function HotshotsDraftAdmin() {
         if (idx >= 0 && idx < 4) {
           setActiveCaptainSessionIdx(idx);
           setLoggedInCaptainName(captainNames[idx] || ['Sumit', 'Ankit', 'Miten', 'Deep'][idx]);
+          
+          // Check if this captain has already selected their powerup card
+          const pile = savedPile ? JSON.parse(savedPile) : defaultPile;
+          const alreadyClaimed = pile.some((c: any) => c.claimedByTeamIndex === idx);
+          const started = savedDraftStarted === 'true';
+          
+          if (!alreadyClaimed && !started) {
+            setStep(3); // Direct to step 3 (powerup pile selection) first
+            setDraftStarted(false);
+          } else {
+            setStep(4);
+            setDraftStarted(true);
+          }
         }
       } else if (roleQuery === 'viewer') {
         setActiveCaptainSessionIdx(-99); // -99 represents viewer mode
@@ -313,7 +326,13 @@ export default function HotshotsDraftAdmin() {
     const updatedPile = [...powerupPile];
     updatedPile[slotIdx].claimedByTeamIndex = teamIdx;
     setPowerupPile(updatedPile);
-    showFeedback(`Card claimed secretly! Nobody else can choose this slot.`, 'success');
+    showFeedback(`Card claimed secretly! Redirecting to draft board...`, 'success');
+    
+    // Auto redirect to Step 4
+    setTimeout(() => {
+      setStep(4);
+      setDraftStarted(true);
+    }, 1500);
   };
 
   // Trigger Play Reveal with Fullscreen Hype Animation
