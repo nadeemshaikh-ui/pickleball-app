@@ -1110,7 +1110,12 @@ export default function HotshotsDraftAdmin() {
             </div>
 
             {/* FACE-DOWN PILE GRID */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 16, marginBottom: 40 }}>
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', 
+              gap: 12, 
+              marginBottom: 40 
+            }}>
               {powerupPile.map((card, idx) => {
                 const isClaimed = card.claimedByTeamIndex !== null;
                 const isClaimedByMe = activeCaptainSessionIdx !== null && card.claimedByTeamIndex === activeCaptainSessionIdx;
@@ -1298,11 +1303,24 @@ export default function HotshotsDraftAdmin() {
         {draftStarted && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
-              <div>
-                <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f2922', fontFamily: 'serif', margin: 0 }}>Step 4: Active Blind Draft Board</h2>
-                <div style={{ fontSize: 12, color: '#aa8529', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginTop: 4 }}>
-                  Status: <span style={{ color: '#0f2922', fontWeight: 900 }}>{isDraftComplete ? 'Draft Complete' : 'Captains Selection Phase'}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: 10 }}>
+                <div>
+                  <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f2922', fontFamily: 'serif', margin: 0 }}>Step 4: Active Blind Draft Board</h2>
+                  <div style={{ fontSize: 12, color: '#aa8529', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginTop: 4 }}>
+                    Status: <span style={{ color: '#0f2922', fontWeight: 900 }}>{isDraftComplete ? 'Draft Complete' : 'Captains Selection Phase'}</span>
+                  </div>
                 </div>
+                {activeCaptainSessionIdx === null && (
+                  <button 
+                    onClick={() => {
+                      setDraftStarted(false);
+                      setStep(3);
+                    }} 
+                    style={{ background: 'none', border: 'none', color: '#64748b', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}
+                  >
+                    ← Back to Step 3
+                  </button>
+                )}
               </div>
 
               {/* SIMULTANEOUS SCREEN VIEW SIMULATOR TOGGLE */}
@@ -1933,13 +1951,20 @@ export default function HotshotsDraftAdmin() {
             )}
 
             {/* THE CARD GRID */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 20, justifyContent: 'center', marginBottom: 30 }}>
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', 
+              gap: 16, 
+              justifyContent: 'center', 
+              marginBottom: 30 
+            }}>
               {cards.map((card, idx) => (
                 <div 
                   key={idx}
                   onClick={() => handleCardClickFailsafe(idx)}
                   style={{
-                    width: 160, height: 230,
+                    height: 190,
+                    width: '100%',
                     background: card.revealed ? '#0f2922' : '#f8f9fa',
                     border: card.revealed ? '2px solid #d4af37' : '2px solid #e2e8f0',
                     borderRadius: 12,
@@ -1974,14 +1999,14 @@ export default function HotshotsDraftAdmin() {
                       {/* Empty Top Bar */}
                       <div style={{ height: 20 }} />
 
-                      {/* Profile Image Center Backdrop */}
+                       {/* Profile Image Center Backdrop */}
                       <div style={{ 
                         position: 'absolute', 
-                        top: 50, 
+                        top: 36, 
                         left: '50%',
                         transform: 'translateX(-50%)',
-                        width: 96, 
-                        height: 96, 
+                        width: 76, 
+                        height: 76, 
                         borderRadius: '50%', 
                         overflow: 'hidden', 
                         zIndex: 2,
@@ -1996,26 +2021,26 @@ export default function HotshotsDraftAdmin() {
                           if (playerItem?.logoUrl) {
                             return <img src={playerItem.logoUrl} alt="Player" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />;
                           }
-                          return <div style={{ fontSize: 32, color: '#cbd5e1' }}>👤</div>;
+                          return <div style={{ fontSize: 24, color: '#cbd5e1' }}>👤</div>;
                         })()}
                       </div>
 
                       {/* Bottom Name Plate Overlay */}
                       <div style={{ 
                         position: 'absolute',
-                        bottom: 20,
+                        bottom: 12,
                         left: '50%',
                         transform: 'translateX(-50%)',
-                        width: '78%',
+                        width: '84%',
                         background: '#ffffff', 
                         border: '2px solid #d4af37', 
                         borderRadius: 8, 
-                        padding: '8px 4px', 
+                        padding: '6px 2px', 
                         textAlign: 'center', 
                         zIndex: 3,
                         boxShadow: '0 4px 6px rgba(0,0,0,0.05)'
                       }}>
-                        <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        <div style={{ fontSize: 11, fontWeight: 900, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                           {card.player}
                         </div>
                       </div>
