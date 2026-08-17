@@ -1078,27 +1078,7 @@ export default function HotshotsDraftAdmin() {
               The assignment remains completely secret from other players until played!
             </p>
 
-            {/* Log-In Simulation Bar via Dedicated Links */}
-            <div style={{ background: '#fafafa', border: '1px solid #cbd5e1', padding: '16px 24px', borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 13, fontWeight: 900, color: '#0f2922', textTransform: 'uppercase' }}>Captain Session Status:</span>
-                {loggedInCaptainName && (
-                  <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 800 }}>
-                    Active Dedicated Link Session: **{loggedInCaptainName}** (Captain {activeCaptainSessionIdx! + 1})
-                  </span>
-                )}
-              </div>
-              
-              {!loggedInCaptainName ? (
-                <div style={{ fontSize: 12, color: '#ef4444', fontWeight: 700 }}>
-                  ⚠️ Accessing via Viewer Mode. Use your dedicated captain's link to select a powerup card.
-                </div>
-              ) : (
-                <div style={{ fontSize: 12, color: '#16a34a', fontWeight: 700 }}>
-                  Logged in as captain. Click on any card below to allocate your secret powerup.
-                </div>
-              )}
-            </div>
+
 
             {/* FACE-DOWN PILE GRID */}
             <div style={{ 
