@@ -390,11 +390,6 @@ export default function HotshotsDraftAdmin() {
 
   // FCFS Secret Selection Click Handler
   const handleSelectFaceDownPowerup = (teamIdx: number, slotIdx: number) => {
-    if (!powerupsSelectionLive) {
-      showFeedback('Powerup selections are locked by Admin. Please wait for the host to enable selection.', 'error');
-      return;
-    }
-
     const alreadyHas = powerupPile.some(c => c.claimedByTeamIndex === teamIdx);
     if (alreadyHas) {
       showFeedback('You have already claimed a powerup card!', 'error');
@@ -1079,40 +1074,9 @@ export default function HotshotsDraftAdmin() {
                   <span style={{ fontSize: 13, color: '#aa8529', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.5 }}>
                     First-Come, First-Served Secret Allocation
                   </span>
-                  <span style={{ 
-                    fontSize: 10, 
-                    fontWeight: 900, 
-                    padding: '3px 8px', 
-                    borderRadius: 12, 
-                    background: powerupsSelectionLive ? '#dcfce7' : '#fee2e2', 
-                    color: powerupsSelectionLive ? '#15803d' : '#b91c1c',
-                    textTransform: 'uppercase'
-                  }}>
-                    {powerupsSelectionLive ? '🟢 Live' : '🔴 Locked'}
-                  </span>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                {activeCaptainSessionIdx === null && (
-                  <button 
-                    onClick={() => {
-                      setPowerupsSelectionLive(!powerupsSelectionLive);
-                      showFeedback(powerupsSelectionLive ? 'Powerup selections are now LOCKED!' : 'Powerup selections are now LIVE for captains!', 'success');
-                    }}
-                    style={{ 
-                      background: powerupsSelectionLive ? '#ef4444' : '#16a34a', 
-                      color: '#ffffff', 
-                      border: 'none', 
-                      padding: '8px 16px', 
-                      borderRadius: 6, 
-                      fontSize: 12, 
-                      fontWeight: 800, 
-                      cursor: 'pointer' 
-                    }}
-                  >
-                    {powerupsSelectionLive ? 'Lock Selection' : 'Make Selection Live'}
-                  </button>
-                )}
                 <button onClick={() => setStep(2)} style={{ background: 'none', border: 'none', color: '#64748b', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>← Back</button>
               </div>
             </div>
