@@ -705,10 +705,10 @@ export default function HotshotsDraftAdmin() {
 
       tempCardsState[cardIdx] = {
         ...tempCardsState[cardIdx],
-        revealed: true,
-        player: chosenPlayer.name,
-        grade: chosenPlayer.grade,
-        teamIndex: teamIdx,
+        revealed: false,
+        player: null,
+        grade: null,
+        teamIndex: null,
         shielded: false
       };
 
@@ -719,6 +719,15 @@ export default function HotshotsDraftAdmin() {
 
       setRevealPhase('card-spin');
       await delay(1800);
+
+      tempCardsState[cardIdx] = {
+        ...tempCardsState[cardIdx],
+        revealed: true,
+        player: chosenPlayer.name,
+        grade: chosenPlayer.grade,
+        teamIndex: teamIdx,
+        shielded: false
+      };
 
       setRevealedPlayerText(chosenPlayer.name);
       setRevealPhase('player-name');
@@ -2143,8 +2152,8 @@ export default function HotshotsDraftAdmin() {
                         </div>
                       </div>
 
-                      {/* INPUT BOX */}
-                      {!isDraftComplete && (
+                      {/* INPUT BOX - ONLY ALLOWED FOR ADMIN */}
+                      {!isDraftComplete && activeCaptainSessionIdx === null && (
                         <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 12, position: 'relative', zIndex: 3 }}>
                           <label style={{ fontSize: 10, fontWeight: 800, color: isSaved ? '#16a34a' : '#94a3b8', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
                             {isSaved ? '✅ CHOICE SAVED' : '🎯 ENTER CHOSEN CARD'}
@@ -2152,48 +2161,42 @@ export default function HotshotsDraftAdmin() {
                           <div style={{ display: 'flex', gap: 6 }}>
                             <input 
                               type="number"
-                              disabled={isSaved || activeCaptainSessionIdx === -99}
+                              disabled={isSaved}
                               style={{ 
                                 width: '100%', 
                                 padding: '8px 10px', 
                                 borderRadius: 6, 
                                 border: isSaved ? '1px solid #16a34a' : '1px solid #cbd5e1', 
                                 fontSize: 12, 
-                                background: isSaved ? '#f0fdf4' : (activeCaptainSessionIdx === -99 ? '#f1f5f9' : '#ffffff'),
-                                cursor: (isSaved || activeCaptainSessionIdx === -99) ? 'not-allowed' : 'text'
+                                background: isSaved ? '#f0fdf4' : '#ffffff',
+                                cursor: isSaved ? 'not-allowed' : 'text'
                               }}
-                              placeholder={activeCaptainSessionIdx === -99 ? "Locked" : "e.g. 5"}
+                              placeholder="e.g. 5"
                               value={roundPicks[idx]}
                               onChange={(e) => {
-                                if (activeCaptainSessionIdx === -99) return;
                                 const val = e.target.value;
                                 const updated = [...roundPicks];
                                 updated[idx] = val;
                                 setRoundPicks(updated);
                               }}
                               onKeyDown={(e) => {
-                                if (activeCaptainSessionIdx === -99) return;
                                 if (e.key === 'Enter') handleSavePickNumber(idx);
                               }}
                             />
-                            {activeCaptainSessionIdx !== -99 && (
-                              <>
-                                {isSaved ? (
-                                  <button 
-                                    onClick={() => handleClearPickNumber(idx)}
-                                    style={{ background: '#ef4444', color: '#ffffff', border: 'none', padding: '8px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-                                  >
-                                    Edit
-                                  </button>
-                                ) : (
-                                  <button 
-                                    onClick={() => handleSavePickNumber(idx)}
-                                    style={{ background: '#0f2922', color: '#ffffff', border: 'none', padding: '8px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-                                  >
-                                    Save
-                                  </button>
-                                )}
-                              </>
+                            {isSaved ? (
+                              <button 
+                                onClick={() => handleClearPickNumber(idx)}
+                                style={{ background: '#ef4444', color: '#ffffff', border: 'none', padding: '8px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                              >
+                                Edit
+                              </button>
+                            ) : (
+                              <button 
+                                onClick={() => handleSavePickNumber(idx)}
+                                style={{ background: '#0f2922', color: '#ffffff', border: 'none', padding: '8px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                              >
+                                Save
+                              </button>
                             )}
                           </div>
                         </div>
