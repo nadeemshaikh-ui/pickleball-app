@@ -38,7 +38,6 @@ export default function HotshotsDraftAdmin() {
   const [cards, setCards] = useState<CardState[]>([]);
   const [roundPicks, setRoundPicks] = useState<string[]>([]);
   const [picksSaved, setPicksSaved] = useState<boolean[]>([]);
-  const [powerupsSelectionLive, setPowerupsSelectionLive] = useState(false);
 
   // Secret Powerup Pile States (FCFS)
   const [powerupPile, setPowerupPile] = useState<PowerupPileCard[]>([]);
@@ -159,8 +158,7 @@ export default function HotshotsDraftAdmin() {
     }));
     setPowerupPile(savedPile ? JSON.parse(savedPile) : defaultPile);
 
-    const savedSelectionLive = localStorage.getItem('hotshots_powerups_selection_live');
-    setPowerupsSelectionLive(savedSelectionLive === 'true');
+
 
     // Parse URL search parameters for dedicated links (e.g. ?captain=0/1/2/3 or ?role=viewer)
     if (typeof window !== 'undefined') {
@@ -201,8 +199,7 @@ export default function HotshotsDraftAdmin() {
         const data = await res.json();
         
         (window as any)._isSyncingFromServer = true;
-        // Sync local states with server global cache (excluding local step navigation to prevent screen hopping)
-        if (typeof data.powerupsSelectionLive === 'boolean') setPowerupsSelectionLive(data.powerupsSelectionLive);
+
         if (Array.isArray(data.cards) && data.cards.length > 0) setCards(data.cards);
         if (Array.isArray(data.roundPicks)) setRoundPicks(data.roundPicks);
         if (Array.isArray(data.picksSaved)) setPicksSaved(data.picksSaved);
@@ -303,12 +300,7 @@ export default function HotshotsDraftAdmin() {
     }
   }, [powerupPile, mounted]);
 
-  useEffect(() => {
-    if (mounted) {
-      localStorage.setItem('hotshots_powerups_selection_live', powerupsSelectionLive.toString());
-      pushStateToServer({ powerupsSelectionLive });
-    }
-  }, [powerupsSelectionLive, mounted]);
+
 
   const showFeedback = (text: string, type: 'error' | 'success') => {
     setFeedbackMessage({ text, type });
