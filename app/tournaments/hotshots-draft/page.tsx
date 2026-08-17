@@ -85,20 +85,20 @@ export default function HotshotsDraftAdmin() {
     const defaultPlayers: PlayerInfo[] = [
       { name: 'Gopal', grade: 'A', logoUrl: 'https://i.ibb.co/hCmt21t/gopal-meme.jpg' },
       { name: 'Karan', grade: 'A', logoUrl: 'https://i.ibb.co/L5Z5vQf/hotshots-logo.jpg' },
-      { name: 'Sumit', grade: 'A', logoUrl: '/Hotsht profile pics/Sumit.jpeg' },
+      { name: 'Sumit', grade: 'A', logoUrl: '/Hotsht%20profile%20pics/Sumit.jpeg' },
       { name: 'Amresh', grade: 'A', logoUrl: 'https://i.ibb.co/tbgZpqV/rakhi-sawant.jpg' },
-      { name: 'Hemal', grade: 'B', logoUrl: '/Hotsht profile pics/Hemal.jpeg' },
-      { name: 'Miten', grade: 'B', logoUrl: '/Hotsht profile pics/Miten.jpeg' },
+      { name: 'Hemal', grade: 'B', logoUrl: '/Hotsht%20profile%20pics/Hemal.jpeg' },
+      { name: 'Miten', grade: 'B', logoUrl: '/Hotsht%20profile%20pics/Miten.jpeg' },
       { name: 'Ankit', grade: 'B', logoUrl: 'https://i.ibb.co/FwsHn7N/funny-face.jpg' },
-      { name: 'Sid G', grade: 'B', logoUrl: '/Hotsht profile pics/Sid G.jpeg' },
+      { name: 'Sid G', grade: 'B', logoUrl: '/Hotsht%20profile%20pics/Sid%20G.jpeg' },
       { name: 'Sid K', grade: 'B', logoUrl: 'https://i.ibb.co/mhp3TjG/embarrassing-face.jpg' },
       { name: 'Arif', grade: 'B', logoUrl: 'https://i.ibb.co/mJk3pXG/screaming-cat.jpg' },
       { name: 'Ansh', grade: 'B', logoUrl: 'https://i.ibb.co/N1pZ73p/monkey-laugh.jpg' },
-      { name: 'Deep', grade: 'B', logoUrl: '/Hotsht profile pics/Deep.jpeg' },
-      { name: 'Nadeem', grade: 'C', logoUrl: '/Hotsht profile pics/Nadeem.jpeg' },
+      { name: 'Deep', grade: 'B', logoUrl: '/Hotsht%20profile%20pics/Deep.jpeg' },
+      { name: 'Nadeem', grade: 'C', logoUrl: '/Hotsht%20profile%20pics/Nadeem.jpeg' },
       { name: 'Gulshan', grade: 'C', logoUrl: 'https://i.ibb.co/tbgZpqV/rakhi-sawant.jpg' },
       { name: 'Shah', grade: 'C', logoUrl: 'https://i.ibb.co/hCmt21t/gopal-meme.jpg' },
-      { name: 'Viki', grade: 'C', logoUrl: '/Hotsht profile pics/Viki .jpeg' }
+      { name: 'Viki', grade: 'C', logoUrl: '/Hotsht%20profile%20pics/Viki%20.jpeg' }
     ];
     // Force reset default players list to apply local images path
     localStorage.removeItem('hotshots_all_players_v4');
@@ -114,10 +114,10 @@ export default function HotshotsDraftAdmin() {
       'Cheese Naan Warriors'  // Deep
     ];
     const defaultLogos = [
-      '/Hotsht profile pics/Samosa Smashers Sumit.jpeg',
-      '/Hotsht profile pics/papad_punishers_logo_1786964324414.jpg', // Ankit
-      '/Hotsht profile pics/Dhokla Destroyers Deep.jpeg', // Miten (using Dhokla logo from directory)
-      '/Hotsht profile pics/cheese_naan_logo_1786964038239.jpg'
+      '/Hotsht%20profile%20pics/Samosa%20Smashers%20Sumit.jpeg',
+      '/Hotsht%20profile%20pics/papad_punishers_logo_1786964324414.jpg', // Ankit
+      '/Hotsht%20profile%20pics/Dhokla%20Destroyers%20Deep.jpeg', // Miten (using Dhokla logo from directory)
+      '/Hotsht%20profile%20pics/cheese_naan_logo_1786964038239.jpg'
     ];
 
     const savedNamesVal = localStorage.getItem('hotshots_team_names');
