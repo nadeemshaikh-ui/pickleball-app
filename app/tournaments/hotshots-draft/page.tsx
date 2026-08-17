@@ -200,6 +200,7 @@ export default function HotshotsDraftAdmin() {
         if (!res.ok) return;
         const data = await res.json();
         
+        (window as any)._isSyncingFromServer = true;
         // Sync local states with server global cache (excluding local step navigation to prevent screen hopping)
         if (typeof data.powerupsSelectionLive === 'boolean') setPowerupsSelectionLive(data.powerupsSelectionLive);
         if (Array.isArray(data.cards) && data.cards.length > 0) setCards(data.cards);
@@ -208,8 +209,12 @@ export default function HotshotsDraftAdmin() {
         if (Array.isArray(data.powerupPile) && data.powerupPile.length > 0) setPowerupPile(data.powerupPile);
         if (Array.isArray(data.blockedTeamsThisRound)) setBlockedTeamsThisRound(data.blockedTeamsThisRound);
         if (Array.isArray(data.chatLog)) setChatLog(data.chatLog);
+        
+        setTimeout(() => {
+          (window as any)._isSyncingFromServer = false;
+        }, 100);
       } catch (e) {
-        // fail silently during offline/render moments
+        (window as any)._isSyncingFromServer = false;
       }
     };
 
@@ -223,6 +228,7 @@ export default function HotshotsDraftAdmin() {
 
   // API State Poster (Pushes updates to the server when state changes locally)
   const pushStateToServer = async (payload: any) => {
+    if ((window as any)._isSyncingFromServer) return; // Prevent loop cycle feedback
     try {
       await fetch('/api/tournaments/hotshots-draft', {
         method: 'POST',
@@ -260,14 +266,12 @@ export default function HotshotsDraftAdmin() {
   useEffect(() => {
     if (mounted) {
       localStorage.setItem('hotshots_step', step.toString());
-      // Step state remains local to prevent jumping other users' screens
     }
   }, [step, mounted]);
 
   useEffect(() => {
     if (mounted) {
       localStorage.setItem('hotshots_draft_started', draftStarted.toString());
-      // DraftStarted state remains local to prevent jumping other users' screens
     }
   }, [draftStarted, mounted]);
 
