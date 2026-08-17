@@ -1459,7 +1459,7 @@ export default function HotshotsDraftAdmin() {
                       ))}
                     </select>
 
-                    {activeCaptainSessionIdx !== null && (() => {
+                    {activeCaptainSessionIdx !== null && activeCaptainSessionIdx !== -99 && (() => {
                       const claimedCard = powerupPile.find(c => c.claimedByTeamIndex === activeCaptainSessionIdx);
                       const assignedPicks = cards.filter(c => c.teamIndex === activeCaptainSessionIdx && c.revealed);
                       
