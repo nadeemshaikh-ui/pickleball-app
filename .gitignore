@@ -48,3 +48,6 @@ next-env.d.ts
 
 # dual-AI handover (DUAL_AI_PROTOCOL v3.0 §0.3)
 .agents/handover/
+
+.vercel
+.env*

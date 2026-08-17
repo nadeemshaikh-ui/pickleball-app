@@ -831,15 +831,17 @@ export default function HotshotsDraftAdmin() {
             <h1 style={{ fontSize: 32, fontWeight: 900, color: '#0f2922', fontFamily: 'serif', margin: 0 }}>HOTSHOTS</h1>
             <p style={{ fontSize: 13, color: '#aa8529', textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: 800, marginBottom: 30 }}>Draft & Setup Console</p>
           </div>
-          <button 
-            onClick={() => {
-              localStorage.clear();
-              window.location.reload();
-            }} 
-            style={{ background: '#ef4444', border: 'none', color: '#ffffff', fontWeight: 700, padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}
-          >
-            Reset Draft State
-          </button>
+          {activeCaptainSessionIdx === null && (
+            <button 
+              onClick={() => {
+                localStorage.clear();
+                window.location.reload();
+              }} 
+              style={{ background: '#ef4444', border: 'none', color: '#ffffff', fontWeight: 700, padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}
+            >
+              Reset Draft State
+            </button>
+          )}
         </div>
 
         {/* STEP 1: PRE-REGISTER ALL 16 PLAYERS & ASSIGN CAPTAINS */}
