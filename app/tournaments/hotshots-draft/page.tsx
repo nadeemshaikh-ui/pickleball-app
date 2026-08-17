@@ -1093,83 +1093,87 @@ export default function HotshotsDraftAdmin() {
               </div>
 
               {/* SIMULTANEOUS SCREEN VIEW SIMULATOR TOGGLE */}
-              <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', padding: '8px 12px', borderRadius: 8, display: 'flex', gap: 6, alignItems: 'center' }}>
-                <span style={{ fontSize: 11, fontWeight: 900, color: '#aa8529' }}>🖥️ SIMULATOR VIEW:</span>
-                <button 
-                  onClick={() => {
-                    setActiveCaptainSessionIdx(null);
-                    setLoggedInCaptainName(null);
-                    showFeedback('Switched to spectator view', 'success');
-                  }}
-                  style={{ padding: '4px 8px', fontSize: 11, fontWeight: 700, background: activeCaptainSessionIdx === null ? '#0f2922' : '#ffffff', color: activeCaptainSessionIdx === null ? '#ffffff' : '#0f2922', border: '1px solid #cbd5e1', borderRadius: 4, cursor: 'pointer' }}
-                >
-                  Admin View
-                </button>
-                {captainNames.map((name, idx) => (
-                  <button
-                    key={idx}
+              {activeCaptainSessionIdx === null && (
+                <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', padding: '8px 12px', borderRadius: 8, display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <span style={{ fontSize: 11, fontWeight: 900, color: '#aa8529' }}>🖥️ SIMULATOR VIEW:</span>
+                  <button 
                     onClick={() => {
-                      setActiveCaptainSessionIdx(idx);
-                      setLoggedInCaptainName(name);
-                      showFeedback(`Simulating Captain ${name}'s Screen`, 'success');
+                      setActiveCaptainSessionIdx(null);
+                      setLoggedInCaptainName(null);
+                      showFeedback('Switched to spectator view', 'success');
                     }}
-                    style={{ 
-                      padding: '4px 8px', 
-                      fontSize: 11, 
-                      fontWeight: 700, 
-                      background: activeCaptainSessionIdx === idx ? '#d4af37' : '#ffffff', 
-                      color: '#0f2922', 
-                      border: '1px solid #cbd5e1', 
-                      borderRadius: 4, 
-                      cursor: 'pointer' 
-                    }}
+                    style={{ padding: '4px 8px', fontSize: 11, fontWeight: 700, background: activeCaptainSessionIdx === null ? '#0f2922' : '#ffffff', color: activeCaptainSessionIdx === null ? '#ffffff' : '#0f2922', border: '1px solid #cbd5e1', borderRadius: 4, cursor: 'pointer' }}
                   >
-                    {name}'s Screen
+                    Admin View
                   </button>
-                ))}
-              </div>
+                  {captainNames.map((name, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setActiveCaptainSessionIdx(idx);
+                        setLoggedInCaptainName(name);
+                        showFeedback(`Simulating Captain ${name}'s Screen`, 'success');
+                      }}
+                      style={{ 
+                        padding: '4px 8px', 
+                        fontSize: 11, 
+                        fontWeight: 700, 
+                        background: activeCaptainSessionIdx === idx ? '#d4af37' : '#ffffff', 
+                        color: '#0f2922', 
+                        border: '1px solid #cbd5e1', 
+                        borderRadius: 4, 
+                        cursor: 'pointer' 
+                      }}
+                    >
+                      {name}'s Screen
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* PRE-ROUND PHASE AUTO TRIGGER BAR */}
-            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: 20, borderRadius: 12, marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 15, color: '#0f2922' }}>Pre-Round Action Phase</div>
-                <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Triggers the 15-second auto-countdown overlay on all screens for captains to play Block, Shield, Spyglass, or Joker.</div>
+            {activeCaptainSessionIdx === null && (
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: 20, borderRadius: 12, marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 15, color: '#0f2922' }}>Pre-Round Action Phase</div>
+                  <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Triggers the 15-second auto-countdown overlay on all screens for captains to play Block, Shield, Spyglass, or Joker.</div>
+                </div>
+                <button
+                  onClick={() => {
+                    setPreRoundActive(true);
+                    setPreRoundTimer(15);
+                    
+                    const interval = setInterval(() => {
+                      setPreRoundTimer(prev => {
+                        if (prev <= 1) {
+                          clearInterval(interval);
+                          setPreRoundActive(false);
+                          showFeedback('Pre-round phase finished! Captains submit your blind choices below.', 'success');
+                          return 0;
+                        }
+                        return prev - 1;
+                      });
+                    }, 1000);
+                    
+                    setPreRoundTimerInterval(interval);
+                  }}
+                  disabled={preRoundActive}
+                  style={{
+                    background: preRoundActive ? '#cbd5e1' : '#0f2922',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 800,
+                    cursor: preRoundActive ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {preRoundActive ? 'Pre-Round Active...' : '🚀 Start Next Round (15s Auto Countdown)'}
+                </button>
               </div>
-              <button
-                onClick={() => {
-                  setPreRoundActive(true);
-                  setPreRoundTimer(15);
-                  
-                  const interval = setInterval(() => {
-                    setPreRoundTimer(prev => {
-                      if (prev <= 1) {
-                        clearInterval(interval);
-                        setPreRoundActive(false);
-                        showFeedback('Pre-round phase finished! Captains submit your blind choices below.', 'success');
-                        return 0;
-                      }
-                      return prev - 1;
-                    });
-                  }, 1000);
-                  
-                  setPreRoundTimerInterval(interval);
-                }}
-                disabled={preRoundActive}
-                style={{
-                  background: preRoundActive ? '#cbd5e1' : '#0f2922',
-                  color: '#ffffff',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: 8,
-                  fontSize: 13,
-                  fontWeight: 800,
-                  cursor: preRoundActive ? 'not-allowed' : 'pointer'
-                }}
-              >
-                {preRoundActive ? 'Pre-Round Active...' : '🚀 Start Next Round (15s Auto Countdown)'}
-              </button>
-            </div>
+            )}
 
             {/* PRE-ROUND INTERACTIVE COUNTDOWN MODAL */}
             {preRoundActive && (
@@ -1992,76 +1996,78 @@ export default function HotshotsDraftAdmin() {
             </div>
 
             {/* SANDBOX TESTING OVERRIDE PANEL (ADMIN DEV ONLY) */}
-            <div style={{ marginTop: 40, borderTop: '2px dashed #d4af37', paddingTop: 30 }}>
-              <div style={{ background: '#fef3c7', border: '1px solid #fde68a', padding: 24, borderRadius: 12 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 900, color: '#92400e', margin: '0 0 4px 0', fontFamily: 'serif' }}>🛠️ Hotshots Sandbox Developer Testing Console</h3>
-                <p style={{ fontSize: 12, color: '#b45309', marginBottom: 20 }}>Use these overrides to instantly test all powerup paths without waiting for live countdown timers.</p>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
-                  {captainNames.map((capName, idx) => {
-                    const claimedCard = powerupPile.find(c => c.claimedByTeamIndex === idx);
-                    const assignedPicks = cards.filter(c => c.teamIndex === idx && c.revealed);
-                    
-                    return (
-                      <div key={idx} style={{ background: '#ffffff', padding: 14, borderRadius: 8, border: '1px solid #fcd34d' }}>
-                        <div style={{ fontSize: 12, fontWeight: 800, color: '#0f2922', marginBottom: 8 }}>{capName} (Team {idx+1})</div>
-                        <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 12 }}>
-                          Card: <strong style={{ color: '#d97706' }}>{claimedCard ? claimedCard.type : 'None'}</strong>
-                        </div>
-                        
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <button 
-                            onClick={() => handleUseJoker(idx)}
-                            style={{ width: '100%', padding: '6px', fontSize: 11, fontWeight: 700, background: '#f59e0b', color: '#ffffff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                          >
-                            Force Joker Trigger
-                          </button>
+            {activeCaptainSessionIdx === null && (
+              <div style={{ marginTop: 40, borderTop: '2px dashed #d4af37', paddingTop: 30 }}>
+                <div style={{ background: '#fef3c7', border: '1px solid #fde68a', padding: 24, borderRadius: 12 }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 900, color: '#92400e', margin: '0 0 4px 0', fontFamily: 'serif' }}>🛠️ Hotshots Sandbox Developer Testing Console</h3>
+                  <p style={{ fontSize: 12, color: '#b45309', marginBottom: 20 }}>Use these overrides to instantly test all powerup paths without waiting for live countdown timers.</p>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+                    {captainNames.map((capName, idx) => {
+                      const claimedCard = powerupPile.find(c => c.claimedByTeamIndex === idx);
+                      const assignedPicks = cards.filter(c => c.teamIndex === idx && c.revealed);
+                      
+                      return (
+                        <div key={idx} style={{ background: '#ffffff', padding: 14, borderRadius: 8, border: '1px solid #fcd34d' }}>
+                          <div style={{ fontSize: 12, fontWeight: 800, color: '#0f2922', marginBottom: 8 }}>{capName} (Team {idx+1})</div>
+                          <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 12 }}>
+                            Card: <strong style={{ color: '#d97706' }}>{claimedCard ? claimedCard.type : 'None'}</strong>
+                          </div>
                           
-                          <button 
-                            onClick={() => handleUseSpyglass(idx)}
-                            style={{ width: '100%', padding: '6px', fontSize: 11, fontWeight: 700, background: '#10b981', color: '#ffffff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                          >
-                            Force Spyglass Trigger
-                          </button>
-
-                          {assignedPicks.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                             <button 
-                              onClick={() => handleToggleShield(idx, cards.findIndex(c => c.player === assignedPicks[0].player))}
-                              style={{ width: '100%', padding: '6px', fontSize: 11, fontWeight: 700, background: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                              onClick={() => handleUseJoker(idx)}
+                              style={{ width: '100%', padding: '6px', fontSize: 11, fontWeight: 700, background: '#f59e0b', color: '#ffffff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                             >
-                              Shield: {assignedPicks[0].player}
+                              Force Joker Trigger
                             </button>
-                          )}
-                          
-                          <select 
-                            onChange={(e) => {
-                              if (e.target.value) handleUseBlock(idx, parseInt(e.target.value, 10));
-                            }}
-                            style={{ width: '100%', padding: '4px', fontSize: 10, fontWeight: 700 }}
-                          >
-                            <option value="">Block...</option>
-                            {captainNames.map((n, i) => i !== idx && <option key={i} value={i}>{n}</option>)}
-                          </select>
+                            
+                            <button 
+                              onClick={() => handleUseSpyglass(idx)}
+                              style={{ width: '100%', padding: '6px', fontSize: 11, fontWeight: 700, background: '#10b981', color: '#ffffff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                            >
+                              Force Spyglass Trigger
+                            </button>
 
-                          <select 
-                            onChange={(e) => {
-                              if (e.target.value) handleUseSteal(idx, parseInt(e.target.value, 10));
-                            }}
-                            style={{ width: '100%', padding: '4px', fontSize: 10, fontWeight: 700 }}
-                          >
-                            <option value="">Steal...</option>
-                            {cards.filter(c => c.revealed && c.teamIndex !== idx).map((c, i) => {
-                              const cIdx = cards.findIndex(card => card.player === c.player);
-                              return <option key={i} value={cIdx}>{c.player}</option>;
-                            })}
-                          </select>
+                            {assignedPicks.length > 0 && (
+                              <button 
+                                onClick={() => handleToggleShield(idx, cards.findIndex(c => c.player === assignedPicks[0].player))}
+                                style={{ width: '100%', padding: '6px', fontSize: 11, fontWeight: 700, background: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                              >
+                                Shield: {assignedPicks[0].player}
+                              </button>
+                            )}
+                            
+                            <select 
+                              onChange={(e) => {
+                                if (e.target.value) handleUseBlock(idx, parseInt(e.target.value, 10));
+                              }}
+                              style={{ width: '100%', padding: '4px', fontSize: 10, fontWeight: 700 }}
+                            >
+                              <option value="">Block...</option>
+                              {captainNames.map((n, i) => i !== idx && <option key={i} value={i}>{n}</option>)}
+                            </select>
+
+                            <select 
+                              onChange={(e) => {
+                                if (e.target.value) handleUseSteal(idx, parseInt(e.target.value, 10));
+                              }}
+                              style={{ width: '100%', padding: '4px', fontSize: 10, fontWeight: 700 }}
+                            >
+                              <option value="">Steal...</option>
+                              {cards.filter(c => c.revealed && c.teamIndex !== idx).map((c, i) => {
+                                const cIdx = cards.findIndex(card => card.player === c.player);
+                                return <option key={i} value={cIdx}>{c.player}</option>;
+                              })}
+                            </select>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* FLOATING COLLAPSIBLE REAL-TIME CHAT WIDGET */}
             <div style={{
