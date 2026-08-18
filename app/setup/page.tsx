@@ -47,22 +47,22 @@ type Format = 'scramble' | 'squad_rivalry' | 'court_blocks' | 'fixed_partners' |
 
 const FORMAT_INFO: Record<Format, { label: string; summary: string; example: string }> = {
   scramble: {
-    label: 'Scramble — random partners every round',
+    label: 'Social Round Robin — switch partners every round',
     summary: 'Every round, the app reshuffles who partners with whom and which court they play on. Over the night, it balances things so everyone partners with different people roughly equally, and everyone sits out roughly the same number of times.',
     example: 'Example: Round 1 you play with Alice against Bob & Carl. Round 2 you might play with Dave against Eve & Alice. Nobody has a fixed partner — it changes every round.',
   },
   squad_rivalry: {
-    label: 'Squad Rivalry — 2 fixed squads all night',
+    label: 'Team vs Team Scramble — 2 fixed squads face off',
     summary: 'At the start, players are split into 2 squads (Gold vs Black) for the whole session. Every round is Gold vs Black — your partner rotates within your own squad, but you always face the other squad. A running squad score tracks who\'s winning overall.',
     example: 'Example: You\'re on Gold. Round 1 you partner with a Gold teammate against 2 Black players. Round 2 you get a different Gold partner, still facing Black. Your squad total builds up round by round.',
   },
   court_blocks: {
-    label: 'Court Swap — same group on your court, swap groups every hour',
+    label: 'Group Court Swap — hourly court rotations',
     summary: 'Players are split into groups — one group per court — for a fixed number of rounds (a "block"). Within a block you only play against/with people in your own group, rotating partners inside it. When the block ends, groups reshuffle and everyone swaps to a different court.',
     example: 'Example: Block 1 (rounds 1-6) you\'re grouped with 4 others on Court 1, rotating partners among just those 5. Block 2 (rounds 7-12), the groups reshuffle and you might end up on Court 2 with a different set of people.',
   },
   fixed_partners: {
-    label: 'Fixed Partners — same partner all night',
+    label: 'Fixed Partnership — same partner all night',
     summary: 'Everyone gets one partner for the entire session — that never changes. Only who you\'re facing on the other side of the net rotates each round, balanced so you play against different teams roughly evenly.',
     example: 'Example: You\'re paired with Sam for the whole night. Round 1 you and Sam face Priya & Tom. Round 2 you and Sam face a different team. Your partner is always Sam.',
   },
@@ -1115,7 +1115,10 @@ function SetupPageInner() {
     return (
       <main className="page">
         <StatusChip />
-        <h1>Session Setup</h1>
+        <h1>Event Setup</h1>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 16 }}>
+          Step 1 of 3: Venue, Courts & Player Count
+        </div>
         {currentClub && (
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16, background: 'var(--surface-2, rgba(127,127,127,0.06))' }}>
             <div style={{ fontSize: 13, fontWeight: 700 }}>Session Context:</div>
@@ -1198,11 +1201,14 @@ function SetupPageInner() {
 
   return (
     <main className="page">
-      <h1>Session Setup</h1>
+      <h1>Event Setup</h1>
 
       {subStep === 'players' && (
       <>
-      <h2>Players ({playerCount})</h2>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 16 }}>
+          Step 2 of 3: Roster Setup & Attendance
+        </div>
+        <h2>Who is Playing? ({playerCount} players)</h2>
       {rosterNotice && (
         <p style={{ color: 'var(--dark)', fontSize: 13, fontWeight: 700, marginBottom: 8 }}>{rosterNotice}</p>
       )}
@@ -1359,6 +1365,17 @@ function SetupPageInner() {
 
       {subStep === 'format' && (
       <>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 16 }}>
+          Step 3 of 3: Match Format & Scoring Rules
+        </div>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => setSubStep('players')}
+          style={{ marginBottom: 12 }}
+        >
+          ← Back to Players Roster
+        </button>
       <h2>Ladder League (optional)</h2>
       <div className="card">
         <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
