@@ -259,14 +259,12 @@ export default function HotshotsDraftAdmin() {
   useEffect(() => {
     if (mounted) {
       localStorage.setItem('hotshots_team_names', JSON.stringify(teamNames));
-      pushStateToServer({ teamNames });
     }
   }, [teamNames, mounted]);
 
   useEffect(() => {
     if (mounted) {
       localStorage.setItem('hotshots_team_logos', JSON.stringify(teamLogos));
-      pushStateToServer({ teamLogos });
     }
   }, [teamLogos, mounted]);
 
@@ -285,28 +283,24 @@ export default function HotshotsDraftAdmin() {
   useEffect(() => {
     if (mounted) {
       localStorage.setItem('hotshots_cards_v4', JSON.stringify(cards));
-      pushStateToServer({ cards });
     }
   }, [cards, mounted]);
 
   useEffect(() => {
     if (mounted) {
       localStorage.setItem('hotshots_round_picks', JSON.stringify(roundPicks));
-      pushStateToServer({ roundPicks });
     }
   }, [roundPicks, mounted]);
 
   useEffect(() => {
     if (mounted) {
       localStorage.setItem('hotshots_picks_saved', JSON.stringify(picksSaved));
-      pushStateToServer({ picksSaved });
     }
   }, [picksSaved, mounted]);
 
   useEffect(() => {
     if (mounted) {
       localStorage.setItem('hotshots_powerup_pile_v2', JSON.stringify(powerupPile));
-      pushStateToServer({ powerupPile });
     }
   }, [powerupPile, mounted]);
 
@@ -1071,7 +1065,10 @@ export default function HotshotsDraftAdmin() {
 
             <button 
               disabled={!isStep1Valid}
-              onClick={() => setStep(2)}
+              onClick={() => {
+                setStep(2);
+                pushStateToServer({ step: 2 });
+              }}
               style={{ background: isStep1Valid ? '#0f2922' : '#cbd5e1', color: '#ffffff', border: 'none', padding: '14px 28px', borderRadius: 8, fontSize: 15, fontWeight: 700, cursor: isStep1Valid ? 'pointer' : 'not-allowed', width: '100%' }}
             >
               Continue to Team Details & Logos
@@ -1126,7 +1123,10 @@ export default function HotshotsDraftAdmin() {
 
             <button 
               disabled={!isStep2Valid}
-              onClick={() => setStep(3)}
+              onClick={() => {
+                setStep(3);
+                pushStateToServer({ step: 3, teamNames, teamLogos });
+              }}
               style={{ background: isStep2Valid ? '#0f2922' : '#cbd5e1', color: '#ffffff', border: 'none', padding: '14px 28px', borderRadius: 8, fontSize: 15, fontWeight: 700, cursor: isStep2Valid ? 'pointer' : 'not-allowed', width: '100%' }}
             >
               Continue to Face-Down Powerups Board
@@ -1300,7 +1300,11 @@ export default function HotshotsDraftAdmin() {
             </div>
 
             <button 
-              onClick={() => setDraftStarted(true)}
+              onClick={() => {
+                setDraftStarted(true);
+                setStep(4);
+                pushStateToServer({ draftStarted: true, step: 4 });
+              }}
               style={{
                 background: '#0f2922',
                 color: '#ffffff',
