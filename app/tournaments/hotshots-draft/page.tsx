@@ -209,8 +209,23 @@ export default function HotshotsDraftAdmin() {
         if (Array.isArray(data.cards) && data.cards.length > 0) {
           setCards(data.cards);
         }
-        if (Array.isArray(data.roundPicks)) setRoundPicks(data.roundPicks);
-        if (Array.isArray(data.picksSaved)) setPicksSaved(data.picksSaved);
+        if (Array.isArray(data.picksSaved)) {
+          setPicksSaved(data.picksSaved);
+        }
+        if (Array.isArray(data.roundPicks)) {
+          // Merge roundPicks safely: only take server values for indexes that are saved or empty locally,
+          // preserving the admin's active keystrokes for unsaved inputs.
+          setRoundPicks(prev => {
+            const merged = [...prev];
+            data.roundPicks.forEach((val: string, i: number) => {
+              const isLocalSaved = data.picksSaved ? data.picksSaved[i] : false;
+              if (isLocalSaved || !merged[i]) {
+                merged[i] = val;
+              }
+            });
+            return merged;
+          });
+        }
         if (Array.isArray(data.powerupPile) && data.powerupPile.length > 0) {
           setPowerupPile(data.powerupPile);
         }
