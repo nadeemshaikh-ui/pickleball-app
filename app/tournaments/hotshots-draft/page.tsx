@@ -966,7 +966,27 @@ export default function HotshotsDraftAdmin() {
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h1 style={{ fontSize: 32, fontWeight: 900, color: '#0f2922', fontFamily: 'serif', margin: 0 }}>HOTSHOTS</h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <h1 style={{ fontSize: 32, fontWeight: 900, color: '#0f2922', fontFamily: 'serif', margin: 0 }}>HOTSHOTS</h1>
+              <a 
+                href={`/clubs/${(typeof window !== 'undefined' ? localStorage.getItem('currentClubId') : null) || 'fccd4a42-f3c7-4d93-9493-1e91828e66e2'}`}
+                style={{
+                  fontSize: 12,
+                  fontWeight: 800,
+                  color: '#64748b',
+                  textDecoration: 'none',
+                  border: '1.5px solid #cbd5e1',
+                  borderRadius: 6,
+                  padding: '4px 10px',
+                  background: '#ffffff',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}
+              >
+                ← Back to Club Dashboard
+              </a>
+            </div>
             <p style={{ fontSize: 13, color: '#aa8529', textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: 800, marginBottom: 30 }}>Draft & Setup Console</p>
           </div>
           {activeCaptainSessionIdx === null && (
