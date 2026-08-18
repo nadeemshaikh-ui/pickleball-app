@@ -1256,15 +1256,15 @@ export default function HotshotsDraftAdmin() {
                         </div>
                         <div style={{ 
                           background: '#ffffff', 
-                          border: '1px solid #d4af37', 
-                          borderRadius: 4, 
-                          padding: '6px 4px', 
+                          border: '2px solid #d4af37', 
+                          borderRadius: 8, 
+                          padding: '8px 4px', 
                           width: '95%',
                           textAlign: 'center',
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                          boxShadow: '0 4px 6px rgba(0,0,0,0.05)'
                         }}>
-                          <div style={{ fontSize: 13, fontWeight: 900, color: '#0f2922', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                            Card #{idx + 1}
+                          <div style={{ fontSize: 12, fontWeight: 900, color: '#0f2922', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            {card.type}
                           </div>
                         </div>
                       </div>
