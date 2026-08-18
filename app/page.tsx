@@ -202,10 +202,36 @@ export default function HomePage() {
                 <Play size={22} />
               </div>
               <div style={{ flex: 1 }}>
-                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 900 }}>Start Club Session</h3>
-                <p style={{ margin: '2px 0 0 0', fontSize: 12, color: '#64748b' }}>Scramble, Squads, Fixed Pairs or King of Court</p>
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 900 }}>Create Club Event</h3>
+                <p style={{ margin: '2px 0 0 0', fontSize: 12, color: '#64748b' }}>Round Robin, Teams, or Swap Courts</p>
               </div>
               <ChevronRight size={18} style={{ color: '#94a3b8' }} />
+            </Link>
+
+            {/* Instant Guest Session Launch */}
+            <Link
+              href="/setup?guest=true"
+              style={{
+                background: '#ffffff',
+                border: '1.5px solid #10b981',
+                borderRadius: 14,
+                padding: 18,
+                textDecoration: 'none',
+                color: '#0f172a',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 14,
+                boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+              }}
+            >
+              <div style={{ background: '#10b981', color: '#ffffff', padding: 12, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Users size={22} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#047857' }}>Create Guest Event</h3>
+                <p style={{ margin: '2px 0 0 0', fontSize: 12, color: '#059669' }}>Play casual matches outside the club</p>
+              </div>
+              <ChevronRight size={18} style={{ color: '#10b981' }} />
             </Link>
 
             {/* League Standings & Analytics */}
@@ -221,7 +247,8 @@ export default function HomePage() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 14,
-                boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+                boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
+                gridColumn: 'span 2'
               }}
             >
               <div style={{ background: '#d97706', color: '#ffffff', padding: 12, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
