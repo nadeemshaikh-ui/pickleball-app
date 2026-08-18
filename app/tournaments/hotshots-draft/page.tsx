@@ -946,6 +946,24 @@ export default function HotshotsDraftAdmin() {
       )}
 
       <div style={{ background: '#ffffff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 32, maxWidth: 1000, margin: '40px auto', boxShadow: '0 10px 30px rgba(0,0,0,0.03)' }}>
+        {/* Active User Session Indicator */}
+        <div style={{ 
+          background: activeCaptainSessionIdx === null ? '#0f2922' : activeCaptainSessionIdx === -99 ? '#64748b' : '#aa8529',
+          color: '#ffffff',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '6px 12px',
+          borderRadius: 20,
+          fontSize: 11,
+          fontWeight: 900,
+          textTransform: 'uppercase',
+          letterSpacing: 1,
+          marginBottom: 16
+        }}>
+          👤 Logged In As: {activeCaptainSessionIdx === null ? 'ADMINISTRATOR (FULL ACCESS)' : activeCaptainSessionIdx === -99 ? 'VIEWER MODE (READ-ONLY)' : `CAPTAIN: ${loggedInCaptainName}`}
+        </div>
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h1 style={{ fontSize: 32, fontWeight: 900, color: '#0f2922', fontFamily: 'serif', margin: 0 }}>HOTSHOTS</h1>
