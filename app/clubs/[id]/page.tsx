@@ -34,7 +34,7 @@ import ShareClubInviteButton from '@/components/ShareClubInviteButton';
 // Format-specific results routing — Team Championship's stage/rapid-fire
 // scoring produces a different results page than every other format.
 function resultsLinkFor(s: SessionRow): string {
-  if (s.status !== 'completed') return `/session/${s.id}/schedule`;
+  if (s.status === 'in_progress') return `/session/${s.id}/schedule`;
   return s.format === 'team_championship' ? `/session/${s.id}/team-championship/results` : `/session/${s.id}/results`;
 }
 
