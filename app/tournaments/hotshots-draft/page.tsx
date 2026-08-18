@@ -198,6 +198,7 @@ export default function HotshotsDraftAdmin() {
 
     // Real-time synchronization across different tabs/devices via server-side API polling
     const syncStates = async () => {
+      if ((window as any)._isSendingToServer) return; // Skip polling when a push is in-progress
       try {
         const res = await fetch(`/api/tournaments/hotshots-draft?clubId=${clubId}`);
         if (!res.ok) return;
@@ -235,6 +236,7 @@ export default function HotshotsDraftAdmin() {
   // API State Poster (Pushes updates to the server when state changes locally)
   const pushStateToServer = async (payload: any) => {
     if ((window as any)._isSyncingFromServer) return; // Prevent loop cycle feedback
+    (window as any)._isSendingToServer = true;
     const clubId = (typeof window !== 'undefined' ? localStorage.getItem('currentClubId') : null) || 'fccd4a42-f3c7-4d93-9493-1e91828e66e2';
     try {
       await fetch(`/api/tournaments/hotshots-draft?clubId=${clubId}`, {
@@ -244,6 +246,10 @@ export default function HotshotsDraftAdmin() {
       });
     } catch (e) {
       // fail silently
+    } finally {
+      setTimeout(() => {
+        (window as any)._isSendingToServer = false;
+      }, 300); // Guard window
     }
   };
 
