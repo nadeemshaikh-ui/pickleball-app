@@ -76,6 +76,9 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
         }
         setClub(mine.club);
         setRole(mine.role);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('currentClubId', id);
+        }
         let [memberRows, playerRows, board, crownBoards, currentStreaks, duos, recentSessions, clubTournaments, removedNames] = await Promise.all([
           listClubMembers(id),
           listPlayers(id),

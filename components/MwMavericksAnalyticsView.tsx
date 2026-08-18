@@ -28,7 +28,7 @@ interface PlayerStat {
   canonicalName: string;
   displayName: string;
   registeredName: string;
-  squad: 'MW Mavericks' | 'SVKM Challengers' | 'Monday-Wednesday Member';
+  squad: string;
   sessionsPlayedCount: number;
   played: number;
   wins: number;
@@ -228,9 +228,12 @@ export default function MwMavericksAnalyticsView({
     const pMap = new Map<string, PlayerStat>();
     const sessionTracker = new Map<string, Set<string>>();
 
-    const getSquad = (normName: string): 'MW Mavericks' | 'SVKM Challengers' | 'Monday-Wednesday Member' => {
-      if (mwPlayers.map(normalizePlayerName).includes(normName)) return 'MW Mavericks';
-      return 'Monday-Wednesday Member';
+    const getSquad = (normName: string): string => {
+      if (isOfficialMavericks) {
+        if (mwPlayers.map(normalizePlayerName).includes(normName)) return 'MW Mavericks';
+        return 'Monday-Wednesday Member';
+      }
+      return 'Club Member';
     };
 
     const initPlayer = (normName: string) => {
