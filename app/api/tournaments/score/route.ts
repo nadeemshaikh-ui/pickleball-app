@@ -2,16 +2,13 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ltbnjtgzpwxulbczmzdr.supabase.co';
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!serviceKey) {
-  throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable.');
-}
-
-const supabaseAdmin = createClient(supabaseUrl, serviceKey);
-
 export async function POST(req: Request) {
   try {
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!serviceKey) {
+      return NextResponse.json({ error: 'Server configuration error: missing service key.' }, { status: 500 });
+    }
+    const supabaseAdmin = createClient(supabaseUrl, serviceKey);
     const { sessionId, roundNumber, court, teamA, teamB, scoreA, scoreB } = await req.json();
 
     const targetSessionId = sessionId || 'mw_mavericks_season_2_2026';
