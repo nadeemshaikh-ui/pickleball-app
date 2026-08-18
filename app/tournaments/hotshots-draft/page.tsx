@@ -209,11 +209,9 @@ export default function HotshotsDraftAdmin() {
         if (Array.isArray(data.cards) && data.cards.length > 0) {
           setCards(data.cards);
         } else {
-          // If the server cache is empty, push our local default cards up to initialize it
-          const localSaved = localStorage.getItem('hotshots_cards_v4');
-          const cardsToPush = localSaved ? JSON.parse(localSaved) : defaultCards;
-          setCards(cardsToPush);
-          pushStateToServer({ cards: cardsToPush });
+          // If the server cache is empty, push clean default cards (all unrevealed) up to initialize it
+          setCards(defaultCards);
+          pushStateToServer({ cards: defaultCards });
         }
         if (Array.isArray(data.roundPicks)) setRoundPicks(data.roundPicks);
         if (Array.isArray(data.picksSaved)) setPicksSaved(data.picksSaved);
