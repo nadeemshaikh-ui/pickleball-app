@@ -199,7 +199,7 @@ export default function HotshotsDraftAdmin() {
 
     // Real-time synchronization across different tabs/devices via server-side API polling
     const syncStates = async () => {
-      if ((window as any)._isSendingToServer) return; // Skip polling when a push is in-progress
+      if ((window as any)._isSendingToServer || (window as any)._isSequentialRevealing) return; // Skip polling when a push or reveal is in-progress
       try {
         const res = await fetch(`/api/tournaments/hotshots-draft?clubId=${clubId}`);
         if (!res.ok) return;
@@ -703,9 +703,11 @@ export default function HotshotsDraftAdmin() {
 
   // Sequential Reveal Pipeline
   const executeSequentialReveal = async () => {
+    (window as any)._isSequentialRevealing = true;
     const activeRoundIndices = [0, 1, 2, 3].filter(idx => picksSaved[idx]);
     
     if (activeRoundIndices.length === 0) {
+      (window as any)._isSequentialRevealing = false;
       showFeedback('No card numbers have been saved yet!', 'error');
       return;
     }
@@ -725,6 +727,9 @@ export default function HotshotsDraftAdmin() {
         setPicksSaved(prev => {
           const updated = [...prev];
           updated[teamIdx] = false;
+          localStorage.setItem('hotshots_picks_saved', JSON.stringify(updated));
+          // Push intermediate state to server
+          pushStateToServer({ cards: tempCardsState, roundPicks: updatedPicksCleared, picksSaved: updated });
           return updated;
         });
         continue;
@@ -873,6 +878,7 @@ export default function HotshotsDraftAdmin() {
     setBlockedTeamsThisRound([false, false, false, false]);
     setLocalAdminInputs(['', '', '', '']); // Clear local typings for next round
     pushStateToServer({ blockedTeamsThisRound: [false, false, false, false] });
+    (window as any)._isSequentialRevealing = false;
   };
 
   const getShareFinalRosterText = () => {
