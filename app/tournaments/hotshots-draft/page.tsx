@@ -207,20 +207,11 @@ export default function HotshotsDraftAdmin() {
 
         if (Array.isArray(data.cards) && data.cards.length > 0) {
           setCards(data.cards);
-        } else {
-          // If the server cache is empty, push clean default cards (all unrevealed) up to initialize it
-          setCards(defaultCards);
-          pushStateToServer({ cards: defaultCards });
         }
         if (Array.isArray(data.roundPicks)) setRoundPicks(data.roundPicks);
         if (Array.isArray(data.picksSaved)) setPicksSaved(data.picksSaved);
         if (Array.isArray(data.powerupPile) && data.powerupPile.length > 0) {
           setPowerupPile(data.powerupPile);
-        } else {
-          const localSavedPile = localStorage.getItem('hotshots_powerup_pile_v2');
-          const pileToPush = localSavedPile ? JSON.parse(localSavedPile) : defaultPile;
-          setPowerupPile(pileToPush);
-          pushStateToServer({ powerupPile: pileToPush });
         }
         if (Array.isArray(data.blockedTeamsThisRound)) setBlockedTeamsThisRound(data.blockedTeamsThisRound);
         if (Array.isArray(data.chatLog)) setChatLog(data.chatLog);
