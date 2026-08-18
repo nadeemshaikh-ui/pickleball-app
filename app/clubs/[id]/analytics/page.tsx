@@ -104,6 +104,7 @@ export default function ClubAnalyticsPage({ params }: { params: Promise<{ id: st
           svkmPlayers={[]}
           mwScore={35}
           svkmScore={28}
+          clubId={id}
         />
       )}
     </main>

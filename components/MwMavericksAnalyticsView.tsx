@@ -21,6 +21,7 @@ interface MwMavericksAnalyticsViewProps {
   svkmPlayers: string[];
   mwScore: number;
   svkmScore: number;
+  clubId?: string;
 }
 
 interface PlayerStat {
@@ -166,7 +167,8 @@ export default function MwMavericksAnalyticsView({
   mwPlayers,
   svkmPlayers,
   mwScore,
-  svkmScore
+  svkmScore,
+  clubId
 }: MwMavericksAnalyticsViewProps) {
   const [activeSubTab, setActiveSubTab] = useState<'players' | 'diagnostic' | 'duos' | 'h2h' | 'matches'>('players');
   const [selectedDiagnosticPlayer, setSelectedDiagnosticPlayer] = useState<string>('Nadeem');
@@ -186,18 +188,22 @@ export default function MwMavericksAnalyticsView({
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [topPlayersOnly, setTopPlayersOnly] = useState<boolean>(false);
 
-  // Master Roster of registered Monday-Wednesday Club members (including Nadeem & Sumit)
+  const isOfficialMavericks = clubId === 'd5b57890-3787-41bb-bf23-38bc95345011';
+
+  // Master Roster of registered club members (isolated from Mavericks unless on Mavericks club page)
   const masterMwClubRoster = useMemo(() => {
-    const rawList = [
-      'Nadeem', 'nadim shaikh', 'Sumit', 'sumiit shettyy',
-      ...mwPlayers,
-      '12', 'AMBRESH', 'AMIT', 'ANISH', 'ANKIT', 'CHIRAG', 'DD', 'GAURAV', 'GOPAL',
-      'HARSH', 'HEMAL', 'HITEN', 'KARAN', 'KETAN', 'MBS', 'MRUGESH', 'NEEL', 'RAHIL',
-      'SAGAR', 'SAURABH', 'SMIT', 'TEJAS', 'TEJASH', 'TUSHAR', 'VICKY',
-      'Tushar Shah', 'Rahul Maniar', 'HEMAL SHAH', 'karan mastakar', 'Hiten Thakker',
-      'Gopal Parwal', 'Ankit', 'Amresh Sahay', 'Miten Shah', 'Saurabh Gandhi',
-      'Deep Chhatlani', 'Sagar Choksi', 'Vinit Shanghvi', 'Viki Rajani', 'Siddharth Gupta'
-    ];
+    const rawList = isOfficialMavericks
+      ? [
+          'Nadeem', 'nadim shaikh', 'Sumit', 'sumiit shettyy',
+          ...mwPlayers,
+          '12', 'AMBRESH', 'AMIT', 'ANISH', 'ANKIT', 'CHIRAG', 'DD', 'GAURAV', 'GOPAL',
+          'HARSH', 'HEMAL', 'HITEN', 'KARAN', 'KETAN', 'MBS', 'MRUGESH', 'NEEL', 'RAHIL',
+          'SAGAR', 'SAURABH', 'SMIT', 'TEJAS', 'TEJASH', 'TUSHAR', 'VICKY',
+          'Tushar Shah', 'Rahul Maniar', 'HEMAL SHAH', 'karan mastakar', 'Hiten Thakker',
+          'Gopal Parwal', 'Ankit', 'Amresh Sahay', 'Miten Shah', 'Saurabh Gandhi',
+          'Deep Chhatlani', 'Sagar Choksi', 'Vinit Shanghvi', 'Viki Rajani', 'Siddharth Gupta'
+        ]
+      : [...mwPlayers];
 
     const canonicalSet = new Set<string>();
     rawList.forEach(item => {
@@ -207,7 +213,7 @@ export default function MwMavericksAnalyticsView({
       }
     });
     return Array.from(canonicalSet).sort();
-  }, [mwPlayers]);
+  }, [mwPlayers, isOfficialMavericks]);
 
   // Compute Advanced Player Statistics
   const { playerList, playerStatsMap, duoList } = useMemo(() => {
@@ -691,7 +697,7 @@ export default function MwMavericksAnalyticsView({
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Filter size={18} style={{ color: '#0f172a' }} />
             <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: '#0f172a' }}>
-              Filter By Specific Monday-Wednesday Players ({selectedPlayerFilter.size === 0 ? `Showing All ${masterMwClubRoster.length}` : `${selectedPlayerFilter.size} Selected`})
+              Filter By Specific {isOfficialMavericks ? 'Monday-Wednesday' : 'Club'} Players ({selectedPlayerFilter.size === 0 ? `Showing All ${masterMwClubRoster.length}` : `${selectedPlayerFilter.size} Selected`})
             </h3>
           </div>
           {selectedPlayerFilter.size > 0 && (
@@ -709,7 +715,7 @@ export default function MwMavericksAnalyticsView({
             <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: '#64748b' }} />
             <input
               type="text"
-              placeholder="Search player (e.g. Nadeem, Sumit, Mrugesh, Karan...)"
+              placeholder={`Search player (e.g. ${isOfficialMavericks ? 'Nadeem, Sumit, Mrugesh' : 'Name'}...)`}
               value={playerSearchTerm}
               onChange={e => setPlayerSearchTerm(e.target.value)}
               style={{ width: '100%', padding: '10px 12px 10px 36px', fontSize: 14, fontWeight: 700, borderRadius: 10, border: '1px solid #cbd5e1' }}
@@ -815,7 +821,7 @@ export default function MwMavericksAnalyticsView({
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: '#0f172a' }}>
-                Monday-Wednesday Club Player Analytics Leaderboard ({filteredPlayersTable.length} Players)
+                {isOfficialMavericks ? 'Monday-Wednesday Club' : 'Club'} Player Analytics Leaderboard ({filteredPlayersTable.length} Players)
               </h3>
               <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b', fontWeight: 600 }}>
                 💡 Click on any column header or sort pill below to order players. Click a player name to open their profile card.
