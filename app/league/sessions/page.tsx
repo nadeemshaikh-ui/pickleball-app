@@ -56,8 +56,15 @@ function SessionHistoryContent() {
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
-        {filteredSessions.map(s => (
-          <Link key={s.id} href={`/session/${s.id}/results`} className="card" style={{ display: 'block' }}>
+        {filteredSessions.map(s => {
+          const isLive = s.status === 'in_progress';
+          const href = isLive 
+            ? `/session/${s.id}/schedule` 
+            : s.format === 'team_championship' 
+            ? `/session/${s.id}/team-championship/results` 
+            : `/session/${s.id}/results`;
+          return (
+            <Link key={s.id} href={href} className="card" style={{ display: 'block' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div style={{ fontWeight: 700 }}>
@@ -69,10 +76,10 @@ function SessionHistoryContent() {
                   {s.status === 'voided' ? ' — voided' : ''}
                 </div>
               </div>
-              <div style={{ fontSize: 12, color: 'var(--muted)' }}>{s.players.length} players</div>
             </div>
           </Link>
-        ))}
+          );
+        })}
       </div>
     </main>
   );
