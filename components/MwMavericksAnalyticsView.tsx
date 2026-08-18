@@ -607,6 +607,13 @@ export default function MwMavericksAnalyticsView({
       const teamA = (r.team_a || []).map(normalizePlayerName).filter(p => !isPlaceholderName(p));
       const teamB = (r.team_b || []).map(normalizePlayerName).filter(p => !isPlaceholderName(p));
 
+      // If not Mavericks, filter out matches that do not contain any of our registered club members
+      if (!isOfficialMavericks) {
+        const teamAHasClubMember = teamA.some(p => masterMwClubRoster.includes(p));
+        const teamBHasClubMember = teamB.some(p => masterMwClubRoster.includes(p));
+        if (!teamAHasClubMember && !teamBHasClubMember) return false;
+      }
+
       if (selectedPlayerFilter.size > 0) {
         const teamAHas = teamA.some(p => selectedPlayerFilter.has(p));
         const teamBHas = teamB.some(p => selectedPlayerFilter.has(p));
@@ -621,7 +628,7 @@ export default function MwMavericksAnalyticsView({
 
       return true;
     });
-  }, [rounds, selectedPlayerFilter, matchTypeFilter]);
+  }, [rounds, selectedPlayerFilter, matchTypeFilter, isOfficialMavericks, masterMwClubRoster]);
 
   const activeDiagPlayer = playerStatsMap.get(normalizePlayerName(selectedDiagnosticPlayer)) || playerList[0];
 
