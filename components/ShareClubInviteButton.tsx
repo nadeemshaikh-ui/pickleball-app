@@ -75,8 +75,7 @@ export default function ShareClubInviteButton({
         cursor: 'pointer',
       }}
     >
-      {copied ? <Check size={18} /> : <Share2 size={18} />}
-      <span>{copied ? 'Link Copied! Opening WhatsApp…' : 'Share Invite on WhatsApp'}</span>
+      <span>{copied ? '✓ Link Copied! Opening WhatsApp…' : `Share WhatsApp Invite (Code: ${joinCode.toUpperCase()})`}</span>
     </button>
   );
 }
