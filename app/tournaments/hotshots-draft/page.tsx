@@ -1176,7 +1176,7 @@ export default function HotshotsDraftAdmin() {
                         padding: 12,
                         width: '100%',
                         height: '100%',
-                        backgroundImage: isClaimedByMe ? 'url(/hotshots_empty_white_1786961957195.jpg)' : 'url(/hotshots_clean_back_1786954882257.jpg)',
+                        backgroundImage: 'url(/hotshots_empty_white_1786961957195.jpg)',
                         backgroundSize: 'cover',
                         backgroundPosition: 'center',
                         borderRadius: 10,
