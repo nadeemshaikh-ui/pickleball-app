@@ -186,6 +186,10 @@ export default function HotshotsDraftAdmin() {
       } else if (roleQuery === 'viewer') {
         setActiveCaptainSessionIdx(-99); // -99 represents viewer mode
         setLoggedInCaptainName('Viewer');
+      } else {
+        // Force reset to admin mode if visiting the clean admin URL
+        setActiveCaptainSessionIdx(null);
+        setLoggedInCaptainName(null);
       }
     }
 
