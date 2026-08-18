@@ -37,6 +37,7 @@ export default function HotshotsDraftAdmin() {
   const [draftStarted, setDraftStarted] = useState(false);
   const [cards, setCards] = useState<CardState[]>([]);
   const [roundPicks, setRoundPicks] = useState<string[]>([]);
+  const [localAdminInputs, setLocalAdminInputs] = useState<string[]>(['', '', '', '']);
   const [picksSaved, setPicksSaved] = useState<boolean[]>([]);
 
   // Secret Powerup Pile States (FCFS)
@@ -220,6 +221,16 @@ export default function HotshotsDraftAdmin() {
             data.roundPicks.forEach((val: string, i: number) => {
               const isLocalSaved = data.picksSaved ? data.picksSaved[i] : false;
               if (isLocalSaved || !merged[i]) {
+                merged[i] = val;
+              }
+            });
+            return merged;
+          });
+          setLocalAdminInputs(prev => {
+            const merged = [...prev];
+            data.roundPicks.forEach((val: string, i: number) => {
+              const isLocalSaved = data.picksSaved ? data.picksSaved[i] : false;
+              if (isLocalSaved) {
                 merged[i] = val;
               }
             });
@@ -878,7 +889,7 @@ export default function HotshotsDraftAdmin() {
   };
 
   const handleSavePickNumber = (teamIdx: number) => {
-    const val = roundPicks[teamIdx];
+    const val = localAdminInputs[teamIdx];
     const num = parseInt(val, 10);
     
     if (isNaN(num) || num < 1 || num > 12) {
@@ -891,22 +902,31 @@ export default function HotshotsDraftAdmin() {
       return;
     }
 
-    const duplicateIdx = roundPicks.findIndex((p, idx) => idx !== teamIdx && parseInt(p, 10) === num);
+    // Check duplicates against local typed inputs
+    const duplicateIdx = localAdminInputs.findIndex((p, idx) => idx !== teamIdx && parseInt(p, 10) === num);
     if (duplicateIdx !== -1) {
       showFeedback(`Card #${num} has already been chosen by ${teamNames[duplicateIdx]} for this round!`, 'error');
       return;
     }
+
+    const updatedPicks = [...roundPicks];
+    updatedPicks[teamIdx] = val;
+    setRoundPicks(updatedPicks);
 
     const updatedSaved = [...picksSaved];
     updatedSaved[teamIdx] = true;
     setPicksSaved(updatedSaved);
     
     // Explicitly push saved state to server for instant synchronization
-    pushStateToServer({ picksSaved: updatedSaved, roundPicks });
+    pushStateToServer({ picksSaved: updatedSaved, roundPicks: updatedPicks });
     showFeedback(`Selection for ${teamNames[teamIdx] || 'Team'} saved successfully!`, 'success');
   };
 
   const handleClearPickNumber = (teamIdx: number) => {
+    const updatedInputs = [...localAdminInputs];
+    updatedInputs[teamIdx] = '';
+    setLocalAdminInputs(updatedInputs);
+
     const updatedPicks = [...roundPicks];
     updatedPicks[teamIdx] = '';
     setRoundPicks(updatedPicks);
@@ -2264,12 +2284,12 @@ export default function HotshotsDraftAdmin() {
                                 cursor: isSaved ? 'not-allowed' : 'text'
                               }}
                               placeholder="e.g. 5"
-                              value={roundPicks[idx]}
+                              value={localAdminInputs[idx]}
                               onChange={(e) => {
                                 const val = e.target.value;
-                                const updated = [...roundPicks];
+                                const updated = [...localAdminInputs];
                                 updated[idx] = val;
-                                setRoundPicks(updated);
+                                setLocalAdminInputs(updated);
                               }}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') handleSavePickNumber(idx);
