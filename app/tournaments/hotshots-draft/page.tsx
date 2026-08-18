@@ -1171,39 +1171,17 @@ export default function HotshotsDraftAdmin() {
                       }}>
                         {isClaimedByMe ? (
                           <>
-                            <div style={{ height: 10 }} />
-                            <div style={{ 
-                              width: 50, 
-                              height: 50, 
-                              borderRadius: '50%', 
-                              background: 'rgba(212,175,55,0.1)', 
-                              border: '1.5px solid #d4af37', 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              justifyContent: 'center',
-                              fontSize: 22,
-                              boxShadow: '0 4px 8px rgba(0,0,0,0.05)'
-                            }}>
-                              {(() => {
-                                if (card.type === 'Steal') return '🎭';
-                                if (card.type === 'Shield') return '🛡️';
-                                if (card.type === 'Spyglass') return '🔮';
-                                if (card.type === 'DeckSwap') return '🔄';
-                                if (card.type === 'Block') return '⏳';
-                                return '🃏';
-                              })()}
-                            </div>
-                            
+                            <div style={{ height: 35 }} />
                             <div style={{ 
                               background: '#ffffff', 
-                              border: '1px solid #d4af37', 
-                              borderRadius: 4, 
-                              padding: '6px 4px', 
+                              border: '2px solid #d4af37', 
+                              borderRadius: 8, 
+                              padding: '12px 6px', 
                               width: '95%',
                               textAlign: 'center',
-                              boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                              boxShadow: '0 4px 10px rgba(0,0,0,0.08)'
                             }}>
-                              <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                              <div style={{ fontSize: 14, fontWeight: 900, color: '#0f172a', textTransform: 'uppercase', letterSpacing: 1 }}>
                                 {card.type}
                               </div>
                             </div>
