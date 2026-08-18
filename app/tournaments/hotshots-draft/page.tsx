@@ -2053,12 +2053,33 @@ export default function HotshotsDraftAdmin() {
                       backgroundSize: 'cover',
                       backgroundPosition: 'center',
                       border: '3px solid #d4af37', 
+                      position: 'relative',
                       display: 'flex', 
                       flexDirection: 'column', 
                       alignItems: 'center', 
                       justifyContent: 'center',
                       boxSizing: 'border-box',
-                    }} />
+                    }}>
+                      {/* Card Number Plate Overlay */}
+                      <div style={{ 
+                        position: 'absolute',
+                        bottom: 12,
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        width: '84%',
+                        background: '#ffffff', 
+                        border: '2px solid #d4af37', 
+                        borderRadius: 8, 
+                        padding: '6px 2px', 
+                        textAlign: 'center', 
+                        zIndex: 3,
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.05)'
+                      }}>
+                        <div style={{ fontSize: 11, fontWeight: 900, color: '#0f172a', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                          Card #{card.number}
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
               ))}
