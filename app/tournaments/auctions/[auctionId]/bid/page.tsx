@@ -97,10 +97,12 @@ export default function AuctionBiddingPage() {
   // near-instant resolution when anyone's watching; pg_cron (see the
   // migration) is purely the once-a-minute backstop for an unwatched lot.
   // resolve_lot is idempotent and safe for any club member to call, so no
-  // harm if two viewers' clients both fire this at once.
+  // Trigger auto-resolution of expired lot safely
   useEffect(() => {
     if (!currentLot?.lot_closes_at || resolveInFlight.current) return;
     if (new Date(currentLot.lot_closes_at).getTime() > nowTick) return;
+    if (currentLot.status === 'sold' || currentLot.status === 'unsold') return; // Do not re-resolve closed lots
+
     resolveInFlight.current = true;
     resolveLot(currentLot.id, false)
       .then(() => load())

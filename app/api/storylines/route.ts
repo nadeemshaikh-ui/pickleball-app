@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   try {
     const client = new Anthropic();
     const response = await client.messages.create({
-      model: 'claude-haiku-4-5',
+      model: 'claude-3-5-haiku-20241022',
       max_tokens: 200,
       system:
         'You write short, punchy pregame hype lines for a casual pickleball group chat. ' +
