@@ -195,10 +195,12 @@ export default function HotshotsDraftAdmin() {
 
     setMounted(true);
 
+    const clubId = (typeof window !== 'undefined' ? localStorage.getItem('currentClubId') : null) || 'fccd4a42-f3c7-4d93-9493-1e91828e66e2';
+
     // Real-time synchronization across different tabs/devices via server-side API polling
     const syncStates = async () => {
       try {
-        const res = await fetch('/api/tournaments/hotshots-draft');
+        const res = await fetch(`/api/tournaments/hotshots-draft?clubId=${clubId}`);
         if (!res.ok) return;
         const data = await res.json();
         
@@ -230,8 +232,9 @@ export default function HotshotsDraftAdmin() {
   // API State Poster (Pushes updates to the server when state changes locally)
   const pushStateToServer = async (payload: any) => {
     if ((window as any)._isSyncingFromServer) return; // Prevent loop cycle feedback
+    const clubId = (typeof window !== 'undefined' ? localStorage.getItem('currentClubId') : null) || 'fccd4a42-f3c7-4d93-9493-1e91828e66e2';
     try {
-      await fetch('/api/tournaments/hotshots-draft', {
+      await fetch(`/api/tournaments/hotshots-draft?clubId=${clubId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -937,8 +940,9 @@ export default function HotshotsDraftAdmin() {
             <button 
               onClick={async () => {
                 localStorage.clear();
+                const cId = (typeof window !== 'undefined' ? localStorage.getItem('currentClubId') : null) || 'fccd4a42-f3c7-4d93-9493-1e91828e66e2';
                 try {
-                  await fetch('/api/tournaments/hotshots-draft', { method: 'DELETE' });
+                  await fetch(`/api/tournaments/hotshots-draft?clubId=${cId}`, { method: 'DELETE' });
                 } catch(e) {}
                 window.location.reload();
               }} 
