@@ -43,14 +43,18 @@ export default function ClubAnalyticsPage({ params }: { params: Promise<{ id: st
           sessionIds = ['kot56f'];
         }
 
-        const { data: dbRounds } = await supabase
-          .from('rounds')
-          .select('*')
-          .in('session_id', Array.from(new Set(sessionIds)))
-          .order('round_number', { ascending: true })
-          .order('court', { ascending: true });
+        if (sessionIds.length === 0) {
+          setRounds([]);
+        } else {
+          const { data: dbRounds } = await supabase
+            .from('rounds')
+            .select('*')
+            .in('session_id', Array.from(new Set(sessionIds)))
+            .order('round_number', { ascending: true })
+            .order('court', { ascending: true });
 
-        setRounds(dbRounds || []);
+          setRounds(dbRounds || []);
+        }
       } catch (err) {
         console.error('Error loading club analytics rounds:', err);
       } finally {
@@ -87,7 +91,9 @@ export default function ClubAnalyticsPage({ params }: { params: Promise<{ id: st
             </span>
             <h1 style={{ margin: '2px 0 0', fontSize: 26, fontWeight: 900 }}>{clubName} — Official Tournament Analytics</h1>
             <p style={{ margin: '4px 0 0', fontSize: 14, color: '#94a3b8', fontWeight: 600 }}>
-              Displaying all 63 scored rounds from the August 12, 2026 Tournament: MW Mavericks vs SVKM Challengers
+              {id === 'd5b57890-3787-41bb-bf23-38bc95345011' 
+                ? 'Displaying all 63 scored rounds from the August 12, 2026 Tournament: MW Mavericks vs SVKM Challengers'
+                : `Displaying stats and analytics records compiled across all ${rounds.length} matches played in this club.`}
             </p>
           </div>
         </div>

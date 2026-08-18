@@ -227,6 +227,7 @@ export default function MwMavericksAnalyticsView({
 
     const initPlayer = (normName: string) => {
       if (isPlaceholderName(normName)) return;
+      if (!isOfficialMavericks && !masterMwClubRoster.includes(normName)) return;
       if (!pMap.has(normName)) {
         pMap.set(normName, {
           canonicalName: normName,
