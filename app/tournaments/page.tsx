@@ -175,6 +175,13 @@ export default function TournamentsPage() {
             </div>
           )}
           <Link
+            href="/tournaments/hotshots-draft"
+            className="btn-secondary"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 8, width: '100%', borderColor: '#d4af37', background: 'rgba(212,175,55,0.05)', color: '#aa8529', fontWeight: 800 }}
+          >
+            👑 Hotshots Live Draft & Team Selection
+          </Link>
+          <Link
             href="/setup?format=team_championship"
             className="btn-secondary"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 8, width: '100%' }}

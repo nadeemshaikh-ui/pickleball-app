@@ -737,10 +737,19 @@ export default function ClubDashboardPage({ params }: { params: Promise<{ id: st
           <Link
             href="/tournaments"
             className="btn-secondary"
-            style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, gridColumn: '1 / -1' }}
+            style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
           >
             <Trophy size={15} /> Tournaments
           </Link>
+          {id === 'fccd4a42-f3c7-4d93-9493-1e91828e66e2' && (
+            <Link
+              href="/tournaments/hotshots-draft"
+              className="btn-secondary"
+              style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, gridColumn: '1 / -1', borderColor: '#d4af37', background: 'rgba(212,175,55,0.05)', color: '#aa8529', fontWeight: 800 }}
+            >
+              👑 Hotshots Live Draft & Team Selection
+            </Link>
+          )}
         </div>
       </div>
 
