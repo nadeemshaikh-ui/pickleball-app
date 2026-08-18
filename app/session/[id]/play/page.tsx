@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PartyPopper, TrendingDown, Crown, Frown, Egg, CheckCircle2, Save } from 'lucide-react';
-import { getSession, getRounds, updateRoundScore, insertRounds, markSessionCompleted, updateDesignatedScorers, removeLastRound, addRoundRepeatingLast, type RoundRow, type SessionRow } from '@/lib/db';
+import { getSession, getRounds, updateRoundScore, insertRounds, markSessionCompleted, updateDesignatedScorers, removeLastRound, addRoundRepeatingLast, deleteSession, type RoundRow, type SessionRow } from '@/lib/db';
 import { computeRoundTimeRange } from '@/lib/roundTiming';
 import { pickCourtScorer, newPlayersOnCourt } from '@/lib/nextMatch';
 import {
@@ -161,6 +161,16 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
       router.push(session?.format === 'team_championship' ? `/session/${id}/team-championship/results` : `/session/${id}/results`);
     } finally {
       setEnding(false);
+    }
+  }
+
+  async function handleAbandonSession() {
+    if (!confirm('Are you sure you want to abandon and delete this ongoing session? All round scores logged so far will be permanently removed.')) return;
+    try {
+      await deleteSession(id);
+      router.push('/');
+    } catch (err) {
+      alert('Failed to abandon session. Please try again.');
     }
   }
 
@@ -628,9 +638,18 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
         {isAdmin && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
             {currentRoundNumber !== undefined && (
-              <button className="btn-secondary" style={{ fontSize: 13 }} onClick={() => setShowEndConfirm(true)} disabled={ending}>
-                {ending ? 'Ending…' : 'End Session Early'}
-              </button>
+              <>
+                <button className="btn-secondary" style={{ fontSize: 13 }} onClick={() => setShowEndConfirm(true)} disabled={ending}>
+                  {ending ? 'Ending…' : 'End Session Early'}
+                </button>
+                <button
+                  className="btn-secondary"
+                  style={{ fontSize: 13, color: 'var(--danger, #dc2626)', borderColor: 'var(--danger-border, #fecaca)', background: 'var(--danger-bg, #fef2f2)' }}
+                  onClick={handleAbandonSession}
+                >
+                  Abandon / Delete Session
+                </button>
+              </>
             )}
             <button className="btn-secondary" style={{ fontSize: 13 }} onClick={() => setShowScorerPanel(v => !v)}>
               {session?.designated_scorers?.length ? `Scorers (${session.designated_scorers.length})` : 'Assign Scorers'}
