@@ -227,7 +227,8 @@ export default function MwMavericksAnalyticsView({
 
     const initPlayer = (normName: string) => {
       if (isPlaceholderName(normName)) return;
-      if (!isOfficialMavericks && !masterMwClubRoster.includes(normName)) return;
+      const lowerRoster = masterMwClubRoster.map(n => n.toLowerCase());
+      if (!isOfficialMavericks && !lowerRoster.includes(normName.toLowerCase())) return;
       if (!pMap.has(normName)) {
         pMap.set(normName, {
           canonicalName: normName,
@@ -609,8 +610,9 @@ export default function MwMavericksAnalyticsView({
 
       // If not Mavericks, filter out matches that do not contain any of our registered club members
       if (!isOfficialMavericks) {
-        const teamAHasClubMember = teamA.some(p => masterMwClubRoster.includes(p));
-        const teamBHasClubMember = teamB.some(p => masterMwClubRoster.includes(p));
+        const lowerRoster = masterMwClubRoster.map(n => n.toLowerCase());
+        const teamAHasClubMember = teamA.some(p => lowerRoster.includes(p.toLowerCase()));
+        const teamBHasClubMember = teamB.some(p => lowerRoster.includes(p.toLowerCase()));
         if (!teamAHasClubMember && !teamBHasClubMember) return false;
       }
 
