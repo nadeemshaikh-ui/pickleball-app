@@ -12,6 +12,8 @@ export default function ClubAnalyticsPage({ params }: { params: Promise<{ id: st
   const [loading, setLoading] = useState(true);
   const [clubName, setClubName] = useState('Monday-Wednesday Club');
 
+  const [clubPlayers, setClubPlayers] = useState<string[]>([]);
+
   useEffect(() => {
     async function loadData() {
       try {
@@ -19,6 +21,12 @@ export default function ClubAnalyticsPage({ params }: { params: Promise<{ id: st
         // Fetch club details
         const { data: club } = await supabase.from('clubs').select('*').eq('id', id).single();
         if (club) setClubName(club.name);
+
+        // Fetch club players roster dynamically
+        const { data: playersList } = await supabase.from('players').select('name').eq('club_id', id);
+        if (playersList) {
+          setClubPlayers(playersList.map(p => p.name));
+        }
 
         // Fetch sessions for this club
         const { data: sessions } = await supabase.from('sessions').select('*').eq('club_id', id);
@@ -58,6 +66,8 @@ export default function ClubAnalyticsPage({ params }: { params: Promise<{ id: st
     'HITEN', 'KARAN', 'KETAN', 'MBS', 'MRUGESH', 'NEEL', 'RAHIL', 'SAGAR', 'SAURABH', 'SMIT', 'TEJAS', 'TEJASH', 'TUSHAR', 'VICKY'
   ];
 
+  const activeRoster = id === 'd5b57890-3787-41bb-bf23-38bc95345011' ? mwRoster : clubPlayers;
+
   return (
     <main className="page" style={{ maxWidth: 1100, margin: '0 auto', padding: '16px 20px' }}>
       <div style={{ marginBottom: 16 }}>
@@ -90,7 +100,7 @@ export default function ClubAnalyticsPage({ params }: { params: Promise<{ id: st
       ) : (
         <MwMavericksAnalyticsView
           rounds={rounds}
-          mwPlayers={mwRoster}
+          mwPlayers={activeRoster}
           svkmPlayers={[]}
           mwScore={35}
           svkmScore={28}

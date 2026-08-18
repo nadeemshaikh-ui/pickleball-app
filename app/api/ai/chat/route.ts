@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { createSession, getRounds } from '@/lib/db';
+import { createSession, getRounds, insertRounds } from '@/lib/db';
+import { generateScrambleSchedule } from '@/lib/shuffle';
 import { verifyGeneratedSchedule } from '@/lib/aiVerificationSandbox';
 import Anthropic from '@anthropic-ai/sdk';
 
@@ -117,6 +118,10 @@ export async function POST(req: Request) {
           storylines: [],
           bookerUpiVpa: null,
         });
+
+        const seed = `${Date.now()}`;
+        const generatedRounds = generateScrambleSchedule(selectedPlayers, courtCount, roundCount, seed, []);
+        await insertRounds(sessionId, generatedRounds);
 
         // Execute automated verification sandbox on generated rounds
         const createdRounds = await getRounds(sessionId);
