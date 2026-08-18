@@ -103,7 +103,12 @@ export default function OnboardingPage() {
         ))}
       </div>
 
-      {step === 'branch' && <BranchStep onPick={choice => setStep(choice === 'create' ? 'create-club' : 'join-club')} />}
+      {step === 'branch' && (
+        <BranchStep
+          onPick={choice => setStep(choice === 'create' ? 'create-club' : 'join-club')}
+          onSkip={finish}
+        />
+      )}
 
       {step === 'create-club' && (
         <CreateClubStep

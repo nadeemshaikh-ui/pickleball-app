@@ -31,7 +31,6 @@ export default function GlobalNav() {
     { href: '/league', label: 'League', icon: Trophy },
   ];
   const rightTabs = [
-    { href: '/clubs', label: 'Clubs', icon: Users },
     { href: '/register', label: 'You', icon: User },
   ];
 

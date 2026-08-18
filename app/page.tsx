@@ -179,58 +179,91 @@ export default function HomePage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, marginBottom: 24 }}>
         
-        {/* Instant Session Launch */}
-        <Link
-          href="/setup"
-          style={{
-            background: '#ffffff',
-            border: '1px solid #e2e8f0',
-            borderRadius: 14,
-            padding: 18,
-            textDecoration: 'none',
-            color: '#0f172a',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 14,
-            boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <div style={{ background: '#0f172a', color: '#ffffff', padding: 12, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Play size={22} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 900 }}>Start Club Session</h3>
-            <p style={{ margin: '2px 0 0 0', fontSize: 12, color: '#64748b' }}>Scramble, Squads, Fixed Pairs or King of Court</p>
-          </div>
-          <ChevronRight size={18} style={{ color: '#94a3b8' }} />
-        </Link>
+        {currentClubId ? (
+          <>
+            {/* Instant Session Launch */}
+            <Link
+              href="/setup"
+              style={{
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: 14,
+                padding: 18,
+                textDecoration: 'none',
+                color: '#0f172a',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 14,
+                boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <div style={{ background: '#0f172a', color: '#ffffff', padding: 12, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Play size={22} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 900 }}>Start Club Session</h3>
+                <p style={{ margin: '2px 0 0 0', fontSize: 12, color: '#64748b' }}>Scramble, Squads, Fixed Pairs or King of Court</p>
+              </div>
+              <ChevronRight size={18} style={{ color: '#94a3b8' }} />
+            </Link>
 
-        {/* Dedicated Guest Mode Open Play Launcher */}
-        <Link
-          href="/setup?guest=true"
-          style={{
-            background: '#ffffff',
-            border: '1.5px solid #10b981',
-            borderRadius: 14,
-            padding: 18,
-            textDecoration: 'none',
-            color: '#0f172a',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 14,
-            boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
-          }}
-        >
-          <div style={{ background: '#10b981', color: '#ffffff', padding: 12, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Users size={22} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#047857' }}>Guest Mode Open Play</h3>
-            <p style={{ margin: '2px 0 0 0', fontSize: 12, color: '#059669' }}>Host non-club matches with WhatsApp share & QR code</p>
-          </div>
-          <ChevronRight size={18} style={{ color: '#10b981' }} />
-        </Link>
+            {/* League Standings & Analytics */}
+            <Link
+              href={`/clubs/${currentClubId}`}
+              style={{
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: 14,
+                padding: 18,
+                textDecoration: 'none',
+                color: '#0f172a',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 14,
+                boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+              }}
+            >
+              <div style={{ background: '#d97706', color: '#ffffff', padding: 12, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <BarChart2 size={22} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 900 }}>Club Analytics & Leaderboard</h3>
+                <p style={{ margin: '2px 0 0 0', fontSize: 12, color: '#64748b' }}>H2H records, rankings, duo chemistry</p>
+              </div>
+              <ChevronRight size={18} style={{ color: '#94a3b8' }} />
+            </Link>
+          </>
+        ) : (
+          <>
+            {/* Dedicated Guest Mode Open Play Launcher */}
+            <Link
+              href="/setup?guest=true"
+              style={{
+                background: '#ffffff',
+                border: '1.5px solid #10b981',
+                borderRadius: 14,
+                padding: 18,
+                textDecoration: 'none',
+                color: '#0f172a',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 14,
+                boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
+                gridColumn: 'span 2'
+              }}
+            >
+              <div style={{ background: '#10b981', color: '#ffffff', padding: 12, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Users size={22} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#047857' }}>Guest Mode Open Play</h3>
+                <p style={{ margin: '2px 0 0 0', fontSize: 12, color: '#059669' }}>Host non-club matches with WhatsApp share & QR code</p>
+              </div>
+              <ChevronRight size={18} style={{ color: '#10b981' }} />
+            </Link>
+          </>
+        )}
 
         {/* AI Schedule & Rules Import */}
         <div
@@ -258,31 +291,6 @@ export default function HomePage() {
           <ChevronRight size={18} style={{ color: '#2563eb' }} />
         </div>
 
-        {/* League Standings & Analytics */}
-        <Link
-          href={currentClubId ? `/clubs/${currentClubId}` : '/league/stats'}
-          style={{
-            background: '#ffffff',
-            border: '1px solid #e2e8f0',
-            borderRadius: 14,
-            padding: 18,
-            textDecoration: 'none',
-            color: '#0f172a',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 14,
-            boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
-          }}
-        >
-          <div style={{ background: '#d97706', color: '#ffffff', padding: 12, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <BarChart2 size={22} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 900 }}>Club Analytics & Leaderboard</h3>
-            <p style={{ margin: '2px 0 0 0', fontSize: 12, color: '#64748b' }}>H2H records, rankings, duo chemistry</p>
-          </div>
-          <ChevronRight size={18} style={{ color: '#94a3b8' }} />
-        </Link>
       </div>
 
       {/* My Clubs Section (Non-blocking) */}
