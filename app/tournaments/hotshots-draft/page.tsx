@@ -992,8 +992,19 @@ export default function HotshotsDraftAdmin() {
           {activeCaptainSessionIdx === null && (
             <button 
               onClick={async () => {
-                localStorage.clear();
                 const cId = (typeof window !== 'undefined' ? localStorage.getItem('currentClubId') : null) || 'fccd4a42-f3c7-4d93-9493-1e91828e66e2';
+                // Surgically remove only the draft state local storage keys, preserving currentClubId
+                localStorage.removeItem('hotshots_all_players_v4');
+                localStorage.removeItem('hotshots_captain_names');
+                localStorage.removeItem('hotshots_team_names');
+                localStorage.removeItem('hotshots_team_logos');
+                localStorage.removeItem('hotshots_step');
+                localStorage.removeItem('hotshots_draft_started');
+                localStorage.removeItem('hotshots_cards_v4');
+                localStorage.removeItem('hotshots_round_picks');
+                localStorage.removeItem('hotshots_picks_saved');
+                localStorage.removeItem('hotshots_powerup_pile_v2');
+                localStorage.removeItem('hotshots_blocked_teams');
                 try {
                   await fetch(`/api/tournaments/hotshots-draft?clubId=${cId}`, { method: 'DELETE' });
                 } catch(e) {}
