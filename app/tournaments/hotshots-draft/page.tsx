@@ -1187,42 +1187,41 @@ export default function HotshotsDraftAdmin() {
                         alignItems: 'center',
                         boxSizing: 'border-box'
                       }}>
-                        {isClaimedByMe ? (
-                          <>
-                            <div style={{ height: 35 }} />
-                            <div style={{ 
-                              background: '#ffffff', 
-                              border: '2px solid #d4af37', 
-                              borderRadius: 8, 
-                              padding: '12px 6px', 
-                              width: '95%',
-                              textAlign: 'center',
-                              boxShadow: '0 4px 10px rgba(0,0,0,0.08)'
-                            }}>
-                              <div style={{ fontSize: 14, fontWeight: 900, color: '#0f172a', textTransform: 'uppercase', letterSpacing: 1 }}>
-                                {card.type}
+                        {(() => {
+                          const idxVal = card.claimedByTeamIndex;
+                          const claimingCaptainName = idxVal !== null ? (captainNames[idxVal] || `Team ${idxVal + 1}`) : '';
+                          return (
+                            <>
+                              <div style={{ height: 20 }} />
+                              <div style={{ 
+                                background: '#ffffff', 
+                                border: '2px solid #d4af37', 
+                                borderRadius: 8, 
+                                padding: '12px 6px', 
+                                width: '95%',
+                                textAlign: 'center',
+                                boxShadow: '0 4px 10px rgba(0,0,0,0.08)'
+                              }}>
+                                <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                  {card.type}
+                                </div>
                               </div>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div style={{ height: 10 }} />
-                            <span style={{ fontSize: 16 }}>🔒</span>
-                            <div style={{ 
-                              background: '#ffffff', 
-                              border: '1px solid #d4af37', 
-                              borderRadius: 4, 
-                              padding: '4px 2px', 
-                              width: '90%',
-                              textAlign: 'center',
-                              boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-                            }}>
-                              <div style={{ fontSize: 9, fontWeight: 900, color: '#0f2922', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                CLAIMED
+                              <div style={{ 
+                                background: '#0f2922',
+                                color: '#ffffff',
+                                border: '1px solid #d4af37',
+                                borderRadius: 4,
+                                padding: '2px 4px',
+                                fontSize: 9,
+                                fontWeight: 800,
+                                textTransform: 'uppercase',
+                                marginBottom: 6
+                              }}>
+                                {claimingCaptainName}
                               </div>
-                            </div>
-                          </>
-                        )}
+                            </>
+                          );
+                        })()}
                       </div>
                     ) : (
                       <div style={{
