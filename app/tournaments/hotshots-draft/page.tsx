@@ -131,7 +131,6 @@ export default function HotshotsDraftAdmin() {
     const savedDraftStarted = localStorage.getItem('hotshots_draft_started');
     setDraftStarted(savedDraftStarted === 'true');
 
-    const savedCards = localStorage.getItem('hotshots_cards_v4');
     const defaultCards: CardState[] = Array.from({ length: 12 }, (_, i) => ({
       number: i + 1,
       revealed: false,
@@ -140,7 +139,7 @@ export default function HotshotsDraftAdmin() {
       teamIndex: null,
       shielded: false
     }));
-    setCards(savedCards ? JSON.parse(savedCards) : defaultCards);
+    setCards(defaultCards);
 
     const savedRoundPicks = localStorage.getItem('hotshots_round_picks');
     setRoundPicks(savedRoundPicks ? JSON.parse(savedRoundPicks) : ['', '', '', '']);
