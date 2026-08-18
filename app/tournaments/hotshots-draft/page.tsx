@@ -804,17 +804,16 @@ export default function HotshotsDraftAdmin() {
       setRevealingTeamIndex(null);
       setRevealedPlayerText('');
 
-      setRoundPicks(prev => {
-        const updated = [...prev];
-        updated[teamIdx] = '';
-        localStorage.setItem('hotshots_round_picks', JSON.stringify(updated));
-        return updated;
-      });
+      const updatedPicksCleared = [...roundPicks];
+      updatedPicksCleared[teamIdx] = '';
+      setRoundPicks(updatedPicksCleared);
 
       setPicksSaved(prev => {
         const updated = [...prev];
         updated[teamIdx] = false;
         localStorage.setItem('hotshots_picks_saved', JSON.stringify(updated));
+        // Push intermediate state to server
+        pushStateToServer({ cards: tempCardsState, roundPicks: updatedPicksCleared, picksSaved: updated });
         return updated;
       });
 
@@ -856,23 +855,24 @@ export default function HotshotsDraftAdmin() {
         setRevealingTeamIndex(null);
         setRevealedPlayerText('');
 
-        setRoundPicks(prev => {
-          const updated = [...prev];
-          updated[teamIdx] = '';
-          return updated;
-        });
+        const updatedPicksCleared = [...roundPicks];
+        updatedPicksCleared[teamIdx] = '';
+        setRoundPicks(updatedPicksCleared);
 
-        setPicksSaved(prev => {
-          const updated = [...prev];
-          updated[teamIdx] = false;
-          return updated;
-        });
+        const updatedSavedCleared = [...picksSaved];
+        updatedSavedCleared[teamIdx] = false;
+        setPicksSaved(updatedSavedCleared);
+
+        // Push state to server
+        pushStateToServer({ cards: tempCardsState, roundPicks: updatedPicksCleared, picksSaved: updatedSavedCleared });
 
         await delay(1000);
       }
     }
 
     setBlockedTeamsThisRound([false, false, false, false]);
+    setLocalAdminInputs(['', '', '', '']); // Clear local typings for next round
+    pushStateToServer({ blockedTeamsThisRound: [false, false, false, false] });
   };
 
   const getShareFinalRosterText = () => {
