@@ -192,6 +192,13 @@ export default function MwMavericksAnalyticsView({
 
   // Master Roster of registered club members (isolated from Mavericks unless on Mavericks club page)
   const masterMwClubRoster = useMemo(() => {
+    // Extract any player names found inside the rounds match records dynamically
+    const dynamicPlayersFromRounds = new Set<string>();
+    rounds.forEach(r => {
+      (r.team_a || []).forEach(p => dynamicPlayersFromRounds.add(p));
+      (r.team_b || []).forEach(p => dynamicPlayersFromRounds.add(p));
+    });
+
     const rawList = isOfficialMavericks
       ? [
           'Nadeem', 'nadim shaikh', 'Sumit', 'sumiit shettyy',
@@ -201,9 +208,10 @@ export default function MwMavericksAnalyticsView({
           'SAGAR', 'SAURABH', 'SMIT', 'TEJAS', 'TEJASH', 'TUSHAR', 'VICKY',
           'Tushar Shah', 'Rahul Maniar', 'HEMAL SHAH', 'karan mastakar', 'Hiten Thakker',
           'Gopal Parwal', 'Ankit', 'Amresh Sahay', 'Miten Shah', 'Saurabh Gandhi',
-          'Deep Chhatlani', 'Sagar Choksi', 'Vinit Shanghvi', 'Viki Rajani', 'Siddharth Gupta'
+          'Deep Chhatlani', 'Sagar Choksi', 'Vinit Shanghvi', 'Viki Rajani', 'Siddharth Gupta',
+          ...Array.from(dynamicPlayersFromRounds)
         ]
-      : [...mwPlayers];
+      : [...mwPlayers, ...Array.from(dynamicPlayersFromRounds)];
 
     const canonicalSet = new Set<string>();
     rawList.forEach(item => {
@@ -213,7 +221,7 @@ export default function MwMavericksAnalyticsView({
       }
     });
     return Array.from(canonicalSet).sort();
-  }, [mwPlayers, isOfficialMavericks]);
+  }, [mwPlayers, isOfficialMavericks, rounds]);
 
   // Compute Advanced Player Statistics
   const { playerList, playerStatsMap, duoList } = useMemo(() => {
@@ -227,8 +235,6 @@ export default function MwMavericksAnalyticsView({
 
     const initPlayer = (normName: string) => {
       if (isPlaceholderName(normName)) return;
-      const lowerRoster = masterMwClubRoster.map(n => n.toLowerCase());
-      if (!isOfficialMavericks && !lowerRoster.includes(normName.toLowerCase())) return;
       if (!pMap.has(normName)) {
         pMap.set(normName, {
           canonicalName: normName,
@@ -610,10 +616,7 @@ export default function MwMavericksAnalyticsView({
 
       // If not Mavericks, filter out matches that do not contain any of our registered club members
       if (!isOfficialMavericks) {
-        const lowerRoster = masterMwClubRoster.map(n => n.toLowerCase());
-        const teamAHasClubMember = teamA.some(p => lowerRoster.includes(p.toLowerCase()));
-        const teamBHasClubMember = teamB.some(p => lowerRoster.includes(p.toLowerCase()));
-        if (!teamAHasClubMember && !teamBHasClubMember) return false;
+        // Allow all matches belonging to the queried sessions to show up
       }
 
       if (selectedPlayerFilter.size > 0) {
