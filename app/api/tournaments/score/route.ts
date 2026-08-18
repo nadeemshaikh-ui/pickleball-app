@@ -11,7 +11,11 @@ export async function POST(req: Request) {
     const supabaseAdmin = createClient(supabaseUrl, serviceKey);
     const { sessionId, roundNumber, court, teamA, teamB, scoreA, scoreB } = await req.json();
 
-    const targetSessionId = sessionId || 'mw_mavericks_season_2_2026';
+    if (!sessionId) {
+      return NextResponse.json({ error: 'Session ID is required.' }, { status: 400 });
+    }
+
+    const targetSessionId = sessionId;
 
     if (roundNumber === undefined || court === undefined) {
       return NextResponse.json({ error: 'Missing required match score fields.' }, { status: 400 });
@@ -23,18 +27,12 @@ export async function POST(req: Request) {
     // 1. Ensure target session row exists non-destructively
     const { data: existingSession } = await supabaseAdmin
       .from('sessions')
-      .select('id')
+      .select('id, club_id')
       .eq('id', targetSessionId)
       .single();
 
     if (!existingSession) {
-      await supabaseAdmin.from('sessions').insert({
-        id: targetSessionId,
-        club_id: 'mw_club_monday_wednesday',
-        format: 'team_championship',
-        players: [],
-        round_count: 28
-      });
+      return NextResponse.json({ error: 'Session not found. Create the session first.' }, { status: 404 });
     }
 
     // 2. Direct Supabase DB upsert for exact session_id, round_number, court
