@@ -885,6 +885,9 @@ export default function HotshotsDraftAdmin() {
     const updatedSaved = [...picksSaved];
     updatedSaved[teamIdx] = true;
     setPicksSaved(updatedSaved);
+    
+    // Explicitly push saved state to server for instant synchronization
+    pushStateToServer({ picksSaved: updatedSaved, roundPicks });
     showFeedback(`Selection for ${teamNames[teamIdx] || 'Team'} saved successfully!`, 'success');
   };
 
@@ -896,6 +899,9 @@ export default function HotshotsDraftAdmin() {
     const updatedSaved = [...picksSaved];
     updatedSaved[teamIdx] = false;
     setPicksSaved(updatedSaved);
+
+    // Explicitly push updates to server for instant synchronization
+    pushStateToServer({ picksSaved: updatedSaved, roundPicks: updatedPicks });
   };
 
   if (!mounted) {
