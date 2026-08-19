@@ -93,7 +93,7 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
       Array.from({ length: stageForImage.roundEnd - stageForImage.roundStart + 1 }, (_, i) => stageForImage.roundStart + i)
     );
     const stageRoundsForImage = rounds.filter(r => roundNumbers.has(r.round_number));
-    if (!stageRoundsForImage.some(r => r.team_a[0] && r.team_b[0])) {
+    if (!stageRoundsForImage.some(r => r.team_a?.[0] && r.team_b?.[0])) {
       setStageImageFile(null);
       return;
     }
