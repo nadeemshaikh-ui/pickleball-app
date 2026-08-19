@@ -609,6 +609,24 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
           ) : null;
         })()}
 
+        {session?.format === 'team_championship' && tcStages.length > 0 && (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 12, flexWrap: 'wrap' }}>
+            {tcStages.map((s, idx) => (
+              <button
+                key={s.stageLabel}
+                type="button"
+                className="btn-secondary"
+                style={{ fontSize: 13, fontWeight: 700, padding: '8px 14px', flex: 1, minWidth: 145, textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                onClick={() => {
+                  router.push(`/session/${id}/team-championship/stage/${idx + 1}`);
+                }}
+              >
+                ⚙️ {s.stageLabel} Settings
+              </button>
+            ))}
+          </div>
+        )}
+
         {tcStages.length > 0 && currentStageIdx > 0 && (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
             <span style={{ fontSize: 12, color: 'var(--muted)', alignSelf: 'center' }}>Review:</span>
