@@ -628,14 +628,19 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
             <p style={{ fontSize: 14, fontWeight: 800, margin: '0 0 8px' }}>Round {roundNumber}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {courtsInRound.map(round => {
-                const draft = drafts[round.id] ?? [round.team_a[0], round.team_a[1], round.team_b[0], round.team_b[1]];
+                const draft = drafts[round.id] ?? [
+                  round.team_a?.[0] || '',
+                  round.team_a?.[1] || '',
+                  round.team_b?.[0] || '',
+                  round.team_b?.[1] || ''
+                ];
                 const isScored = round.score_a !== null && round.score_b !== null;
                 const isSaved =
                   !isScored &&
-                  draft[0] === round.team_a[0] &&
-                  draft[1] === round.team_a[1] &&
-                  draft[2] === round.team_b[0] &&
-                  draft[3] === round.team_b[1] &&
+                  draft[0] === (round.team_a?.[0] || '') &&
+                  draft[1] === (round.team_a?.[1] || '') &&
+                  draft[2] === (round.team_b?.[0] || '') &&
+                  draft[3] === (round.team_b?.[1] || '') &&
                   draft.every(name => name !== '');
                 return (
                   <div key={round.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
