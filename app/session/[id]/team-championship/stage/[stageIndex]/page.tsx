@@ -224,7 +224,11 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
         const squadOfPlayer = new Map(session.squads.flatMap(t => t.players.map(p => [p, t.id] as const)));
         normalized = roundsToCreate.map(r => ({
           ...r,
-          courts: r.courts.map(c => (squadOfPlayer.get(c.teamA[0]) === team0Id ? c : { teamA: c.teamB, teamB: c.teamA })),
+          courts: r.courts.map(c => {
+            const firstPlayer = c.teamA[0] || '';
+            const squadId = squadOfPlayer.get(firstPlayer) || team0Id;
+            return squadId === team0Id ? c : { teamA: c.teamB, teamB: c.teamA };
+          }),
         }));
       } else {
         const totalRounds = session.stage_config.reduce((sum, s) => sum + (s.roundEnd - s.roundStart + 1), 0);
