@@ -15,6 +15,7 @@ import {
   type SessionRow,
 } from '@/lib/db';
 import { generateSquadRivalryScheduleN } from '@/lib/squads';
+import { computePlayerStats } from '@/lib/teamChampionship';
 import { renderElementToImage, shareCachedImage } from '@/lib/shareImage';
 import { getCurrentUser, isCurrentUserAdmin } from '@/lib/auth';
 import { WhatsAppIcon } from '@/components/icons';
@@ -122,18 +123,110 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
     setGenerating(true);
     setError(null);
     try {
-      const totalRounds = session.stage_config.reduce((sum, s) => sum + (s.roundEnd - s.roundStart + 1), 0);
+      const isFinalsStage = stageToGenerate.roundStart === 9; // Rounds 9-11 (Gold & Bronze Finals)
       const courtCount = session.court_labels.length || 1;
-      const seed = `${session.id}-team-championship`;
-      const { rounds: generated } = generateSquadRivalryScheduleN(session.players, 2, courtCount, totalRounds, seed, [], session.squads);
-      const team0Id = session.squads[0].id;
-      const squadOfPlayer = new Map(session.squads.flatMap(t => t.players.map(p => [p, t.id] as const)));
-      const normalized = generated
-        .filter(r => r.roundNumber >= stageToGenerate.roundStart && r.roundNumber <= stageToGenerate.roundEnd)
-        .map(r => ({
-          ...r,
-          courts: r.courts.map(c => (squadOfPlayer.get(c.teamA[0]) === team0Id ? c : { teamA: c.teamB, teamB: c.teamA })),
-        }));
+      
+      let normalized = [];
+      
+      if (isFinalsStage) {
+        // Calculate player stats from the previous 8 rounds to get exact rankings
+        const previousRounds = rounds.filter(r => r.round_number >= 1 && r.round_number <= 8);
+        const playerStats = computePlayerStats(previousRounds, session.squads);
+        
+        // Group and sort players in each squad based on wins, win percentage, and point diff
+        const sortedSquadPlayers = session.squads.map(squad => {
+          const members = playerStats.filter(ps => ps.teamId === squad.id);
+          members.sort((a, b) => b.wins - a.wins || b.winPct - a.winPct || b.pointDiff - a.pointDiff);
+          return {
+            squadId: squad.id,
+            players: members.map(m => m.name)
+          };
+        });
+        
+        const squad0 = sortedSquadPlayers[0];
+        const squad1 = sortedSquadPlayers[1];
+        
+        // Generate the 3 finals rounds dynamically
+        // Gold Final (Court 1 & 2): Captains pick partners (Rank 1 & 2, then Rank 3 & 4)
+        // Bronze Final (Court 3): Rank 5 & 6
+        const roundsToCreate = Array.from({ length: 3 }, (_, rIdx) => {
+          const roundNumber = stageToGenerate.roundStart + rIdx;
+          
+          // R1: Rank 1 & 2 on Court 1, Rank 3 & 4 on Court 2 (Gold), Rank 5 & 6 on Court 3 (Bronze)
+          // R2: Repeat with no repeat partners constraint
+          // R3: Decider if difference <= 3 points
+          const courts = [];
+          
+          if (roundNumber === 9) {
+            // R1 Gold Match 1 (Court 1): Team A Rank 1 & 2 vs Team B Rank 1 & 2
+            // R1 Gold Match 2 (Court 2): Team A Rank 3 & 4 vs Team B Rank 3 & 4
+            // R1 Bronze Match 1 (Court 3): Team A Rank 5 & 6 vs Team B Rank 5 & 6
+            courts.push({
+              teamA: [squad0.players[0] || '', squad0.players[1] || ''] as [string, string],
+              teamB: [squad1.players[0] || '', squad1.players[1] || ''] as [string, string]
+            });
+            courts.push({
+              teamA: [squad0.players[2] || '', squad0.players[3] || ''] as [string, string],
+              teamB: [squad1.players[2] || '', squad1.players[3] || ''] as [string, string]
+            });
+            courts.push({
+              teamA: [squad0.players[4] || '', squad0.players[5] || ''] as [string, string],
+              teamB: [squad1.players[4] || '', squad1.players[5] || ''] as [string, string]
+            });
+          } else if (roundNumber === 10) {
+            // R2 Gold Match 1 (Court 1): Shuffle partners (e.g. 1 & 3 vs 1 & 3)
+            // R2 Gold Match 2 (Court 2): Shuffle partners (e.g. 2 & 4 vs 2 & 4)
+            // R2 Bronze Match 1 (Court 3): Shuffle partners (e.g. 5 & 7 vs 5 & 7)
+            courts.push({
+              teamA: [squad0.players[0] || '', squad0.players[2] || ''] as [string, string],
+              teamB: [squad1.players[0] || '', squad1.players[2] || ''] as [string, string]
+            });
+            courts.push({
+              teamA: [squad0.players[1] || '', squad0.players[3] || ''] as [string, string],
+              teamB: [squad1.players[1] || '', squad1.players[3] || ''] as [string, string]
+            });
+            courts.push({
+              teamA: [squad0.players[4] || '', squad0.players[6] || ''] as [string, string],
+              teamB: [squad1.players[4] || '', squad1.players[6] || ''] as [string, string]
+            });
+          } else {
+            // Decider R3 (Captains choice based on matchup rules)
+            courts.push({
+              teamA: [squad0.players[0] || '', squad0.players[1] || ''] as [string, string],
+              teamB: [squad1.players[0] || '', squad1.players[1] || ''] as [string, string]
+            });
+            courts.push({
+              teamA: [squad0.players[2] || '', squad0.players[3] || ''] as [string, string],
+              teamB: [squad1.players[2] || '', squad1.players[3] || ''] as [string, string]
+            });
+            courts.push({
+              teamA: [squad0.players[4] || '', squad0.players[5] || ''] as [string, string],
+              teamB: [squad1.players[4] || '', squad1.players[5] || ''] as [string, string]
+            });
+          }
+          
+          return {
+            roundNumber,
+            courts,
+            sittingOutPerCourt: courts.map(() => [])
+          };
+        });
+        
+        normalized = roundsToCreate;
+      } else {
+        const totalRounds = session.stage_config.reduce((sum, s) => sum + (s.roundEnd - s.roundStart + 1), 0);
+        const seed = `${session.id}-team-championship`;
+        const { rounds: generated } = generateSquadRivalryScheduleN(session.players, 2, courtCount, totalRounds, seed, [], session.squads);
+        const team0Id = session.squads[0].id;
+        const squadOfPlayer = new Map(session.squads.flatMap(t => t.players.map(p => [p, t.id] as const)));
+        normalized = generated
+          .filter(r => r.roundNumber >= stageToGenerate.roundStart && r.roundNumber <= stageToGenerate.roundEnd)
+          .map(r => ({
+            ...r,
+            courts: r.courts.map(c => (squadOfPlayer.get(c.teamA[0]) === team0Id ? c : { teamA: c.teamB, teamB: c.teamA })),
+          }));
+      }
+      
       await insertRounds(session.id, normalized);
       await load();
     } catch (e) {
