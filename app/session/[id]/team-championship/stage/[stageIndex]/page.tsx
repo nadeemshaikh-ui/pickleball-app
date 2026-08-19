@@ -62,7 +62,14 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
     const user = await getCurrentUser();
     if (user) setIsAdmin(await isCurrentUserAdmin(s.club_id));
     const nextDrafts: Record<string, [string, string, string, string]> = {};
-    for (const round of r) nextDrafts[round.id] = [round.team_a[0], round.team_a[1], round.team_b[0], round.team_b[1]];
+    for (const round of r) {
+      nextDrafts[round.id] = [
+        round.team_a?.[0] || '',
+        round.team_a?.[1] || '',
+        round.team_b?.[0] || '',
+        round.team_b?.[1] || ''
+      ];
+    }
     setDrafts(nextDrafts);
   }
 
