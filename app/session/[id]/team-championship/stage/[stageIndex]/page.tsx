@@ -23,6 +23,38 @@ import StageImageTemplate from '@/components/StageImageTemplate';
 import SessionNav from '@/components/SessionNav';
 import ConfirmModal from '@/components/ConfirmModal';
 
+import React, { ErrorInfo } from 'react';
+
+class StageErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: Error | null, errorInfo: ErrorInfo | null }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    this.setState({ errorInfo });
+    console.error("StageErrorBoundary caught an error:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <main className="page" style={{ padding: 20 }}>
+          <h2 style={{ color: 'red' }}>Stage Page Crash Detected</h2>
+          <pre style={{ color: 'red', overflowX: 'auto' }}>{this.state.error?.toString()}</pre>
+          <details>
+            <summary>Stack Trace</summary>
+            <pre style={{ fontSize: 11, whiteSpace: 'pre-wrap', marginTop: 10 }}>{this.state.errorInfo?.componentStack}</pre>
+          </details>
+          <button className="btn-primary" onClick={() => window.location.reload()} style={{ marginTop: 20 }}>Reload Page</button>
+        </main>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // Real tournament flow, not round-1-through-15 all thrown on one screen:
 // captains work stage by stage (Foundation/Momentum/Championship), fill in
 // that stage's pairings, share ONE WhatsApp message covering the whole
@@ -31,9 +63,9 @@ import ConfirmModal from '@/components/ConfirmModal';
 // rule already used by the separate tournament-bracket engine
 // (lib/tournamentStages.ts), applied here to Team Championship's stages.
 // stageIndex is 1-based, matching session.stage_config's array order.
-export default function TeamChampionshipStagePage({ params }: { params: Promise<{ id: string; stageIndex: string }> }) {
+function TeamChampionshipStagePageContent({ params }: { params: Promise<{ id: string; stageIndex: string }> }) {
   const { id, stageIndex: stageIndexParam } = use(params);
-  const stageIndex = Number(stageIndexParam);
+  const stageIndex = Number(stageIndexParam) || 1;
   const router = useRouter();
 
   const [session, setSession] = useState<SessionRow | null>(null);
@@ -53,6 +85,7 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
   const [isAdmin, setIsAdmin] = useState(false);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [ending, setEnding] = useState(false);
+  const [adminBypass, setAdminBypass] = useState(false);
   const imageCaptureRef = useRef<HTMLDivElement>(null);
 
   async function load() {
@@ -367,8 +400,12 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
     router.push('/tournaments/mw-mavericks');
     return <main className="page"><p>Redirecting to MW Mavericks Master Hub…</p></main>;
   }
-  if (!Number.isFinite(stageIndex) || stageIndex < 1 || stageIndex > session.stage_config.length) {
-    router.push(`/session/${id}/team-championship/stage/1`);
+  const parsedStageIndex = Math.floor(stageIndex);
+  if (!Number.isFinite(parsedStageIndex) || parsedStageIndex < 1 || parsedStageIndex > session.stage_config.length) {
+    // Only redirect if it's not a valid stage index
+    if (typeof window !== 'undefined') {
+      router.push(`/session/${id}/team-championship/stage/1`);
+    }
     return <main className="page"><p>Redirecting to Stage 1…</p></main>;
   }
 
@@ -376,8 +413,13 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
   const stages = session.stage_config;
   const rosterByTeam = (teams || []).map(t => ({ id: t.id, label: t.label ?? t.id, players: t.players || [] }));
   const courtCount = session.court_labels?.length || 1;
-  const stage = stages[stageIndex - 1];
-  const stageRoundNumbers = Array.from({ length: stage.roundEnd - stage.roundStart + 1 }, (_, i) => stage.roundStart + i);
+  const stage = stages[parsedStageIndex - 1];
+  
+  if (!stage) {
+     return <main className="page"><p>Stage definition missing or corrupted.</p></main>;
+  }
+  
+  const stageRoundNumbers = Array.from({ length: Math.max(0, stage.roundEnd - stage.roundStart + 1) }, (_, i) => stage.roundStart + i);
   const stageRounds = rounds.filter(r => stageRoundNumbers.includes(r.round_number)).sort((a, b) => (a.round_number - b.round_number) || (a.court - b.court));
 
   // Previous stage must be fully scored before this one opens — same rule
@@ -393,7 +435,6 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
   // mean "stop here," not "every unplayed stage stays sealed." Once the
   // session itself is done, nothing should still read as locked.
   // Allow club admins to override and bypass the stage lock checks to configure pairings early.
-  const [adminBypass, setAdminBypass] = useState(false);
   const prevStageComplete =
     session.status === 'completed' || adminBypass || !prevStage || (prevStageRounds.length > 0 && prevStageRounds.every(r => r.score_a !== null && r.score_b !== null));
 
@@ -803,5 +844,13 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
     )}
     <SessionNav sessionId={id} format="team_championship" clubId={session.club_id} />
     </>
+  );
+}
+
+export default function TeamChampionshipStagePage(props: any) {
+  return (
+    <StageErrorBoundary>
+      <TeamChampionshipStagePageContent {...props} />
+    </StageErrorBoundary>
   );
 }
