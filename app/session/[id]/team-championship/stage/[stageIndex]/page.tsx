@@ -381,24 +381,38 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
   // same lock on every later stage forever — ending early is supposed to
   // mean "stop here," not "every unplayed stage stays sealed." Once the
   // session itself is done, nothing should still read as locked.
+  // Allow club admins to override and bypass the stage lock checks to configure pairings early.
+  const [adminBypass, setAdminBypass] = useState(false);
   const prevStageComplete =
-    session.status === 'completed' || !prevStage || (prevStageRounds.length > 0 && prevStageRounds.every(r => r.score_a !== null && r.score_b !== null));
+    session.status === 'completed' || adminBypass || !prevStage || (prevStageRounds.length > 0 && prevStageRounds.every(r => r.score_a !== null && r.score_b !== null));
 
   if (prevStage && !prevStageComplete) {
     return (
       <>
       <main className="page">
         <div className="page-header-row">
-          <Link href={`/session/${id}/team-championship/pairings`} className="text-link-btn">← All Rounds</Link>
+          <Link href={`/session/${id}/team-championship/results`} className="text-link-btn">← Standings</Link>
         </div>
         <h1>{stage.stageLabel}</h1>
-        <div className="card">
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <p style={{ margin: 0 }}>
             🔒 Locked until <strong>{prevStage.stageLabel}</strong> is fully scored (rounds {prevStage.roundStart}–{prevStage.roundEnd}).
           </p>
-          <Link href={`/session/${id}/team-championship/stage/${stageIndex - 1}`} className="btn-primary" style={{ display: 'inline-block', marginTop: 12 }}>
-            Go to {prevStage.stageLabel} →
-          </Link>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <Link href={`/session/${id}/team-championship/stage/${stageIndex - 1}`} className="btn-secondary" style={{ flex: 1, textAlign: 'center' }}>
+              Go to {prevStage.stageLabel} →
+            </Link>
+            {isAdmin && (
+              <button
+                type="button"
+                className="btn-primary"
+                style={{ flex: 1, minWidth: 150 }}
+                onClick={() => setAdminBypass(true)}
+              >
+                🔓 Admin: Bypass Lock
+              </button>
+            )}
+          </div>
         </div>
       </main>
       <SessionNav sessionId={id} format="team_championship" clubId={session.club_id} />
