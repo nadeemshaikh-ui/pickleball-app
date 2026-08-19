@@ -637,39 +637,61 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>{rosterByTeam[0]?.label}</span>
-                        {[0, 1].map(slot => (
-                          <select
-                            key={slot}
-                            value={draft[slot]}
-                            onChange={e => updateDraftSlot(round.id, slot, e.target.value)}
-                            disabled={!isAdmin || isScored || (isSaved && editingRoundId !== round.id)}
-                            aria-label={`Round ${roundNumber} court ${round.court} ${rosterByTeam[0]?.label} player ${slot + 1}`}
-                            style={selectStyle}
-                          >
-                            <option value="">Select…</option>
-                            {rosterByTeam[0]?.players.map(p => (
-                              <option key={p} value={p}>{p}</option>
-                            ))}
-                          </select>
-                        ))}
+                        {roundNumber <= 8 ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div style={{ minHeight: 40, padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, background: '#f8fafc', fontWeight: 700, fontSize: 14 }}>
+                              {draft[0] || '—'}
+                            </div>
+                            <div style={{ minHeight: 40, padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, background: '#f8fafc', fontWeight: 700, fontSize: 14 }}>
+                              {draft[1] || '—'}
+                            </div>
+                          </div>
+                        ) : (
+                          [0, 1].map(slot => (
+                            <select
+                              key={slot}
+                              value={draft[slot]}
+                              onChange={e => updateDraftSlot(round.id, slot, e.target.value)}
+                              disabled={!isAdmin || isScored || (isSaved && editingRoundId !== round.id)}
+                              aria-label={`Round ${roundNumber} court ${round.court} ${rosterByTeam[0]?.label} player ${slot + 1}`}
+                              style={selectStyle}
+                            >
+                              <option value="">Select…</option>
+                              {rosterByTeam[0]?.players.map(p => (
+                                <option key={p} value={p}>{p}</option>
+                              ))}
+                            </select>
+                          ))
+                        )}
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>{rosterByTeam[1]?.label}</span>
-                        {[2, 3].map(slot => (
-                          <select
-                            key={slot}
-                            value={draft[slot]}
-                            onChange={e => updateDraftSlot(round.id, slot, e.target.value)}
-                            disabled={!isAdmin || isScored || (isSaved && editingRoundId !== round.id)}
-                            aria-label={`Round ${roundNumber} court ${round.court} ${rosterByTeam[1]?.label} player ${slot - 1}`}
-                            style={selectStyle}
-                          >
-                            <option value="">Select…</option>
-                            {rosterByTeam[1]?.players.map(p => (
-                              <option key={p} value={p}>{p}</option>
-                            ))}
-                          </select>
-                        ))}
+                        {roundNumber <= 8 ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div style={{ minHeight: 40, padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, background: '#f8fafc', fontWeight: 700, fontSize: 14 }}>
+                              {draft[2] || '—'}
+                            </div>
+                            <div style={{ minHeight: 40, padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, background: '#f8fafc', fontWeight: 700, fontSize: 14 }}>
+                              {draft[3] || '—'}
+                            </div>
+                          </div>
+                        ) : (
+                          [2, 3].map(slot => (
+                            <select
+                              key={slot}
+                              value={draft[slot]}
+                              onChange={e => updateDraftSlot(round.id, slot, e.target.value)}
+                              disabled={!isAdmin || isScored || (isSaved && editingRoundId !== round.id)}
+                              aria-label={`Round ${roundNumber} court ${round.court} ${rosterByTeam[1]?.label} player ${slot - 1}`}
+                              style={selectStyle}
+                            >
+                              <option value="">Select…</option>
+                              {rosterByTeam[1]?.players.map(p => (
+                                <option key={p} value={p}>{p}</option>
+                              ))}
+                            </select>
+                          ))
+                        )}
                       </div>
                     </div>
                     {isScored && (
