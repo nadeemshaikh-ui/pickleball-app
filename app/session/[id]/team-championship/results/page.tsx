@@ -257,7 +257,6 @@ export default function TeamChampionshipResultsPage({ params }: { params: Promis
       <h2 style={{ marginTop: 24 }}>Round by Round</h2>
       {stages.map(stage => {
         const stageRoundResults = roundResults.filter(r => r.stageLabel === stage.stageLabel);
-        if (stageRoundResults.length === 0) return null;
         return (
           <div key={stage.stageLabel} style={{ marginBottom: 20 }}>
             <p style={{ fontSize: 14, fontWeight: 800, margin: '0 0 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -266,48 +265,54 @@ export default function TeamChampionshipResultsPage({ params }: { params: Promis
                 Manage Pairings & Court →
               </Link>
             </p>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, tableLayout: 'fixed' }}>
-                <colgroup>
-                  <col style={{ width: '13%' }} />
-                  <col style={{ width: '31%' }} />
-                  <col style={{ width: '10%' }} />
-                  <col style={{ width: '31%' }} />
-                  <col style={{ width: '15%' }} />
-                </colgroup>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                    <th style={{ textAlign: 'left', padding: '8px 6px', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>Round</th>
-                    <th style={{ textAlign: 'left', padding: '8px 6px', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>{teams[0]?.label ?? 'Team A'}</th>
-                    <th style={{ textAlign: 'center', padding: '8px 6px', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>Score</th>
-                    <th style={{ textAlign: 'left', padding: '8px 6px', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>{teams[1]?.label ?? 'Team B'}</th>
-                    <th style={{ textAlign: 'right', padding: '8px 6px', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>Winner</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stageRoundResults.map((r, i) => {
-                    const winnerTeam = r.winnerTeamId ? teams.find(t => t.id === r.winnerTeamId) : null;
-                    return (
-                      <tr key={`${r.roundNumber}-${r.court}`} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 1 ? 'var(--surface-2, rgba(127,127,127,0.06))' : undefined }}>
-                        <td style={{ padding: '10px 6px', verticalAlign: 'top' }}>
-                          <Link href={`/session/${id}/team-championship/stage/${stages.indexOf(stage) + 1}`} style={{ color: 'var(--muted)', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                            R{r.roundNumber} · C{r.court}
-                          </Link>
-                        </td>
-                        <td style={{ padding: '10px 6px', verticalAlign: 'top', wordBreak: 'break-word' }}>{r.teamA.join(' & ')}</td>
-                        <td style={{ padding: '10px 6px', verticalAlign: 'top', textAlign: 'center', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                          {r.scoreA ?? '–'} – {r.scoreB ?? '–'}
-                        </td>
-                        <td style={{ padding: '10px 6px', verticalAlign: 'top', wordBreak: 'break-word' }}>{r.teamB.join(' & ')}</td>
-                        <td style={{ padding: '10px 6px', verticalAlign: 'top', textAlign: 'right', fontWeight: 700, wordBreak: 'break-word' }}>
-                          {winnerTeam ? `${winnerTeam.label ?? winnerTeam.id} +${r.pointsPerWin}` : 'Unscored'}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            {stageRoundResults.length === 0 ? (
+              <div className="card" style={{ padding: 16, color: 'var(--muted)', fontSize: 13 }}>
+                No pairings generated for this stage yet. Click &quot;Manage Pairings &amp; Court&quot; to initialize.
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, tableLayout: 'fixed' }}>
+                  <colgroup>
+                    <col style={{ width: '13%' }} />
+                    <col style={{ width: '31%' }} />
+                    <col style={{ width: '10%' }} />
+                    <col style={{ width: '31%' }} />
+                    <col style={{ width: '15%' }} />
+                  </colgroup>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                      <th style={{ textAlign: 'left', padding: '8px 6px', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>Round</th>
+                      <th style={{ textAlign: 'left', padding: '8px 6px', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>{teams[0]?.label ?? 'Team A'}</th>
+                      <th style={{ textAlign: 'center', padding: '8px 6px', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>Score</th>
+                      <th style={{ textAlign: 'left', padding: '8px 6px', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>{teams[1]?.label ?? 'Team B'}</th>
+                      <th style={{ textAlign: 'right', padding: '8px 6px', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>Winner</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stageRoundResults.map((r, i) => {
+                      const winnerTeam = r.winnerTeamId ? teams.find(t => t.id === r.winnerTeamId) : null;
+                      return (
+                        <tr key={`${r.roundNumber}-${r.court}`} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 1 ? 'var(--surface-2, rgba(127,127,127,0.06))' : undefined }}>
+                          <td style={{ padding: '10px 6px', verticalAlign: 'top' }}>
+                            <Link href={`/session/${id}/team-championship/stage/${stages.indexOf(stage) + 1}`} style={{ color: 'var(--muted)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                              R{r.roundNumber} · C{r.court}
+                            </Link>
+                          </td>
+                          <td style={{ padding: '10px 6px', verticalAlign: 'top', wordBreak: 'break-word' }}>{r.teamA.join(' & ')}</td>
+                          <td style={{ padding: '10px 6px', verticalAlign: 'top', textAlign: 'center', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                            {r.scoreA ?? '–'} – {r.scoreB ?? '–'}
+                          </td>
+                          <td style={{ padding: '10px 6px', verticalAlign: 'top', wordBreak: 'break-word' }}>{r.teamB.join(' & ')}</td>
+                          <td style={{ padding: '10px 6px', verticalAlign: 'top', textAlign: 'right', fontWeight: 700, wordBreak: 'break-word' }}>
+                            {winnerTeam ? `${winnerTeam.label ?? winnerTeam.id} +${r.pointsPerWin}` : 'Unscored'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         );
       })}
