@@ -212,7 +212,13 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
           };
         });
         
-        normalized = roundsToCreate;
+        // Normalize generated stage finals with correct squad alignment (Team A is Squad 0, Team B is Squad 1)
+        const team0Id = session.squads[0].id;
+        const squadOfPlayer = new Map(session.squads.flatMap(t => t.players.map(p => [p, t.id] as const)));
+        normalized = roundsToCreate.map(r => ({
+          ...r,
+          courts: r.courts.map(c => (squadOfPlayer.get(c.teamA[0]) === team0Id ? c : { teamA: c.teamB, teamB: c.teamA })),
+        }));
       } else {
         const totalRounds = session.stage_config.reduce((sum, s) => sum + (s.roundEnd - s.roundStart + 1), 0);
         const seed = `${session.id}-team-championship`;
