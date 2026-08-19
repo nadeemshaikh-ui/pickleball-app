@@ -260,8 +260,11 @@ export default function TeamChampionshipResultsPage({ params }: { params: Promis
         if (stageRoundResults.length === 0) return null;
         return (
           <div key={stage.stageLabel} style={{ marginBottom: 20 }}>
-            <p style={{ fontSize: 14, fontWeight: 800, margin: '0 0 8px' }}>
-              {stage.stageLabel} <span style={{ fontWeight: 500, color: 'var(--muted)' }}>({stage.pointsPerWin} pt/win)</span>
+            <p style={{ fontSize: 14, fontWeight: 800, margin: '0 0 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>{stage.stageLabel} <span style={{ fontWeight: 500, color: 'var(--muted)' }}>({stage.pointsPerWin} pt/win)</span></span>
+              <Link href={`/session/${id}/team-championship/stage/${stages.indexOf(stage) + 1}`} className="text-link-btn" style={{ fontSize: 12, fontWeight: 700 }}>
+                Manage Pairings & Court →
+              </Link>
             </p>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, tableLayout: 'fixed' }}>
