@@ -1807,6 +1807,21 @@ function SetupPageInner() {
           </div>
 
           <h2>Stages</h2>
+          <div style={{ marginBottom: 12, display: 'flex', gap: 10 }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ fontSize: 13, padding: '6px 12px' }}
+              onClick={() => setStageRows([
+                { label: 'League Phase', rounds: 8, pointsPerWin: 1 },
+                { label: 'Gold/Bronze R1', rounds: 1, pointsPerWin: 1 },
+                { label: 'Gold/Bronze R2', rounds: 1, pointsPerWin: 2 },
+                { label: 'Gold/Bronze R3 Decider', rounds: 1, pointsPerWin: 3 }
+              ])}
+            >
+              Load &quot;Who&apos;s the Hotshot&quot; Preset
+            </button>
+          </div>
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>
               Each stage is a block of rounds worth its own points-per-win — e.g. 5 rounds at 1pt, then 5 at 2pt, then 5 at 3pt.

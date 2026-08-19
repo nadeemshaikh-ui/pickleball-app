@@ -201,7 +201,10 @@ export default function HotshotsDraftAdmin() {
     const syncStates = async () => {
       if ((window as any)._isSendingToServer || (window as any)._isSequentialRevealing) return; // Skip polling when a push or reveal is in-progress
       try {
-        const res = await fetch(`/api/tournaments/hotshots-draft?clubId=${clubId}`);
+        const params = new URLSearchParams(window.location.search);
+        const roleQuery = params.get('role') || '';
+        const capQuery = params.get('captain') || '-1';
+        const res = await fetch(`/api/tournaments/hotshots-draft?clubId=${clubId}&role=${roleQuery}&captain=${capQuery}`);
         if (!res.ok) return;
         const data = await res.json();
         
@@ -923,8 +926,8 @@ export default function HotshotsDraftAdmin() {
     updatedSaved[teamIdx] = true;
     setPicksSaved(updatedSaved);
     
-    // Explicitly push saved state to server for instant synchronization
-    pushStateToServer({ picksSaved: updatedSaved, roundPicks: updatedPicks });
+    // Explicitly push saved state to server via targeted action
+    pushStateToServer({ action: 'UPDATE_PICK', teamIdx, val, saved: true });
     showFeedback(`Selection for ${teamNames[teamIdx] || 'Team'} saved successfully!`, 'success');
   };
 
@@ -941,8 +944,8 @@ export default function HotshotsDraftAdmin() {
     updatedSaved[teamIdx] = false;
     setPicksSaved(updatedSaved);
 
-    // Explicitly push updates to server for instant synchronization
-    pushStateToServer({ picksSaved: updatedSaved, roundPicks: updatedPicks });
+    // Explicitly push updates to server via targeted action
+    pushStateToServer({ action: 'UPDATE_PICK', teamIdx, val: '', saved: false });
   };
 
   if (!mounted) {
