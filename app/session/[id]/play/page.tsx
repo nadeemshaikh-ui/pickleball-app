@@ -139,10 +139,6 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
           router.push('/tournaments/mw-mavericks');
           return;
         }
-        if (s.format === 'team_championship') {
-          router.push(`/session/${id}/team-championship/stage/1`);
-          return;
-        }
       }
     } finally {
       setLoading(false);

@@ -19,7 +19,7 @@ export default function SessionNav({ sessionId, format, clubId }: { sessionId: s
       ]
     : [
         { href: `/session/${sessionId}/schedule`, label: 'Schedule' },
-        { href: `/session/${sessionId}/${isTeamChampionship ? 'team-championship/stage/1' : 'play'}`, label: 'Score' },
+        { href: `/session/${sessionId}/play`, label: 'Score' },
         { href: `/session/${sessionId}/${isTeamChampionship ? 'team-championship/results' : 'leaderboard'}`, label: 'Leaderboard' },
         { href: `/session/${sessionId}/${isTeamChampionship ? 'team-championship/analytics' : 'analytics'}`, label: 'Analytics' },
         { href: `/session/${sessionId}/${isTeamChampionship ? 'team-championship/results' : 'results'}`, label: 'Results' },
