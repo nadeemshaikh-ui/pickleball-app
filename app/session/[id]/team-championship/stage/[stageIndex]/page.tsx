@@ -131,7 +131,7 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
     setError(null);
     try {
       const isFinalsStage = stageToGenerate.roundStart === 9; // Rounds 9-11 (Gold & Bronze Finals)
-      const courtCount = session.court_labels.length || 1;
+      const courtCount = session.court_labels?.length || 1;
       
       let normalized = [];
       
@@ -150,8 +150,8 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
           };
         });
         
-        const squad0 = sortedSquadPlayers[0];
-        const squad1 = sortedSquadPlayers[1];
+        const squad0 = sortedSquadPlayers[0] || { players: [] };
+        const squad1 = sortedSquadPlayers[1] || { players: [] };
         
         // Generate the 3 finals rounds dynamically
         // Gold Final (Court 1 & 2): Captains pick partners (Rank 1 & 2, then Rank 3 & 4)
@@ -220,8 +220,8 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
         });
         
         // Normalize generated stage finals with correct squad alignment (Team A is Squad 0, Team B is Squad 1)
-        const team0Id = session.squads[0].id;
-        const squadOfPlayer = new Map(session.squads.flatMap(t => t.players.map(p => [p, t.id] as const)));
+        const team0Id = session.squads[0]?.id;
+        const squadOfPlayer = new Map((session.squads || []).flatMap(t => (t.players || []).map(p => [p, t.id] as const)));
         normalized = roundsToCreate.map(r => ({
           ...r,
           courts: r.courts.map(c => {
@@ -234,13 +234,13 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
         const totalRounds = session.stage_config.reduce((sum, s) => sum + (s.roundEnd - s.roundStart + 1), 0);
         const seed = `${session.id}-team-championship`;
         const { rounds: generated } = generateSquadRivalryScheduleN(session.players, 2, courtCount, totalRounds, seed, [], session.squads);
-        const team0Id = session.squads[0].id;
-        const squadOfPlayer = new Map(session.squads.flatMap(t => t.players.map(p => [p, t.id] as const)));
+        const team0Id = session.squads[0]?.id;
+        const squadOfPlayer = new Map((session.squads || []).flatMap(t => (t.players || []).map(p => [p, t.id] as const)));
         normalized = generated
           .filter(r => r.roundNumber >= stageToGenerate.roundStart && r.roundNumber <= stageToGenerate.roundEnd)
           .map(r => ({
             ...r,
-            courts: r.courts.map(c => (squadOfPlayer.get(c.teamA[0]) === team0Id ? c : { teamA: c.teamB, teamB: c.teamA })),
+            courts: r.courts.map(c => (squadOfPlayer.get(c.teamA?.[0]) === team0Id ? c : { teamA: c.teamB, teamB: c.teamA })),
           }));
       }
       
@@ -262,7 +262,7 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
     setGenerating(true);
     setError(null);
     try {
-      const courtCount = session.court_labels.length || 1;
+      const courtCount = session.court_labels?.length || 1;
       const roundNumbers = Array.from({ length: stageToStart.roundEnd - stageToStart.roundStart + 1 }, (_, i) => stageToStart.roundStart + i);
       const blankRounds = roundNumbers.map(roundNumber => ({
         roundNumber,
@@ -374,8 +374,8 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
 
   const teams = session.squads;
   const stages = session.stage_config;
-  const rosterByTeam = teams.map(t => ({ id: t.id, label: t.label ?? t.id, players: t.players }));
-  const courtCount = session.court_labels.length || 1;
+  const rosterByTeam = (teams || []).map(t => ({ id: t.id, label: t.label ?? t.id, players: t.players || [] }));
+  const courtCount = session.court_labels?.length || 1;
   const stage = stages[stageIndex - 1];
   const stageRoundNumbers = Array.from({ length: stage.roundEnd - stage.roundStart + 1 }, (_, i) => stage.roundStart + i);
   const stageRounds = rounds.filter(r => stageRoundNumbers.includes(r.round_number)).sort((a, b) => (a.round_number - b.round_number) || (a.court - b.court));
@@ -434,7 +434,7 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
   const stageFullyScored = stageRounds.length > 0 && stageRounds.every(r => r.score_a !== null && r.score_b !== null);
 
   async function handleShareWhatsApp() {
-    if (!stageRounds.some(r => r.team_a[0] && r.team_b[0])) {
+    if (!stageRounds.some(r => r.team_a?.[0] && r.team_b?.[0])) {
       setError('Fill in at least one court before sharing.');
       return;
     }
@@ -530,9 +530,9 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
           disabled={stageIndex <= 1}
           onClick={() => router.push(`/session/${id}/team-championship/stage/${stageIndex - 1}`)}
         >
-          ← {stages[stageIndex - 2]?.stageLabel ?? 'Prev'}
+          ← {stages?.[stageIndex - 2]?.stageLabel ?? 'Prev'}
         </button>
-        {stageIndex >= stages.length ? (
+        {stageIndex >= (stages?.length || 0) ? (
           // Last stage — "Next" isn't a dead end, the real flow continues
           // into Rapid Fire (if configured). Real feedback: this button
           // just sat disabled here with nowhere to go, which read as
@@ -555,7 +555,7 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
             style={{ minHeight: 44, flex: 1 }}
             onClick={() => router.push(`/session/${id}/team-championship/stage/${stageIndex + 1}`)}
           >
-            {stages[stageIndex]?.stageLabel ?? 'Next'} →
+            {stages?.[stageIndex]?.stageLabel ?? 'Next'} →
           </button>
         )}
       </div>
@@ -618,7 +618,7 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
             <div className="card" style={{ marginBottom: 16, textAlign: 'center' }}>
               <p style={{ margin: '0 0 10px', fontWeight: 700 }}>✓ {stage.stageLabel} complete — every round scored.</p>
               <Link href={`/session/${id}/team-championship/stage/${stageIndex + 1}`} className="btn-primary" style={{ display: 'inline-block' }}>
-                Start {stages[stageIndex]?.stageLabel} →
+                Start {stages?.[stageIndex]?.stageLabel ?? 'Next Stage'} →
               </Link>
             </div>
           )}
@@ -687,7 +687,7 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
                               style={selectStyle}
                             >
                               <option value="">Select…</option>
-                              {rosterByTeam[0]?.players.map(p => (
+                              {(rosterByTeam[0]?.players || []).map(p => (
                                 <option key={p} value={p}>{p}</option>
                               ))}
                             </select>
@@ -716,7 +716,7 @@ export default function TeamChampionshipStagePage({ params }: { params: Promise<
                               style={selectStyle}
                             >
                               <option value="">Select…</option>
-                              {rosterByTeam[1]?.players.map(p => (
+                              {(rosterByTeam[1]?.players || []).map(p => (
                                 <option key={p} value={p}>{p}</option>
                               ))}
                             </select>
