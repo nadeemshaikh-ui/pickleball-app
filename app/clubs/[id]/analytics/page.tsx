@@ -38,7 +38,7 @@ export default function ClubAnalyticsPage({ params }: { params: Promise<{ id: st
         } else if (id === 'a99a150f-7bb8-4b4a-ab86-90f945dcbf36') {
           sessionIds = [...sessionIds, 'pb_sunday_2026', '57gs7a', '200tao'];
         } else if (id === 'fccd4a42-f3c7-4d93-9493-1e91828e66e2') {
-          sessionIds = [...sessionIds, 'hot101', 'ea864a'];
+          sessionIds = [...sessionIds, 'hot101', 'ea864a', 'hotshot_session_thursday'];
         } else if (id === '7465914e-261c-4ee5-b6d8-b9fe69eb4e25') {
           sessionIds = [...sessionIds, 'kot56f'];
         }
