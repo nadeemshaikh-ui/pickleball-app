@@ -89,7 +89,7 @@ export default function HotshotsDraftAdmin() {
       { name: 'Amresh', grade: 'A', logoUrl: 'https://i.ibb.co/tbgZpqV/rakhi-sawant.jpg' },
       { name: 'Hemal', grade: 'B', logoUrl: '/Hotsht%20profile%20pics/Hemal.jpeg' },
       { name: 'Miten', grade: 'B', logoUrl: '/Hotsht%20profile%20pics/Miten.jpeg' },
-      { name: 'Ankit', grade: 'B', logoUrl: 'https://i.ibb.co/FwsHn7N/funny-face.jpg' },
+      { name: 'Rizwaan', grade: 'B', logoUrl: 'https://i.ibb.co/FwsHn7N/funny-face.jpg' },
       { name: 'Sid G', grade: 'B', logoUrl: '/Hotsht%20profile%20pics/Sid%20G.jpeg' },
       { name: 'Sid K', grade: 'B', logoUrl: 'https://i.ibb.co/mhp3TjG/embarrassing-face.jpg' },
       { name: 'Arif', grade: 'B', logoUrl: 'https://i.ibb.co/mJk3pXG/screaming-cat.jpg' },
@@ -102,20 +102,23 @@ export default function HotshotsDraftAdmin() {
     ];
     // Force reset default players list to apply local images path
     localStorage.removeItem('hotshots_all_players_v4');
+    localStorage.removeItem('hotshots_captain_names');
+    localStorage.removeItem('hotshots_team_names');
+    localStorage.removeItem('hotshots_team_logos');
     setAllPlayers(defaultPlayers);
 
     const savedCaptains = localStorage.getItem('hotshots_captain_names');
-    setCaptainNames(savedCaptains ? JSON.parse(savedCaptains) : ['Sumit', 'Ankit', 'Miten', 'Deep']);
+    setCaptainNames(savedCaptains ? JSON.parse(savedCaptains) : ['Sumit', 'Rizwaan', 'Miten', 'Deep']);
 
     const defaultTeamNames = [
       'Samosa Smashers',     // Sumit
-      'Papad Punishers',      // Ankit
+      'Papad Punishers',      // Rizwaan
       'Dhokla Destroyers',    // Miten
       'Cheese Naan Warriors'  // Deep
     ];
     const defaultLogos = [
       '/Hotsht%20profile%20pics/Samosa%20Smashers%20Sumit.jpeg',
-      '/Hotsht%20profile%20pics/papad_punishers_logo_1786964324414.jpg', // Ankit
+      '/Hotsht%20profile%20pics/papad_punishers_logo_1786964324414.jpg', // Rizwaan
       '/Hotsht%20profile%20pics/Dhokla%20Destroyers%20Deep.jpeg', // Miten (using Dhokla logo from directory)
       '/Hotsht%20profile%20pics/cheese_naan_logo_1786964038239.jpg'
     ];
@@ -169,7 +172,7 @@ export default function HotshotsDraftAdmin() {
         const idx = parseInt(capQuery, 10);
         if (idx >= 0 && idx < 4) {
           setActiveCaptainSessionIdx(idx);
-          setLoggedInCaptainName(captainNames[idx] || ['Sumit', 'Ankit', 'Miten', 'Deep'][idx]);
+          setLoggedInCaptainName(captainNames[idx] || ['Sumit', 'Rizwaan', 'Miten', 'Deep'][idx]);
           
           // Check if this captain has already selected their powerup card
           const pile = savedPile ? JSON.parse(savedPile) : defaultPile;
