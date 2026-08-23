@@ -298,11 +298,11 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
           </p>
         )}
 
-        {session && session.format === 'squad_rivalry' && session.squads && session.squads.length === 2 && (
+        {session && (session.format === 'squad_rivalry' || session.format === 'team_championship') && session.squads && session.squads.length === 2 && (
           <div style={{ marginTop: 16 }}>
             <SquadLineupCard
-              goldLabel={session.squads[0].label || 'Gold'}
-              blackLabel={session.squads[1].label || 'Black'}
+              goldLabel={session.squads[0].label || 'Team 1'}
+              blackLabel={session.squads[1].label || 'Team 2'}
               goldLogoUrl={session.squads[0].logoUrl ?? null}
               blackLogoUrl={session.squads[1].logoUrl ?? null}
               goldPlayers={session.squads[0].players}
