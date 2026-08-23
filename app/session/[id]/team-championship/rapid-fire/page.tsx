@@ -222,8 +222,8 @@ export default function RapidFireAnalysisPage({ params }: { params: Promise<{ id
           </div>
         </div>
 
-        {/* Overtime & Climax Story (Only shown when a rapid fire match has actually finished or reached target threshold) */}
-        {shiftLogs.length > 0 && (scoreTeam1 >= 31 || scoreTeam2 >= 31) && (
+        {/* Overtime & Climax Story (Always visible as long as shifts are recorded) */}
+        {shiftLogs.length > 0 && (
           <div className="card space-y-3" style={{ marginBottom: 24, padding: '20px 16px' }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, margin: 0, color: '#f59e0b' }}>
               <Zap size={18} /> Overtime Climax & Championship Sequence
