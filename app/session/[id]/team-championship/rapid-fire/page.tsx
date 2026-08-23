@@ -222,27 +222,23 @@ export default function RapidFireAnalysisPage({ params }: { params: Promise<{ id
           </div>
         </div>
 
-        {/* Overtime & Climax Story */}
-        <div className="card space-y-3" style={{ marginBottom: 24, padding: '20px 16px' }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, margin: 0, color: '#f59e0b' }}>
-            <Zap size={18} /> Overtime Climax & Championship Sequence
-          </h3>
-          <p style={{ fontSize: 13, color: 'var(--muted)', margin: '4px 0 12px 0' }}>
-            After intense rally rotation, the match reached a <strong>31–30 tie-breaker threshold</strong>, triggering 3 crucial overtime rotations:
-          </p>
+        {/* Overtime & Climax Story (Only shown when a rapid fire match has actually finished or reached target threshold) */}
+        {shiftLogs.length > 0 && (scoreTeam1 >= 31 || scoreTeam2 >= 31) && (
+          <div className="card space-y-3" style={{ marginBottom: 24, padding: '20px 16px' }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, margin: 0, color: '#f59e0b' }}>
+              <Zap size={18} /> Overtime Climax & Championship Sequence
+            </h3>
+            <p style={{ fontSize: 13, color: 'var(--muted)', margin: '4px 0 12px 0' }}>
+              After intense rally rotation, the match reached the target threshold:
+            </p>
 
-          <div className="space-y-2">
-            <div style={{ background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 8, borderLeft: '3px solid #2563eb', fontSize: 13 }}>
-              <strong>1️⃣ Overtime Shift 21:</strong> Amresh & Sid (Challengers) secured <strong>2–1 points</strong> against Karan & Gopal.
-            </div>
-            <div style={{ background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 8, borderLeft: '3px solid #7c3aed', fontSize: 13 }}>
-              <strong>2️⃣ Overtime Shift 22:</strong> Nadeem & Viki (Challengers) secured <strong>2–1 points</strong> against Hemal & MBS.
-            </div>
-            <div style={{ background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 8, borderLeft: '3px solid #10b981', fontSize: 13 }}>
-              <strong>3️⃣ Championship Point:</strong> Sumeet & Vinit (Challengers) scored <strong>2 consecutive points</strong>, with <strong>Sumeet hitting the winning shot</strong> to clinch the title by 2 points (<strong>35–33</strong>)!
+            <div className="space-y-2">
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 8, borderLeft: '3px solid #10b981', fontSize: 13 }}>
+                <strong>🏆 Championship Rotations:</strong> The final scoring sequence concluded after <strong>{shiftLogs.length} rotations</strong>, with <strong>{winnerLabel}</strong> securing the tournament point margin to clinch the title (<strong>{scoreTeam1} – {scoreTeam2}</strong>)!
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Player Stats Table */}
         <div className="card space-y-4" style={{ marginBottom: 24 }}>
