@@ -63,72 +63,80 @@ export default function SquadLineupCard({ goldLabel, blackLabel, goldLogoUrl, bl
     }
   }
 
+  // Updated theme colors dynamically: Mavericks (Blue) and Hotshots (Red)
+  const isMavericksVsHotshots = goldLabel.toLowerCase().includes('mavericks') || blackLabel.toLowerCase().includes('mavericks');
+  const goldThemeColor = isMavericksVsHotshots ? '#2563eb' : '#d4af37';
+  const blackThemeColor = isMavericksVsHotshots ? '#dc2626' : '#1a1a1a';
+
   return (
-    <div className="card" style={{ marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 16 }}>Squad Lineup</h2>
-        <button className="icon-btn" aria-label="Share squad lineup on WhatsApp" onClick={handleShare} disabled={sharing}>
-          <Share2 size={16} />
+    <div className="card" style={{ marginBottom: 16, padding: 16, border: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 900, letterSpacing: -0.2 }}>Tournament Roster</h2>
+        <button className="btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }} aria-label="Share squad lineup on WhatsApp" onClick={handleShare} disabled={sharing}>
+          <Share2 size={14} />
+          <span>Share Roster</span>
         </button>
       </div>
       {shareError && <p style={{ fontSize: 12, color: 'var(--danger)', marginBottom: 8 }}>{shareError}</p>}
-      <div ref={captureRef} style={{ background: 'white', padding: 12 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          <SquadColumn label={goldLabel} logoUrl={goldLogoUrl} players={goldPlayers} color="#d4af37" />
-          <SquadColumn label={blackLabel} logoUrl={blackLogoUrl} players={blackPlayers} color="#1a1a1a" />
+      <div ref={captureRef} style={{ background: 'var(--card-bg, #ffffff)', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <SquadColumn label={goldLabel} players={goldPlayers} color={goldThemeColor} />
+          <SquadColumn label={blackLabel} players={blackPlayers} color={blackThemeColor} />
         </div>
       </div>
     </div>
   );
 }
 
-function SquadColumn({ label, logoUrl, players, color }: { label: string; logoUrl: string | null; players: string[]; color: string }) {
+function SquadColumn({ label, players, color }: { label: string; players: string[]; color: string }) {
+  // Sort players alphabetically for clean list rendering
+  const sortedPlayers = [...players].sort((a, b) => a.localeCompare(b));
+
   return (
-    <div>
+    <div style={{ background: 'var(--surface-1, #f8fafc)', borderRadius: 10, padding: 12, border: '1px solid rgba(0, 0, 0, 0.05)' }}>
       <div
         style={{
           display: 'flex',
-          flexDirection: 'column',
           alignItems: 'center',
-          gap: 6,
-          paddingBottom: 8,
-          marginBottom: 8,
-          borderBottom: `3px solid ${color}`,
+          justifyContent: 'center',
+          gap: 8,
+          paddingBottom: 10,
+          marginBottom: 12,
+          borderBottom: `2px solid ${color}`,
         }}
       >
-        {logoUrl ? (
-          <img
-            src={logoUrl}
-            alt=""
-            width={72}
-            height={72}
-            crossOrigin="anonymous"
-            style={{ borderRadius: '50%', objectFit: 'cover', border: `2px solid ${color}` }}
-          />
-        ) : (
-          <div
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: '50%',
-              background: color,
+        <div
+          style={{
+            width: 10,
+            height: 10,
+            borderRadius: '50%',
+            backgroundColor: color,
+          }}
+        />
+        <div style={{ fontWeight: 900, fontSize: 15, color: 'var(--foreground)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          {label}
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {sortedPlayers.map(name => (
+          <div 
+            key={name} 
+            style={{ 
+              fontSize: 13, 
+              fontWeight: 600,
+              color: 'var(--foreground)', 
+              padding: '6px 10px', 
+              background: 'var(--card-bg, #ffffff)', 
+              borderRadius: 6,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+              borderLeft: `3px solid ${color}`,
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              color: '#ffffff',
-              fontWeight: 800,
-              fontSize: 24,
+              justifyContent: 'space-between'
             }}
           >
-            {label.charAt(0).toUpperCase()}
-          </div>
-        )}
-        <div style={{ fontWeight: 800, fontSize: 14, textAlign: 'center' }}>{label}</div>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {players.map(name => (
-          <div key={name} style={{ fontSize: 13, textAlign: 'center', padding: '3px 0' }}>
-            {name}
+            <span>{name}</span>
+            <span style={{ fontSize: 9, opacity: 0.5, textTransform: 'uppercase', fontWeight: 800 }}>PL</span>
           </div>
         ))}
       </div>

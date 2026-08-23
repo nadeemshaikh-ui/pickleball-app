@@ -156,12 +156,31 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
           )}
           {leaderboard.map((p, i) => {
             const maxWins = Math.max(1, ...leaderboard.map(x => x.wins));
+            
+            // Find player team label
+            let teamLabel = '';
+            let teamColor = 'var(--muted)';
+            if (session?.squads) {
+              const matchedSquad = session.squads.find(s => s.players.some(pn => pn.toLowerCase() === p.name.toLowerCase()));
+              if (matchedSquad) {
+                teamLabel = matchedSquad.label ?? matchedSquad.id;
+                teamColor = matchedSquad.id === 'mavericks' ? '#2563eb' : '#dc2626'; // Blue for Mavericks, Red for Hotshots
+              }
+            }
+
             return (
               <div key={p.name} className="leaderboard-row">
                 <span className={`rank-badge rank-${i + 1 <= 3 ? i + 1 : ''}`}>{i + 1}</span>
                 <Avatar name={p.name} size={24} />
-                <span className="leaderboard-name">{p.name}</span>
-                <div className="win-bar-track" style={{ maxWidth: 80 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, marginLeft: 8 }}>
+                  <span className="leaderboard-name" style={{ margin: 0, fontWeight: 700 }}>{p.name}</span>
+                  {teamLabel && (
+                    <span style={{ fontSize: 10, color: teamColor, fontWeight: 800, textTransform: 'uppercase', marginTop: 1 }}>
+                      {teamLabel}
+                    </span>
+                  )}
+                </div>
+                <div className="win-bar-track" style={{ maxWidth: 80, marginLeft: 8 }}>
                   <div className="win-bar-fill" style={{ width: `${(p.wins / maxWins) * 100}%` }} />
                 </div>
                 <span className="leaderboard-stats">
