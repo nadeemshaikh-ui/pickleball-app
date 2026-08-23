@@ -194,33 +194,35 @@ export default function RapidFireAnalysisPage({ params }: { params: Promise<{ id
           {session && <SessionDate createdAt={session.created_at} eventDate={session.event_date} venue={session.venue} />}
         </div>
 
-        {/* Hero Card */}
-        <div
-          className="card text-center"
-          style={{
-            background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(245, 158, 11, 0.15) 100%)',
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-            borderRadius: 16,
-            padding: '24px 16px',
-            marginBottom: 24,
-          }}
-        >
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(239,68,68,0.2)', color: '#f87171', padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', marginBottom: 12 }}>
-            <Trophy size={14} /> Rapid Fire Champions: {winnerLabel}
-          </div>
+        {/* Hero Card (Only shown when points have actually been scored) */}
+        {(scoreTeam1 > 0 || scoreTeam2 > 0) && (
+          <div
+            className="card text-center"
+            style={{
+              background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(245, 158, 11, 0.15) 100%)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              borderRadius: 16,
+              padding: '24px 16px',
+              marginBottom: 24,
+            }}
+          >
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(239,68,68,0.2)', color: '#f87171', padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', marginBottom: 12 }}>
+              <Trophy size={14} /> Rapid Fire Champions: {winnerLabel}
+            </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 24, margin: '16px 0' }}>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, opacity: 0.8 }}>{squad1Label}</div>
-              <div style={{ fontSize: 36, fontWeight: 900, color: scoreTeam1 > scoreTeam2 ? '#10b981' : 'var(--foreground)' }}>{scoreTeam1}</div>
-            </div>
-            <div style={{ fontSize: 24, fontWeight: 800, opacity: 0.4 }}>VS</div>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, opacity: 0.8 }}>{squad2Label}</div>
-              <div style={{ fontSize: 36, fontWeight: 900, color: scoreTeam2 > scoreTeam1 ? '#10b981' : 'var(--foreground)' }}>{scoreTeam2}</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 24, margin: '16px 0' }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, opacity: 0.8 }}>{squad1Label}</div>
+                <div style={{ fontSize: 36, fontWeight: 900, color: scoreTeam1 > scoreTeam2 ? '#10b981' : 'var(--foreground)' }}>{scoreTeam1}</div>
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 800, opacity: 0.4 }}>VS</div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, opacity: 0.8 }}>{squad2Label}</div>
+                <div style={{ fontSize: 36, fontWeight: 900, color: scoreTeam2 > scoreTeam1 ? '#10b981' : 'var(--foreground)' }}>{scoreTeam2}</div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Overtime & Climax Story (Always visible as long as shifts are recorded) */}
         {shiftLogs.length > 0 && (
