@@ -951,6 +951,31 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                         <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', lineHeight: 1.3 }}>
                           {court.team_a.map(displayName).join(' & ')}
                         </div>
+                        {(() => {
+                          // Find subteam labels for left team
+                          const labels: string[] = [];
+                          if (session?.squads) {
+                            // Find subteams or groups
+                            const isMavericks = session.squads.find(s => s.id === 'mavericks')?.players.some(p => court.team_a.includes(p));
+                            const subteamGroups = [
+                              { name: 'Blue Storm', players: ['Hemal', 'Karan', 'Nimish', 'Saurabh'] },
+                              { name: 'Red Strikers', players: ['Gopal', 'Miten', 'Hitesh', 'Chirag'] },
+                              { name: 'Green Force', players: ['Tushar', 'Hiten', 'Amit', 'Ketan'] },
+                              { name: 'Blue Blazers', players: ['Sumiit', 'Viki', 'Nadeem', 'Sid G'] },
+                              { name: 'Red Firestorm', players: ['Deep', 'Priyesh', 'Amreesh', 'Anosh'] },
+                              { name: 'Green Hurricanes', players: ['Shahnawaz', 'Arif', 'Ansh', 'Gulshan'] }
+                            ];
+                            for (const name of court.team_a) {
+                              const group = subteamGroups.find(g => g.players.some(p => p.toLowerCase() === name.toLowerCase()));
+                              if (group && !labels.includes(group.name)) labels.push(group.name);
+                            }
+                          }
+                          return labels.length > 0 ? (
+                            <span style={{ fontSize: 10, fontWeight: 800, color: '#2563eb', textTransform: 'uppercase', background: '#eff6ff', padding: '2px 8px', borderRadius: 4 }}>
+                              {labels.join(' / ')}
+                            </span>
+                          ) : null;
+                        })()}
                         <input
                           type="number"
                           inputMode="numeric"
@@ -985,6 +1010,28 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                         <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', lineHeight: 1.3 }}>
                           {court.team_b.map(displayName).join(' & ')}
                         </div>
+                        {(() => {
+                          const labels: string[] = [];
+                          if (session?.squads) {
+                            const subteamGroups = [
+                              { name: 'Blue Storm', players: ['Hemal', 'Karan', 'Nimish', 'Saurabh'] },
+                              { name: 'Red Strikers', players: ['Gopal', 'Miten', 'Hitesh', 'Chirag'] },
+                              { name: 'Green Force', players: ['Tushar', 'Hiten', 'Amit', 'Ketan'] },
+                              { name: 'Blue Blazers', players: ['Sumiit', 'Viki', 'Nadeem', 'Sid G'] },
+                              { name: 'Red Firestorm', players: ['Deep', 'Priyesh', 'Amreesh', 'Anosh'] },
+                              { name: 'Green Hurricanes', players: ['Shahnawaz', 'Arif', 'Ansh', 'Gulshan'] }
+                            ];
+                            for (const name of court.team_b) {
+                              const group = subteamGroups.find(g => g.players.some(p => p.toLowerCase() === name.toLowerCase()));
+                              if (group && !labels.includes(group.name)) labels.push(group.name);
+                            }
+                          }
+                          return labels.length > 0 ? (
+                            <span style={{ fontSize: 10, fontWeight: 800, color: '#dc2626', textTransform: 'uppercase', background: '#fef2f2', padding: '2px 8px', borderRadius: 4 }}>
+                              {labels.join(' / ')}
+                            </span>
+                          ) : null;
+                        })()}
                         <input
                           type="number"
                           inputMode="numeric"

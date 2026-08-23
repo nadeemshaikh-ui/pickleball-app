@@ -89,9 +89,7 @@ export default function SquadLineupCard({ goldLabel, blackLabel, goldLogoUrl, bl
 }
 
 function SquadColumn({ label, players, color }: { label: string; players: string[]; color: string }) {
-  // Sort players alphabetically for clean list rendering
   const sortedPlayers = [...players].sort((a, b) => a.localeCompare(b));
-
   return (
     <div style={{ background: 'var(--surface-1, #f8fafc)', borderRadius: 10, padding: 12, border: '1px solid rgba(0, 0, 0, 0.05)' }}>
       <div
@@ -118,27 +116,43 @@ function SquadColumn({ label, players, color }: { label: string; players: string
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {sortedPlayers.map(name => (
-          <div 
-            key={name} 
-            style={{ 
-              fontSize: 13, 
-              fontWeight: 600,
-              color: 'var(--foreground)', 
-              padding: '6px 10px', 
-              background: 'var(--card-bg, #ffffff)', 
-              borderRadius: 6,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
-              borderLeft: `3px solid ${color}`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
-            }}
-          >
-            <span>{name}</span>
-            <span style={{ fontSize: 9, opacity: 0.5, textTransform: 'uppercase', fontWeight: 800 }}>PL</span>
-          </div>
-        ))}
+        {sortedPlayers.map(name => {
+          // Find subteam groups
+          const subteamGroups = [
+            { name: 'Blue Storm', players: ['Hemal', 'Karan', 'Nimish', 'Saurabh'] },
+            { name: 'Red Strikers', players: ['Gopal', 'Miten', 'Hitesh', 'Chirag'] },
+            { name: 'Green Force', players: ['Tushar', 'Hiten', 'Amit', 'Ketan'] },
+            { name: 'Blue Blazers', players: ['Sumiit', 'Viki', 'Nadeem', 'Sid G'] },
+            { name: 'Red Firestorm', players: ['Deep', 'Priyesh', 'Amreesh', 'Anosh'] },
+            { name: 'Green Hurricanes', players: ['Shahnawaz', 'Arif', 'Ansh', 'Gulshan'] }
+          ];
+          const matchedGroup = subteamGroups.find(g => g.players.some(p => p.toLowerCase() === name.toLowerCase()));
+          const subteamName = matchedGroup ? matchedGroup.name.split(' ')[1] || matchedGroup.name : 'PL';
+          
+          return (
+            <div 
+              key={name} 
+              style={{ 
+                fontSize: 13, 
+                fontWeight: 600,
+                color: 'var(--foreground)', 
+                padding: '6px 10px', 
+                background: 'var(--card-bg, #ffffff)', 
+                borderRadius: 6,
+                boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                borderLeft: `3px solid ${color}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}
+            >
+              <span>{name}</span>
+              <span style={{ fontSize: 9, opacity: 0.7, textTransform: 'uppercase', fontWeight: 800, color, background: `${color}15`, padding: '2px 6px', borderRadius: 4 }}>
+                {subteamName}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

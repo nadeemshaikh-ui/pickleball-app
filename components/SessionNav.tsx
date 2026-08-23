@@ -22,6 +22,7 @@ export default function SessionNav({ sessionId, format, clubId }: { sessionId: s
         { href: `/session/${sessionId}/play`, label: 'Score' },
         { href: `/session/${sessionId}/${isTeamChampionship ? 'team-championship/results' : 'leaderboard'}`, label: 'Leaderboard' },
         { href: `/session/${sessionId}/${isTeamChampionship ? 'team-championship/analytics' : 'analytics'}`, label: 'Analytics' },
+        ...(isTeamChampionship ? [{ href: `/session/${sessionId}/team-championship/rapid-fire`, label: '🔥 Rapid Fire' }] : []),
         { href: `/session/${sessionId}/${isTeamChampionship ? 'team-championship/results' : 'results'}`, label: 'Results' },
       ];
 
