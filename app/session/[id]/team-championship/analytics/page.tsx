@@ -58,17 +58,24 @@ export default function TeamChampionshipAnalyticsPage({ params }: { params: Prom
     async function load() {
       const s = await getSession(id);
       setSession(s);
-      const [r, rf, user] = await Promise.all([
-        getRounds(id),
-        s.rapid_fire_config ? fetchRapidFireLog(id) : Promise.resolve([]),
-        getCurrentUser(),
-      ]);
+      const r = await getRounds(id);
       setRounds(r);
-      setRapidFireLog(rf);
-      if (user && s.club_id) {
-        listPlayers(s.club_id)
-          .then(players => setOwnPlayerName(players.find(p => p.user_id === user.id)?.name ?? null))
-          .catch(() => setOwnPlayerName(null));
+      try {
+        if (s.rapid_fire_config) {
+          const rf = await fetchRapidFireLog(id);
+          setRapidFireLog(rf);
+        }
+      } catch (rfErr) {
+        console.error("Rapid fire log query failed:", rfErr);
+      }
+      try {
+        const user = await getCurrentUser();
+        if (user && s.club_id) {
+          const players = await listPlayers(s.club_id);
+          setOwnPlayerName(players.find(p => p.user_id === user.id)?.name ?? null);
+        }
+      } catch (authErr) {
+        console.error("Auth metadata query failed:", authErr);
       }
     }
     load()
@@ -241,7 +248,7 @@ export default function TeamChampionshipAnalyticsPage({ params }: { params: Prom
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: teams.length === 2 ? '1fr 1fr' : '1fr', gap: 10, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${teams.length === 2 ? '140px' : '200px'}, 1fr))`, gap: 10, marginBottom: 16 }}>
         {teams.map(t => {
           const mvp = teamMVPs.get(t.id);
           if (!mvp) return null;

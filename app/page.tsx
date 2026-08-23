@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCurrentClub } from '@/lib/useCurrentClub';
 import { getOwnPlayer } from '@/lib/players';
-import { getLatestActiveSession, deleteSession, type SessionRow } from '@/lib/db';
+import { getLatestActiveSession, deleteSession, getRounds, type SessionRow } from '@/lib/db';
 import { fetchLifetimeLeaderboard, type LifetimePlayerStats } from '@/lib/leagueStats';
 import { computeBadges, buildBadgeInput, type Badge } from '@/lib/badges';
 import { listMyClubs, requestToJoinClub, type ClubMembership } from '@/lib/clubs';
@@ -67,6 +67,16 @@ export default function HomePage() {
 
   async function handleAbandonSession() {
     if (!activeSession) return;
+    try {
+      const sessionRounds = await getRounds(activeSession.id);
+      const hasLiveScores = sessionRounds.some(r => r.score_a !== null || r.score_b !== null);
+      if (hasLiveScores) {
+        alert("This session has active scores recorded and cannot be abandoned from the dashboard. Access the scoring sheet to finalize or roll back individual rounds.");
+        return;
+      }
+    } catch (err) {
+      console.error("Failed to verify active scores:", err);
+    }
     if (!confirm('Are you sure you want to abandon and delete this active session? All round scores logged so far will be permanently removed.')) return;
     try {
       await deleteSession(activeSession.id);

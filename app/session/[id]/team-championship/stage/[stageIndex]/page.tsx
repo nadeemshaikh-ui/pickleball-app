@@ -15,7 +15,7 @@ import {
   type SessionRow,
 } from '@/lib/db';
 import { generateSquadRivalryScheduleN } from '@/lib/squads';
-import { computePlayerStats } from '@/lib/teamChampionship';
+import { computePlayerStats, computeTeamChampionshipStandings } from '@/lib/teamChampionship';
 import { renderElementToImage, shareCachedImage } from '@/lib/shareImage';
 import { getCurrentUser, isCurrentUserAdmin } from '@/lib/auth';
 import { WhatsAppIcon } from '@/components/icons';
@@ -169,79 +169,88 @@ function TeamChampionshipStagePageContent({ params }: { params: Promise<{ id: st
       let normalized = [];
       
       if (isFinalsStage) {
-        // Calculate player stats from the previous 8 rounds to get exact rankings
+        // Calculate player stats and team standings from the previous 8 rounds
         const previousRounds = rounds.filter(r => r.round_number >= 1 && r.round_number <= 8);
         const playerStats = computePlayerStats(previousRounds, session.squads);
+        const standings = computeTeamChampionshipStandings(previousRounds, session.squads, session.stage_config);
         
-        // Group and sort players in each squad based on wins, win percentage, and point diff
-        const sortedSquadPlayers = session.squads.map(squad => {
-          const members = playerStats.filter(ps => ps.teamId === squad.id);
-          members.sort((a, b) => b.wins - a.wins || b.winPct - a.winPct || b.pointDiff - a.pointDiff);
-          return {
-            squadId: squad.id,
-            players: members.map(m => m.name)
-          };
+        // Sort teams based on accumulated points to determine Gold and Bronze qualifiers
+        const sortedTeams = [...session.squads].sort((a, b) => {
+          const pointsA = standings.totalsByTeam.get(a.id) ?? 0;
+          const pointsB = standings.totalsByTeam.get(b.id) ?? 0;
+          return pointsB - pointsA;
         });
-        
-        const squad0 = sortedSquadPlayers[0] || { players: [] };
-        const squad1 = sortedSquadPlayers[1] || { players: [] };
-        
+
+        // Top 2 play Gold; Bottom 2 play Bronze
+        const goldTeam1 = sortedTeams[0] || { id: '', players: [] };
+        const goldTeam2 = sortedTeams[1] || { id: '', players: [] };
+        const bronzeTeam1 = sortedTeams[2] || { id: '', players: [] };
+        const bronzeTeam2 = sortedTeams[3] || { id: '', players: [] };
+
+        // Helper to sort players inside a specific team based on their individual wins and point diffs
+        const getSortedPlayers = (team: { id: string; players: string[] }) => {
+          const members = playerStats.filter(ps => ps.teamId === team.id);
+          members.sort((a, b) => b.wins - a.wins || b.winPct - a.winPct || b.pointDiff - a.pointDiff);
+          return members.map(m => m.name);
+        };
+
+        const gold1Players = getSortedPlayers(goldTeam1);
+        const gold2Players = getSortedPlayers(goldTeam2);
+        const bronze1Players = getSortedPlayers(bronzeTeam1);
+        const bronze2Players = getSortedPlayers(bronzeTeam2);
+
         // Generate the 3 finals rounds dynamically
-        // Gold Final (Court 1 & 2): Captains pick partners (Rank 1 & 2, then Rank 3 & 4)
-        // Bronze Final (Court 3): Rank 5 & 6
+        // Gold Final (Court 1 & 2): Top 2 qualifying teams play.
+        // Bronze Final (Court 3): Bottom 2 qualifying teams play.
         const roundsToCreate = Array.from({ length: 3 }, (_, rIdx) => {
           const roundNumber = stageToGenerate.roundStart + rIdx;
-          
-          // R1: Rank 1 & 2 on Court 1, Rank 3 & 4 on Court 2 (Gold), Rank 5 & 6 on Court 3 (Bronze)
-          // R2: Repeat with no repeat partners constraint
-          // R3: Decider if difference <= 3 points
           const courts = [];
           
           if (roundNumber === 9) {
             // R1 Gold Match 1 (Court 1): Team A Rank 1 & 2 vs Team B Rank 1 & 2
             // R1 Gold Match 2 (Court 2): Team A Rank 3 & 4 vs Team B Rank 3 & 4
-            // R1 Bronze Match 1 (Court 3): Team A Rank 5 & 6 vs Team B Rank 5 & 6
+            // R1 Bronze Match 1 (Court 3): Team A Rank 1 & 2 vs Team B Rank 1 & 2
             courts.push({
-              teamA: [squad0.players[0] || '', squad0.players[1] || ''] as [string, string],
-              teamB: [squad1.players[0] || '', squad1.players[1] || ''] as [string, string]
+              teamA: [gold1Players[0] || '', gold1Players[1] || ''] as [string, string],
+              teamB: [gold2Players[0] || '', gold2Players[1] || ''] as [string, string]
             });
             courts.push({
-              teamA: [squad0.players[2] || '', squad0.players[3] || ''] as [string, string],
-              teamB: [squad1.players[2] || '', squad1.players[3] || ''] as [string, string]
+              teamA: [gold1Players[2] || '', gold1Players[3] || ''] as [string, string],
+              teamB: [gold2Players[2] || gold2Players[0] || '', gold2Players[3] || gold2Players[1] || ''] as [string, string]
             });
             courts.push({
-              teamA: [squad0.players[4] || '', squad0.players[5] || ''] as [string, string],
-              teamB: [squad1.players[4] || '', squad1.players[5] || ''] as [string, string]
+              teamA: [bronze1Players[0] || '', bronze1Players[1] || ''] as [string, string],
+              teamB: [bronze2Players[0] || '', bronze2Players[1] || ''] as [string, string]
             });
           } else if (roundNumber === 10) {
             // R2 Gold Match 1 (Court 1): Shuffle partners (e.g. 1 & 3 vs 1 & 3)
             // R2 Gold Match 2 (Court 2): Shuffle partners (e.g. 2 & 4 vs 2 & 4)
-            // R2 Bronze Match 1 (Court 3): Shuffle partners (e.g. 5 & 7 vs 5 & 7)
+            // R2 Bronze Match 1 (Court 3): Shuffle partners (e.g. 1 & 3 vs 1 & 3)
             courts.push({
-              teamA: [squad0.players[0] || '', squad0.players[2] || ''] as [string, string],
-              teamB: [squad1.players[0] || '', squad1.players[2] || ''] as [string, string]
+              teamA: [gold1Players[0] || '', gold1Players[2] || ''] as [string, string],
+              teamB: [gold2Players[0] || '', gold2Players[2] || ''] as [string, string]
             });
             courts.push({
-              teamA: [squad0.players[1] || '', squad0.players[3] || ''] as [string, string],
-              teamB: [squad1.players[1] || '', squad1.players[3] || ''] as [string, string]
+              teamA: [gold1Players[1] || '', gold1Players[3] || ''] as [string, string],
+              teamB: [gold2Players[1] || '', gold2Players[3] || ''] as [string, string]
             });
             courts.push({
-              teamA: [squad0.players[4] || '', squad0.players[6] || ''] as [string, string],
-              teamB: [squad1.players[4] || '', squad1.players[6] || ''] as [string, string]
+              teamA: [bronze1Players[0] || '', bronze1Players[2] || bronze1Players[1] || ''] as [string, string],
+              teamB: [bronze2Players[0] || '', bronze2Players[2] || bronze2Players[1] || ''] as [string, string]
             });
           } else {
-            // Decider R3 (Captains choice based on matchup rules)
+            // Decider R3 (Captains choice default start)
             courts.push({
-              teamA: [squad0.players[0] || '', squad0.players[1] || ''] as [string, string],
-              teamB: [squad1.players[0] || '', squad1.players[1] || ''] as [string, string]
+              teamA: [gold1Players[0] || '', gold1Players[1] || ''] as [string, string],
+              teamB: [gold2Players[0] || '', gold2Players[1] || ''] as [string, string]
             });
             courts.push({
-              teamA: [squad0.players[2] || '', squad0.players[3] || ''] as [string, string],
-              teamB: [squad1.players[2] || '', squad1.players[3] || ''] as [string, string]
+              teamA: [gold1Players[2] || '', gold1Players[3] || ''] as [string, string],
+              teamB: [gold2Players[2] || '', gold2Players[3] || ''] as [string, string]
             });
             courts.push({
-              teamA: [squad0.players[4] || '', squad0.players[5] || ''] as [string, string],
-              teamB: [squad1.players[4] || '', squad1.players[5] || ''] as [string, string]
+              teamA: [bronze1Players[0] || '', bronze1Players[1] || ''] as [string, string],
+              teamB: [bronze2Players[0] || '', bronze2Players[1] || ''] as [string, string]
             });
           }
           

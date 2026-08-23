@@ -118,12 +118,14 @@ export default function RegisterPage() {
 
   if (!user) {
     return (
-      <main className="page">
+      <main className="page" style={{ paddingBottom: 80 }}>
         <h1>Profile</h1>
-        <p style={{ color: 'var(--muted)', marginTop: 8 }}>Sign in first to register a player profile.</p>
-        <Link href="/login" className="btn-primary" style={{ marginTop: 16, display: 'inline-block' }}>
-          Sign In
-        </Link>
+        <div className="card" style={{ marginTop: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: 24 }}>
+          <p style={{ color: 'var(--muted)', margin: '0 0 16px 0' }}>Sign in first to register a player profile or access admin controls.</p>
+          <Link href="/login" className="btn-primary" style={{ width: '100%', maxWidth: 260, textDecoration: 'none', textAlign: 'center', display: 'block', padding: '12px 0' }}>
+            Sign In with Google
+          </Link>
+        </div>
       </main>
     );
   }

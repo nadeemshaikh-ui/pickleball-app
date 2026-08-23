@@ -42,7 +42,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
       setLeaderboard(computeLeaderboard(rounds));
       setGamesTotal(rounds.length);
       setGamesCompleted(rounds.filter(r => r.score_a !== null).length);
-      if (s.format === 'squad_rivalry' && s.squads) {
+      if ((s.format === 'squad_rivalry' || s.format === 'team_championship') && s.squads) {
         setSquadTotals(computeSquadTotalsN(rounds, s.squads));
       }
     }

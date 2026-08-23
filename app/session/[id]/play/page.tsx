@@ -161,6 +161,11 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
   }
 
   async function handleAbandonSession() {
+    const hasLiveScores = rounds.some(r => r.score_a !== null || r.score_b !== null);
+    if (hasLiveScores) {
+      alert("This tournament session has live match data logged and cannot be abandoned or reset. Contact system administrators if a manual rollback is required.");
+      return;
+    }
     if (!confirm('Are you sure you want to abandon and delete this ongoing session? All round scores logged so far will be permanently removed.')) return;
     try {
       await deleteSession(id);
@@ -562,7 +567,7 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
             blackScore={computeSquadTotalsN(rounds, session.squads).get(session.squads[1].id) ?? 0}
           />
         )}
-        {session && session.format === 'squad_rivalry' && session.squads && session.squads.length > 2 && (
+        {session && (session.format === 'squad_rivalry' || session.format === 'team_championship') && session.squads && session.squads.length > 2 && (
           <SquadStandingsCard squads={session.squads} totalsByTeam={computeSquadTotalsN(rounds, session.squads)} />
         )}
         {session && session.format === 'team_championship' && session.squads && session.squads.length === 2 && session.stage_config && (

@@ -23,7 +23,7 @@ export default function GlobalNav() {
   const { user, currentClubId, loading } = useCurrentClub();
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  if (loading || !user) return null;
+  if (loading) return null;
   if (HIDDEN_PREFIXES.some(p => pathname.startsWith(p))) return null;
 
   const sideTabs = [
@@ -82,39 +82,41 @@ export default function GlobalNav() {
           );
         })}
 
-        <button
-          onClick={() => setSheetOpen(true)}
-          aria-label="Start something new"
-          aria-haspopup="dialog"
-          aria-expanded={sheetOpen}
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 2,
-            flex: '0 0 auto',
-            padding: '0 8px',
-            transform: 'translateY(-10px)',
-            background: 'none',
-            border: 'none',
-          }}
-        >
-          <span
+        {user && (
+          <button
+            onClick={() => setSheetOpen(true)}
+            aria-label="Start something new"
+            aria-haspopup="dialog"
+            aria-expanded={sheetOpen}
             style={{
-              width: 52,
-              height: 52,
-              borderRadius: '50%',
-              background: 'var(--primary, #1a1a1a)',
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+              gap: 2,
+              flex: '0 0 auto',
+              padding: '0 8px',
+              transform: 'translateY(-10px)',
+              background: 'none',
+              border: 'none',
             }}
           >
-            <Plus size={26} color="white" />
-          </span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary, #1a1a1a)' }}>New</span>
-        </button>
+            <span
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: '50%',
+                background: 'var(--primary, #1a1a1a)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+              }}
+            >
+              <Plus size={26} color="white" />
+            </span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary, #1a1a1a)' }}>New</span>
+          </button>
+        )}
 
         {rightTabs.map(tab => {
           const active = isActive(tab.href);
