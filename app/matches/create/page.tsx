@@ -253,7 +253,7 @@ export default function CreateMatchPage() {
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24, pt: 16, borderTop: '1px solid #f1f5f9' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24, paddingTop: 16, borderTop: '1px solid #f1f5f9' }}>
           <button
             type="button"
             className="btn btn-secondary"
