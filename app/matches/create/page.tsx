@@ -94,7 +94,7 @@ export default function CreateMatchPage() {
         )}
 
         {/* Step Indicator */}
-        <div style={{ display: 'flex', justifyBetween: 'space-between', marginBottom: 24, borderBottom: '1px solid #f1f5f9', paddingBottom: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24, borderBottom: '1px solid #f1f5f9', paddingBottom: 12 }}>
           {[1, 2, 3].map((s) => (
             <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{
