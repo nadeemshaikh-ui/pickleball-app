@@ -10,7 +10,7 @@ import { fetchLifetimeLeaderboard, type LifetimePlayerStats } from '@/lib/league
 import { computeBadges, buildBadgeInput, type Badge } from '@/lib/badges';
 import { listMyClubs, requestToJoinClub, type ClubMembership } from '@/lib/clubs';
 import AiScheduleImporter from '@/components/AiScheduleImporter';
-import { Play, Sparkles, Trophy, Zap, ShieldCheck, Plus, Users, ChevronRight, RefreshCw, BarChart2 } from 'lucide-react';
+import { Play, Sparkles, Trophy, Zap, ShieldCheck, Plus, Users, ChevronRight, RefreshCw, BarChart2, Calendar } from 'lucide-react';
 
 export default function HomePage() {
   const router = useRouter();
