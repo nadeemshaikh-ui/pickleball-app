@@ -244,6 +244,32 @@ export default function HomePage() {
               <ChevronRight size={18} style={{ color: '#10b981' }} />
             </Link>
 
+            {/* Match RSVP Wizard Link */}
+            <Link
+              href="/matches/create"
+              style={{
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: 14,
+                padding: 18,
+                textDecoration: 'none',
+                color: '#0f172a',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 14,
+                boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+              }}
+            >
+              <div style={{ background: '#f59e0b', color: '#ffffff', padding: 12, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Calendar size={22} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 900 }}>Create Match & RSVP</h3>
+                <p style={{ margin: '2px 0 0 0', fontSize: 12, color: '#64748b' }}>Schedule a session with dynamic waitlist</p>
+              </div>
+              <ChevronRight size={18} style={{ color: '#94a3b8' }} />
+            </Link>
+
             {/* League Standings & Analytics */}
             <Link
               href={`/clubs/${currentClubId}`}
