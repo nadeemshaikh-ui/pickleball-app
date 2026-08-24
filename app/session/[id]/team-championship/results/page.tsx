@@ -254,56 +254,87 @@ export default function TeamChampionshipResultsPage({ params }: { params: Promis
         </table>
       </div>
 
-      <h2 style={{ marginTop: 24 }}>Round by Round</h2>
+      <h2 style={{ marginTop: 28, marginBottom: 16 }}>Round by Round Breakdown</h2>
       {stages.map(stage => {
         const stageRoundResults = roundResults.filter(r => r.stageLabel === stage.stageLabel);
         if (stageRoundResults.length === 0) return null;
         return (
-          <div key={stage.stageLabel} style={{ marginBottom: 20 }}>
-            <p style={{ fontSize: 14, fontWeight: 800, margin: '0 0 8px' }}>
-              {stage.stageLabel} <span style={{ fontWeight: 500, color: 'var(--muted)' }}>({stage.pointsPerWin} pt/win)</span>
-            </p>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, tableLayout: 'fixed' }}>
-                <colgroup>
-                  <col style={{ width: '13%' }} />
-                  <col style={{ width: '31%' }} />
-                  <col style={{ width: '10%' }} />
-                  <col style={{ width: '31%' }} />
-                  <col style={{ width: '15%' }} />
-                </colgroup>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                    <th style={{ textAlign: 'left', padding: '8px 6px', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>Round</th>
-                    <th style={{ textAlign: 'left', padding: '8px 6px', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>{teams[0]?.label ?? 'Team A'}</th>
-                    <th style={{ textAlign: 'center', padding: '8px 6px', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>Score</th>
-                    <th style={{ textAlign: 'left', padding: '8px 6px', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>{teams[1]?.label ?? 'Team B'}</th>
-                    <th style={{ textAlign: 'right', padding: '8px 6px', fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)' }}>Winner</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stageRoundResults.map((r, i) => {
-                    const winnerTeam = r.winnerTeamId ? teams.find(t => t.id === r.winnerTeamId) : null;
-                    return (
-                      <tr key={`${r.roundNumber}-${r.court}`} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 1 ? 'var(--surface-2, rgba(127,127,127,0.06))' : undefined }}>
-                        <td style={{ padding: '10px 6px', verticalAlign: 'top' }}>
-                          <Link href={`/session/${id}/team-championship/stage/${stages.indexOf(stage) + 1}`} style={{ color: 'var(--muted)', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                            R{r.roundNumber} · C{r.court}
-                          </Link>
-                        </td>
-                        <td style={{ padding: '10px 6px', verticalAlign: 'top', wordBreak: 'break-word' }}>{r.teamA.join(' & ')}</td>
-                        <td style={{ padding: '10px 6px', verticalAlign: 'top', textAlign: 'center', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                          {r.scoreA ?? '–'} – {r.scoreB ?? '–'}
-                        </td>
-                        <td style={{ padding: '10px 6px', verticalAlign: 'top', wordBreak: 'break-word' }}>{r.teamB.join(' & ')}</td>
-                        <td style={{ padding: '10px 6px', verticalAlign: 'top', textAlign: 'right', fontWeight: 700, wordBreak: 'break-word' }}>
-                          {winnerTeam ? `${winnerTeam.label ?? winnerTeam.id} +${r.pointsPerWin}` : 'Unscored'}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          <div key={stage.stageLabel} style={{ marginBottom: 28 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 0.5, color: '#475569', marginBottom: 12, paddingBottom: 6, borderBottom: '2px solid #cbd5e1' }}>
+              {stage.stageLabel} <span style={{ fontWeight: 600, color: '#94a3b8', fontSize: 13, textTransform: 'none' }}>({stage.pointsPerWin} pt/win)</span>
+            </h3>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {stageRoundResults.map((r, i) => {
+                const winnerTeam = r.winnerTeamId ? teams.find(t => t.id === r.winnerTeamId) : null;
+                const isUnscored = !r.scoreA && !r.scoreB;
+                
+                return (
+                  <div 
+                    key={`${r.roundNumber}-${r.court}`}
+                    style={{
+                      background: '#ffffff',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 12,
+                      padding: '14px 16px',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 12
+                    }}
+                  >
+                    {/* Header: Round & Court / Winner badge */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: '#475569', background: '#f1f5f9', padding: '3px 8px', borderRadius: 6 }}>
+                        R{r.roundNumber} · Court {r.court}
+                      </span>
+                      {winnerTeam ? (
+                        <span style={{ fontSize: 12, fontWeight: 800, color: '#16a34a', background: '#dcfce7', padding: '3px 8px', borderRadius: 6, textTransform: 'uppercase' }}>
+                          🏆 {winnerTeam.label ?? winnerTeam.id} (+{r.pointsPerWin})
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: 12, fontWeight: 800, color: '#64748b', background: '#f1f5f9', padding: '3px 8px', borderRadius: 6, textTransform: 'uppercase' }}>
+                          Pending
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Matchup row */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      {/* Team A */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 900, color: r.scoreA !== null && r.scoreB !== null && r.scoreA > r.scoreB ? '#0f172a' : '#64748b', wordBreak: 'break-word', lineHeight: 1.3 }}>
+                          {r.teamA.join(' & ')}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', marginTop: 2 }}>{teams[0]?.label || 'Team A'}</div>
+                      </div>
+
+                      {/* Score Badge */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 65, flexShrink: 0 }}>
+                        {isUnscored ? (
+                          <span style={{ fontSize: 13, fontWeight: 800, color: '#94a3b8', background: '#f8fafc', border: '1px dashed #cbd5e1', padding: '6px 12px', borderRadius: 8 }}>
+                            VS
+                          </span>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#0f172a', color: '#ffffff', padding: '5px 10px', borderRadius: 8, fontSize: 15, fontWeight: 900 }}>
+                            <span>{r.scoreA}</span>
+                            <span style={{ opacity: 0.4, fontSize: 12 }}>:</span>
+                            <span>{r.scoreB}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Team B */}
+                      <div style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
+                        <div style={{ fontSize: 14, fontWeight: 900, color: r.scoreA !== null && r.scoreB !== null && r.scoreB > r.scoreA ? '#0f172a' : '#64748b', wordBreak: 'break-word', lineHeight: 1.3 }}>
+                          {r.teamB.join(' & ')}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', marginTop: 2 }}>{teams[1]?.label || 'Team B'}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         );
