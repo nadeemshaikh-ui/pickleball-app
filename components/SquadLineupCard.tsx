@@ -120,11 +120,11 @@ function SquadColumn({ label, players, color }: { label: string; players: string
           // Find subteam groups
           const subteamGroups = [
             { name: 'Blue Storm', players: ['Hemal', 'Karan', 'Nimish', 'Saurabh'] },
-            { name: 'Red Strikers', players: ['Gopal', 'Miten', 'Hitesh', 'Chirag'] },
+            { name: 'Red Strikers', players: ['Gopal', 'Miten', 'Hitesh', 'Shrawani'] },
             { name: 'Green Force', players: ['Tushar', 'Hiten', 'Amit', 'Ketan'] },
-            { name: 'Blue Blazers', players: ['Sumiit', 'Viki', 'Nadeem', 'Sid G'] },
-            { name: 'Red Firestorm', players: ['Deep', 'Priyesh', 'Amreesh', 'Anosh'] },
-            { name: 'Green Hurricanes', players: ['Shahnawaz', 'Arif', 'Ansh', 'Gulshan'] }
+            { name: 'Blue Blazers', players: ['Sumeet', 'Viki', 'Nadeem', 'Sid'] },
+            { name: 'Red Firestorm', players: ['Deep', 'Priyesh', 'Amreesh', 'Anoush'] },
+            { name: 'Green Hurricanes', players: ['Shanawaz', 'Arif', 'Ansh', 'Gulshan'] }
           ];
           const matchedGroup = subteamGroups.find(g => g.players.some(p => p.toLowerCase() === name.toLowerCase()));
           const subteamName = matchedGroup ? matchedGroup.name.split(' ')[1] || matchedGroup.name : 'PL';

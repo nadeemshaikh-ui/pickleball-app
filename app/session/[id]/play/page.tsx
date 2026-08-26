@@ -960,11 +960,11 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                             const isMavericks = session.squads.find(s => s.id === 'mavericks')?.players.some(p => court.team_a.includes(p));
                             const subteamGroups = [
                               { name: 'Blue Storm', players: ['Hemal', 'Karan', 'Nimish', 'Saurabh'] },
-                              { name: 'Red Strikers', players: ['Gopal', 'Miten', 'Hitesh', 'Chirag'] },
+                              { name: 'Red Strikers', players: ['Gopal', 'Miten', 'Hitesh', 'Shrawani'] },
                               { name: 'Green Force', players: ['Tushar', 'Hiten', 'Amit', 'Ketan'] },
-                              { name: 'Blue Blazers', players: ['Sumiit', 'Viki', 'Nadeem', 'Sid G'] },
-                              { name: 'Red Firestorm', players: ['Deep', 'Priyesh', 'Amreesh', 'Anosh'] },
-                              { name: 'Green Hurricanes', players: ['Shahnawaz', 'Arif', 'Ansh', 'Gulshan'] }
+                              { name: 'Blue Blazers', players: ['Sumeet', 'Viki', 'Nadeem', 'Sid'] },
+                              { name: 'Red Firestorm', players: ['Deep', 'Priyesh', 'Amreesh', 'Anoush'] },
+                              { name: 'Green Hurricanes', players: ['Shanawaz', 'Arif', 'Ansh', 'Gulshan'] }
                             ];
                             for (const name of court.team_a) {
                               const group = subteamGroups.find(g => g.players.some(p => p.toLowerCase() === name.toLowerCase()));
@@ -1016,11 +1016,11 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                           if (session?.squads) {
                             const subteamGroups = [
                               { name: 'Blue Storm', players: ['Hemal', 'Karan', 'Nimish', 'Saurabh'] },
-                              { name: 'Red Strikers', players: ['Gopal', 'Miten', 'Hitesh', 'Chirag'] },
+                              { name: 'Red Strikers', players: ['Gopal', 'Miten', 'Hitesh', 'Shrawani'] },
                               { name: 'Green Force', players: ['Tushar', 'Hiten', 'Amit', 'Ketan'] },
-                              { name: 'Blue Blazers', players: ['Sumiit', 'Viki', 'Nadeem', 'Sid G'] },
-                              { name: 'Red Firestorm', players: ['Deep', 'Priyesh', 'Amreesh', 'Anosh'] },
-                              { name: 'Green Hurricanes', players: ['Shahnawaz', 'Arif', 'Ansh', 'Gulshan'] }
+                              { name: 'Blue Blazers', players: ['Sumeet', 'Viki', 'Nadeem', 'Sid'] },
+                              { name: 'Red Firestorm', players: ['Deep', 'Priyesh', 'Amreesh', 'Anoush'] },
+                              { name: 'Green Hurricanes', players: ['Shanawaz', 'Arif', 'Ansh', 'Gulshan'] }
                             ];
                             for (const name of court.team_b) {
                               const group = subteamGroups.find(g => g.players.some(p => p.toLowerCase() === name.toLowerCase()));

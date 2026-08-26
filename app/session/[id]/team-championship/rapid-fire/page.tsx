@@ -23,7 +23,7 @@ const HOTSHOTS_PAIRINGS = [
   ['Priyesh', 'Sid'],
   ['Viki', 'Nadeem'],
   ['Ansh', 'Arif'],
-  ['Amreesh', 'Anosh'],
+  ['Amreesh', 'Anoush'],
   ['Shanawaz', 'Gulshan'],
 ];
 
