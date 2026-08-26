@@ -190,7 +190,7 @@ export default function SessionBreakdownPage({ params }: { params: Promise<{ id:
           </div>
         </div>
       </main>
-      <SessionNav sessionId={id} format={session?.format} clubId={session?.club_id} />
+      <SessionNav sessionId={id} format={session?.format} clubId={session?.club_id} stageCount={session?.stage_config?.length} />
     </>
   );
 }

@@ -491,7 +491,7 @@ export default function TeamChampionshipAnalyticsPage({ params }: { params: Prom
         </div>
       </div>
     </main>
-    <SessionNav sessionId={id} format="team_championship" clubId={session?.club_id} />
+    <SessionNav sessionId={id} format="team_championship" clubId={session?.club_id} stageCount={session?.stage_config?.length} />
     </>
   );
 }

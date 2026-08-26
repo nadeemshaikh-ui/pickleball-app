@@ -85,7 +85,6 @@ function TeamChampionshipStagePageContent({ params }: { params: Promise<{ id: st
   const [isAdmin, setIsAdmin] = useState(false);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [ending, setEnding] = useState(false);
-  const [adminBypass, setAdminBypass] = useState(false);
   const imageCaptureRef = useRef<HTMLDivElement>(null);
 
   async function load() {
@@ -431,55 +430,10 @@ function TeamChampionshipStagePageContent({ params }: { params: Promise<{ id: st
   const stageRoundNumbers = Array.from({ length: Math.max(0, stage.roundEnd - stage.roundStart + 1) }, (_, i) => stage.roundStart + i);
   const stageRounds = rounds.filter(r => stageRoundNumbers.includes(r.round_number)).sort((a, b) => (a.round_number - b.round_number) || (a.court - b.court));
 
-  // Previous stage must be fully scored before this one opens — same rule
-  // the bracket-tournament engine already enforces (assertStageFullyScored),
-  // applied here so a captain can't reveal Momentum's draw mid-Foundation.
-  const prevStage = stageIndex > 1 ? stages[stageIndex - 2] : null;
-  const prevStageRounds = prevStage
-    ? rounds.filter(r => r.round_number >= prevStage.roundStart && r.round_number <= prevStage.roundEnd)
-    : [];
-  // Real bug found via live testing: an organizer who ended the session
-  // early (via the "End Session Early" button on /play) still hit this
-  // same lock on every later stage forever — ending early is supposed to
-  // mean "stop here," not "every unplayed stage stays sealed." Once the
-  // session itself is done, nothing should still read as locked.
-  // Allow club admins to override and bypass the stage lock checks to configure pairings early.
-  const prevStageComplete =
-    session.status === 'completed' || adminBypass || !prevStage || (prevStageRounds.length > 0 && prevStageRounds.every(r => r.score_a !== null && r.score_b !== null));
-
-  if (prevStage && !prevStageComplete) {
-    return (
-      <>
-      <main className="page">
-        <div className="page-header-row">
-          <Link href={`/session/${id}/team-championship/results`} className="text-link-btn">← Standings</Link>
-        </div>
-        <h1>{stage.stageLabel}</h1>
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <p style={{ margin: 0 }}>
-            🔒 Locked until <strong>{prevStage.stageLabel}</strong> is fully scored (rounds {prevStage.roundStart}–{prevStage.roundEnd}).
-          </p>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <Link href={`/session/${id}/team-championship/stage/${stageIndex - 1}`} className="btn-secondary" style={{ flex: 1, textAlign: 'center' }}>
-              Go to {prevStage.stageLabel} →
-            </Link>
-            {isAdmin && (
-              <button
-                type="button"
-                className="btn-primary"
-                style={{ flex: 1, minWidth: 150 }}
-                onClick={() => setAdminBypass(true)}
-              >
-                🔓 Admin: Bypass Lock
-              </button>
-            )}
-          </div>
-        </div>
-      </main>
-      <SessionNav sessionId={id} format="team_championship" clubId={session.club_id} />
-      </>
-    );
-  }
+  // Stage lock removed — every block (and Rapid Fire) is open to everyone
+  // regardless of whether prior blocks are fully scored. Previously this
+  // gated stage N behind stage N-1 being fully scored, which is no longer
+  // wanted: all blocks + Rapid Fire should be freely browsable at any time.
 
   const stageFullyScored = stageRounds.length > 0 && stageRounds.every(r => r.score_a !== null && r.score_b !== null);
 
@@ -851,7 +805,7 @@ function TeamChampionshipStagePageContent({ params }: { params: Promise<{ id: st
         onCancel={() => setShowEndConfirm(false)}
       />
     )}
-    <SessionNav sessionId={id} format="team_championship" clubId={session.club_id} />
+    <SessionNav sessionId={id} format="team_championship" clubId={session.club_id} stageCount={session.stage_config?.length} />
     </>
   );
 }

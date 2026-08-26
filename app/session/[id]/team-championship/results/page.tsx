@@ -346,7 +346,7 @@ export default function TeamChampionshipResultsPage({ params }: { params: Promis
         </div>
       </div>
     </main>
-    <SessionNav sessionId={id} format="team_championship" clubId={session.club_id} />
+    <SessionNav sessionId={id} format="team_championship" clubId={session.club_id} stageCount={session.stage_config?.length} />
     </>
   );
 }
