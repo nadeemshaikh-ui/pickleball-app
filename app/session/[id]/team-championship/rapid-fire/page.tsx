@@ -7,16 +7,26 @@ import { fetchRapidFireLog, recordRapidFirePoint } from '@/lib/rapidFire';
 import { computeRapidFireState, computeRapidFireBonus, findFinalRoundPairs } from '@/lib/teamChampionship';
 import type { RapidFireLogEntry } from '@/lib/teamChampionship';
 
-const POLL_INTERVAL_MS = 3000; // matches the rest of the app's poll-don't-subscribe convention
+const POLL_INTERVAL_MS = 3000; 
 
-// Live rally-point scoreboard for the Rapid Fire finale — not round/match
-// based like every other screen in this app, a running tally. Resolved
-// with the tournament committee: subbing the on-court foursome is a
-// manual organizer action, not an automatic rotation on a point count —
-// so `courtOverride` lets the organizer swap either on-court player for a
-// bench player at any time; it takes effect on the next point scored.
-// Polls rather than subscribes, same reasoning as every other live screen
-// already in this app.
+const MAVERICKS_PAIRINGS = [
+  ['Hemal', 'Tushar'],
+  ['Karan', 'Gopal'],
+  ['Shravani', 'Hitesh'],
+  ['Saurabh', 'Ketan'],
+  ['Miten', 'Nimish'],
+  ['Hiten', 'Amit'],
+];
+
+const HOTSHOTS_PAIRINGS = [
+  ['Sumit', 'Deep'],
+  ['Priyesh', 'Sid G'],
+  ['Viki', 'Nadeem'],
+  ['Ansh', 'Arif'],
+  ['Amreesh', 'Anosh'],
+  ['Shahnawaz', 'Gulshan'],
+];
+
 export default function RapidFirePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [session, setSession] = useState<SessionRow | null>(null);
@@ -24,12 +34,6 @@ export default function RapidFirePage({ params }: { params: Promise<{ id: string
   const [log, setLog] = useState<RapidFireLogEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [scoring, setScoring] = useState(false);
-  const [courtOverride, setCourtOverride] = useState<string[] | null>(null);
-  // Tap-tap sub flow, not dropdowns — real feedback: subbing needs to be
-  // "easy... on the spot... with ease." Tap an on-court player (marks them
-  // outgoing), then tap a bench player to complete the swap immediately.
-  // Tapping the same on-court player again cancels the pick.
-  const [outgoingPick, setOutgoingPick] = useState<string | null>(null);
   const scoringRef = useRef(false);
 
   async function load() {
@@ -54,8 +58,6 @@ export default function RapidFirePage({ params }: { params: Promise<{ id: string
     setError(null);
     try {
       await recordRapidFirePoint(id, teamId, onCourtPlayers);
-      setCourtOverride(null);
-      setOutgoingPick(null);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to record point.');
@@ -63,36 +65,6 @@ export default function RapidFirePage({ params }: { params: Promise<{ id: string
       scoringRef.current = false;
       setScoring(false);
     }
-  }
-
-  function handleSub(currentPlayers: string[], outgoing: string, incoming: string) {
-    setCourtOverride(currentPlayers.map(p => (p === outgoing ? incoming : p)));
-    setOutgoingPick(null);
-  }
-
-  function handleTapOnCourt(player: string) {
-    setOutgoingPick(prev => (prev === player ? null : player));
-  }
-
-  function handleTapBench(currentPlayers: string[], incoming: string) {
-    if (!outgoingPick) return;
-    handleSub(currentPlayers, outgoingPick, incoming);
-  }
-
-  // Captain still picks WHO rotates in, on the spot — this only makes the
-  // WHEN (every 3 points) impossible to miss, a structural nudge rather
-  // than an automatic swap. Counts backward through the log: how many
-  // trailing points in a row were scored by the exact same on-court
-  // foursome as right now. Any substitution naturally resets this to 0/1,
-  // since the on-court set changes.
-  function pointsSinceRotation(currentOnCourt: string[]): number {
-    const currentKey = [...currentOnCourt].sort().join('|');
-    let count = 0;
-    for (let i = log.length - 1; i >= 0; i--) {
-      if ([...log[i].onCourtPlayers].sort().join('|') === currentKey) count++;
-      else break;
-    }
-    return count;
   }
 
   if (error && !session) return <main className="page"><p style={{ color: 'var(--danger)' }}>{error}</p></main>;
@@ -108,8 +80,23 @@ export default function RapidFirePage({ params }: { params: Promise<{ id: string
     teams
   );
   const state = computeRapidFireState(log, config, teams, finalRoundPairs);
-  const onCourtPlayers = courtOverride ?? state.onCourtPlayers;
-  const sinceRotation = pointsSinceRotation(onCourtPlayers);
+  
+  const combinedScore = Array.from(state.totalsByTeam.values()).reduce((a, b) => a + b, 0);
+  const rotationIndex = Math.floor(combinedScore / 3) % 6;
+  
+  let onCourtPlayers: string[] = [];
+  for (const team of teams) {
+    const label = (team.label ?? team.id).toLowerCase();
+    if (label.includes('maverick')) {
+      onCourtPlayers.push(...MAVERICKS_PAIRINGS[rotationIndex]);
+    } else if (label.includes('hotshot')) {
+      onCourtPlayers.push(...HOTSHOTS_PAIRINGS[rotationIndex]);
+    }
+  }
+  if (onCourtPlayers.length === 0) {
+    onCourtPlayers = state.onCourtPlayers; // Fallback
+  }
+
   const bonus = state.isComplete ? computeRapidFireBonus(state, config) : null;
   const winnerLabel = state.winnerTeamId ? (teams.find(t => t.id === state.winnerTeamId)?.label ?? state.winnerTeamId) : null;
 
@@ -148,91 +135,12 @@ export default function RapidFirePage({ params }: { params: Promise<{ id: string
             className="card"
             style={{
               marginBottom: 16,
-              borderColor: sinceRotation >= 3 ? 'var(--warning, #b45309)' : undefined,
-              borderWidth: sinceRotation >= 3 ? 2 : undefined,
             }}
           >
             <p style={{ fontSize: 15, fontWeight: 700, textAlign: 'center', margin: 0 }}>{onCourtPlayers.join(' & ')}</p>
             <p style={{ fontSize: 11, color: 'var(--muted)', textAlign: 'center', margin: '4px 0 0' }}>
-              {sinceRotation} point{sinceRotation === 1 ? '' : 's'} played by this pairing
+              Rotation {rotationIndex + 1} of 6 (Points: {combinedScore})
             </p>
-            {sinceRotation >= 3 && (
-              <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning, #b45309)', textAlign: 'center', margin: '8px 0 0' }}>
-                ⏱ Time to rotate — captain, pick who&apos;s coming on next.
-              </p>
-            )}
-          </div>
-
-          <h2>Sub (manual)</h2>
-          <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 8px' }}>
-            {outgoingPick ? `Tap who's coming in for ${outgoingPick}.` : 'Tap an on-court player to sub them out.'}
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-            {teams.map(team => {
-              const onCourt = onCourtPlayers.filter(p => team.players.includes(p));
-              const bench = team.players.filter(p => !onCourt.includes(p));
-              return (
-                <div key={team.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>{team.label ?? team.id}</div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <span style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase' }}>On Court</span>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {onCourt.map(p => {
-                        const isPicked = outgoingPick === p;
-                        return (
-                          <button
-                            key={p}
-                            type="button"
-                            onClick={() => handleTapOnCourt(p)}
-                            style={{
-                              minHeight: 44,
-                              padding: '8px 14px',
-                              borderRadius: 999,
-                              border: isPicked ? '2px solid var(--warning, #b45309)' : '1px solid var(--border)',
-                              background: isPicked ? 'var(--warning, #b45309)' : 'white',
-                              color: isPicked ? 'white' : 'var(--foreground)',
-                              fontSize: 14,
-                              fontWeight: 700,
-                            }}
-                          >
-                            {p}{isPicked ? ' ✕' : ''}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <span style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase' }}>Bench</span>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {bench.length === 0 && <span style={{ fontSize: 12, color: 'var(--muted)' }}>No bench players</span>}
-                      {bench.map(b => (
-                        <button
-                          key={b}
-                          type="button"
-                          onClick={() => handleTapBench(onCourtPlayers, b)}
-                          disabled={!outgoingPick}
-                          style={{
-                            minHeight: 44,
-                            padding: '8px 14px',
-                            borderRadius: 999,
-                            border: '1px solid var(--border)',
-                            background: 'white',
-                            color: 'var(--foreground)',
-                            fontSize: 14,
-                            fontWeight: 700,
-                            opacity: outgoingPick ? 1 : 0.5,
-                          }}
-                        >
-                          {b}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -253,3 +161,4 @@ export default function RapidFirePage({ params }: { params: Promise<{ id: string
     </main>
   );
 }
+
