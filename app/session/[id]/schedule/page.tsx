@@ -562,7 +562,7 @@ export default function SchedulePage({ params }: { params: Promise<{ id: string 
           </div>
         )}
       </main>
-      <SessionNav sessionId={id} format={session?.format} clubId={session?.club_id} />
+      <SessionNav sessionId={id} format={session?.format} clubId={session?.club_id} stageCount={session?.stage_config?.length} />
     </>
   );
 }

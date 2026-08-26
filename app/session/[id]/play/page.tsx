@@ -1096,7 +1096,7 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
           onConfirm={handleConfirmScannedScores}
         />
       </main>
-      <SessionNav sessionId={id} format={session?.format} clubId={session?.club_id} />
+      <SessionNav sessionId={id} format={session?.format} clubId={session?.club_id} stageCount={session?.stage_config?.length} />
     </>
   );
 }
