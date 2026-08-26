@@ -12,19 +12,19 @@ const POLL_INTERVAL_MS = 3000;
 const MAVERICKS_PAIRINGS = [
   ['Hemal', 'Tushar'],
   ['Karan', 'Gopal'],
-  ['Shravani', 'Hitesh'],
+  ['Shrawani', 'Hitesh'],
   ['Saurabh', 'Ketan'],
   ['Miten', 'Nimish'],
   ['Hiten', 'Amit'],
 ];
 
 const HOTSHOTS_PAIRINGS = [
-  ['Sumit', 'Deep'],
-  ['Priyesh', 'Sid G'],
+  ['Sumeet', 'Deep'],
+  ['Priyesh', 'Sid'],
   ['Viki', 'Nadeem'],
   ['Ansh', 'Arif'],
   ['Amreesh', 'Anosh'],
-  ['Shahnawaz', 'Gulshan'],
+  ['Shanawaz', 'Gulshan'],
 ];
 
 export default function RapidFirePage({ params }: { params: Promise<{ id: string }> }) {

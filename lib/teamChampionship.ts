@@ -460,9 +460,23 @@ export function computeRapidFireState(
     }
   }
 
-  const winnerEntry = [...totalsByTeam.entries()].find(([, points]) => points >= config.targetPoints);
-  const isComplete = winnerEntry !== undefined;
-  const winnerTeamId = winnerEntry?.[0] ?? null;
+  // Win by 2 condition with a target of 31 points.
+  // If scores reach 30-30, team must win by 2.
+  const t1Id = teams[0].id;
+  const t2Id = teams[1].id;
+  const p1 = totalsByTeam.get(t1Id) ?? 0;
+  const p2 = totalsByTeam.get(t2Id) ?? 0;
+
+  let isComplete = false;
+  let winnerTeamId: string | null = null;
+
+  if (p1 >= config.targetPoints && p1 >= p2 + 2) {
+    isComplete = true;
+    winnerTeamId = t1Id;
+  } else if (p2 >= config.targetPoints && p2 >= p1 + 2) {
+    isComplete = true;
+    winnerTeamId = t2Id;
+  }
 
   const onCourtPlayers =
     log.length > 0
