@@ -1,7 +1,5 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
 import { use, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Trophy } from 'lucide-react';

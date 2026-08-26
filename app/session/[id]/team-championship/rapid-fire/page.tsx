@@ -1,7 +1,5 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
 import { use, useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { getSession, getRounds, type SessionRow, type RoundRow } from '@/lib/db';

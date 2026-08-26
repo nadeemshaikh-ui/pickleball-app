@@ -1,0 +1,1 @@
+import * as dotenv from 'dotenv'; dotenv.config({ path: '.env.local' }); import { supabase } from '../lib/supabase'; async function run() { const { data } = await supabase.from('sessions').select('*').eq('id', 'mw_mavericks_vs_hotshots_2026').single(); console.log(JSON.stringify(data, null, 2)); } run();
