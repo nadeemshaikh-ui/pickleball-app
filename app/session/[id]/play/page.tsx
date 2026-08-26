@@ -629,6 +629,16 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                 ⚙️ {s.stageLabel} Settings
               </button>
             ))}
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ fontSize: 13, fontWeight: 700, padding: '8px 14px', flex: 1, minWidth: 145, textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              onClick={() => {
+                router.push(`/session/${id}/team-championship/rapid-fire`);
+              }}
+            >
+              🔥 Rapid Fire
+            </button>
           </div>
         )}
 
