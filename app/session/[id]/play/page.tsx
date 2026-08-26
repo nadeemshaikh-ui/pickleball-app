@@ -962,8 +962,8 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                               { name: 'Blue Storm', players: ['Hemal', 'Karan', 'Nimish', 'Saurabh'] },
                               { name: 'Red Strikers', players: ['Gopal', 'Miten', 'Hitesh', 'Shrawani'] },
                               { name: 'Green Force', players: ['Tushar', 'Hiten', 'Amit', 'Ketan'] },
-                              { name: 'Blue Blazers', players: ['Sumeet', 'Viki', 'Nadeem', 'Sid'] },
-                              { name: 'Red Firestorm', players: ['Deep', 'Priyesh', 'Amreesh', 'Anoush'] },
+                              { name: 'Blue Blazers', players: ['Sumiit', 'Viki', 'Nadeem', 'Sid G'] },
+                              { name: 'Red Firestorm', players: ['Deep', 'Priyesh', 'Amreesh', 'Anosh'] },
                               { name: 'Green Hurricanes', players: ['Shanawaz', 'Arif', 'Ansh', 'Gulshan'] }
                             ];
                             for (const name of court.team_a) {
@@ -1018,8 +1018,8 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
                               { name: 'Blue Storm', players: ['Hemal', 'Karan', 'Nimish', 'Saurabh'] },
                               { name: 'Red Strikers', players: ['Gopal', 'Miten', 'Hitesh', 'Shrawani'] },
                               { name: 'Green Force', players: ['Tushar', 'Hiten', 'Amit', 'Ketan'] },
-                              { name: 'Blue Blazers', players: ['Sumeet', 'Viki', 'Nadeem', 'Sid'] },
-                              { name: 'Red Firestorm', players: ['Deep', 'Priyesh', 'Amreesh', 'Anoush'] },
+                              { name: 'Blue Blazers', players: ['Sumiit', 'Viki', 'Nadeem', 'Sid G'] },
+                              { name: 'Red Firestorm', players: ['Deep', 'Priyesh', 'Amreesh', 'Anosh'] },
                               { name: 'Green Hurricanes', players: ['Shanawaz', 'Arif', 'Ansh', 'Gulshan'] }
                             ];
                             for (const name of court.team_b) {

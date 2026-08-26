@@ -19,11 +19,11 @@ const MAVERICKS_PAIRINGS = [
 ];
 
 const HOTSHOTS_PAIRINGS = [
-  ['Sumeet', 'Deep'],
-  ['Priyesh', 'Sid'],
+  ['Sumiit', 'Deep'],
+  ['Priyesh', 'Sid G'],
   ['Viki', 'Nadeem'],
   ['Ansh', 'Arif'],
-  ['Amreesh', 'Anoush'],
+  ['Amreesh', 'Anosh'],
   ['Shanawaz', 'Gulshan'],
 ];
 
