@@ -341,7 +341,6 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
   const currentStageRounds = currentStage
     ? rounds.filter(r => r.round_number >= currentStage.roundStart && r.round_number <= currentStage.roundEnd)
     : [];
-  const currentStageNotGenerated = !!currentStage && currentStageRounds.length === 0;
   const currentStageFullyScored = currentStage && currentStageRounds.length > 0 && currentStageRounds.every(r => r.score_a !== null);
   const showStageComplete = !!currentStage && !!currentStageFullyScored && !dismissedStages.has(currentStageIdx);
   const isLastStage = currentStageIdx === tcStages.length - 1;
@@ -617,17 +616,26 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
         {session?.format === 'team_championship' && tcStages.length > 0 && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 12, flexWrap: 'wrap' }}>
             {tcStages.map((s, idx) => (
-              <button
-                key={s.stageLabel}
-                type="button"
-                className="btn-secondary"
-                style={{ fontSize: 13, fontWeight: 700, padding: '8px 14px', flex: 1, minWidth: 145, textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-                onClick={() => {
-                  router.push(`/session/${id}/team-championship/stage/${idx + 1}`);
-                }}
-              >
-                ⚙️ {s.stageLabel} Settings
-              </button>
+              <div key={s.stageLabel} style={{ display: 'flex', flex: 1, minWidth: 145, gap: 4 }}>
+                <button
+                  type="button"
+                  className={displayStageIdx === idx ? 'btn-primary' : 'btn-secondary'}
+                  style={{ fontSize: 13, fontWeight: 700, padding: '8px 14px', flex: 1, textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                  onClick={() => setReviewStageIdx(idx === currentStageIdx ? null : idx)}
+                >
+                  {s.stageLabel}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  aria-label={`${s.stageLabel} settings`}
+                  title={`${s.stageLabel} settings`}
+                  style={{ fontSize: 13, padding: '8px 10px' }}
+                  onClick={() => router.push(`/session/${id}/team-championship/stage/${idx + 1}`)}
+                >
+                  ⚙️
+                </button>
+              </div>
             ))}
             <button
               type="button"
@@ -639,23 +647,6 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
             >
               🔥 Rapid Fire
             </button>
-          </div>
-        )}
-
-        {tcStages.length > 0 && currentStageIdx > 0 && (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-            <span style={{ fontSize: 12, color: 'var(--muted)', alignSelf: 'center' }}>Review:</span>
-            {tcStages.slice(0, currentStageIdx + 1).map((s, i) => (
-              <button
-                key={s.stageLabel}
-                type="button"
-                className={displayStageIdx === i ? 'btn-primary' : 'btn-secondary'}
-                style={{ fontSize: 12, padding: '4px 10px' }}
-                onClick={() => setReviewStageIdx(i === currentStageIdx ? null : i)}
-              >
-                {s.stageLabel}
-              </button>
-            ))}
           </div>
         )}
         {isReviewing && (
@@ -869,12 +860,12 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
           </div>
         )}
 
-        {currentStageNotGenerated && currentStage && !isReviewing && (
+        {displayStage && visibleRoundNumbers.length === 0 && !(showStageComplete && !isReviewing) && (
           <div className="card" style={{ textAlign: 'center', padding: 24 }}>
-            <p style={{ margin: '0 0 12px' }}>{currentStage.stageLabel}&apos;s pairings haven&apos;t been set yet.</p>
+            <p style={{ margin: '0 0 12px' }}>{displayStage.stageLabel}&apos;s pairings haven&apos;t been set yet.</p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-              <button className="btn-primary" onClick={() => router.push(`/session/${id}/team-championship/stage/${currentStageIdx + 1}`)}>
-                Set Up {currentStage.stageLabel} →
+              <button className="btn-primary" onClick={() => router.push(`/session/${id}/team-championship/stage/${displayStageIdx + 1}`)}>
+                Set Up {displayStage.stageLabel} →
               </button>
               <button className="btn-secondary" onClick={() => router.push(`/session/${id}/team-championship/results`)}>
                 Standings
